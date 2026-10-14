@@ -15,6 +15,7 @@ import {
   Play,
   Printer,
   RotateCcw,
+  Ruler,
   ScrollText,
   Settings2,
   SpaceIcon,
@@ -31,6 +32,7 @@ import {
   type StudentPrefs,
 } from "@/lib/types";
 import { ReaderText, useReaderStructure } from "../reader-text";
+import { ReadingRuler } from "./reading-ruler";
 import { useSpeech, type SpeechRate } from "../use-speech";
 import { cx } from "../ui";
 
@@ -66,6 +68,10 @@ function writeStorage(key: string, value: unknown) {
   } catch {}
 }
 
+// Pilihan terakhir siswa, dipakai lagi saat membuka materi lain di HP yang sama.
+const GLOBAL_PREFS_KEY = "selaras:prefs";
+const RULER_KEY = "selaras:garis";
+
 function newSessionId() {
   try {
     return crypto.randomUUID();
@@ -89,7 +95,7 @@ export function StudentApp({ lesson }: { lesson: StudentLesson }) {
 
   // Muat pilihan tersimpan (siswa yang kembali langsung ke bacaan).
   useEffect(() => {
-    const saved = readStorage<StudentPrefs>(prefsKey);
+    const saved = readStorage<StudentPrefs>(prefsKey) ?? readStorage<StudentPrefs>(GLOBAL_PREFS_KEY);
     const savedAlias = readStorage<string>("selaras:nama");
     let sid = readStorage<string>(sessionKey);
     if (!sid) {
@@ -138,6 +144,7 @@ export function StudentApp({ lesson }: { lesson: StudentLesson }) {
     setPrefs((p) => {
       const next = { ...p, ...patch };
       writeStorage(prefsKey, next);
+      writeStorage(GLOBAL_PREFS_KEY, next);
       return next;
     });
   };
@@ -201,6 +208,7 @@ export function StudentApp({ lesson }: { lesson: StudentLesson }) {
         onChange={updatePrefs}
         onDone={() => {
           writeStorage(prefsKey, prefs);
+          writeStorage(GLOBAL_PREFS_KEY, prefs);
           setStep("baca");
           window.scrollTo({ top: 0 });
         }}
@@ -433,6 +441,21 @@ function Reader({
   const { sentences } = useReaderStructure(text);
   const [term, setTerm] = useState<GlossaryItem | null>(null);
   const autoStarted = useRef(false);
+  // Kalimat tempat bacaan dijeda, supaya "Lanjutkan" tidak mengulang dari awal.
+  const [resumeAt, setResumeAt] = useState<number | null>(null);
+  const [ruler, setRuler] = useState(false);
+
+  useEffect(() => {
+    setRuler(readStorage<boolean>(RULER_KEY) === true);
+  }, []);
+  useEffect(() => setResumeAt(null), [text]);
+
+  const toggleRuler = () => {
+    setRuler((r) => {
+      writeStorage(RULER_KEY, !r);
+      return !r;
+    });
+  };
 
   // Bila siswa memilih "Dibacakan", mulai membacakan sekali setelah masuk (dipicu oleh ketukan "Lanjut").
   useEffect(() => {
@@ -462,10 +485,18 @@ function Reader({
     { key: "spasi" as const, label: "Spasi lega", icon: SpaceIcon },
   ];
 
-  const play = (startAt = 0) => speech.speak(sentences, { lang: speechLang, rate, startAt });
+  const play = (startAt = 0) => {
+    setResumeAt(null);
+    speech.speak(sentences, { lang: speechLang, rate, startAt });
+  };
+  const pause = () => {
+    setResumeAt(Math.max(0, speech.current));
+    speech.stop();
+  };
 
   return (
     <div>
+      {ruler && <ReadingRuler />}
       <div className="no-print border-b border-[var(--reader-line)] bg-[var(--reader-bg)]">
         <div className="mx-auto max-w-3xl space-y-2 px-4 py-2.5">
           {versions.length > 1 && (
@@ -511,6 +542,18 @@ function Reader({
                 {t.label}
               </button>
             ))}
+            <button
+              type="button"
+              aria-pressed={ruler}
+              onClick={toggleRuler}
+              className={cx(
+                "inline-flex h-11 items-center gap-1.5 rounded-lg border-2 px-3 text-[15px] font-bold",
+                ruler ? "border-papan bg-papan text-white" : "border-[var(--reader-line)] bg-white text-tinta hover:border-papan",
+              )}
+            >
+              <Ruler className="size-5" aria-hidden />
+              Garis bantu
+            </button>
             {speech.supported && (
               <div className="ml-auto flex items-center gap-1.5">
                 <label htmlFor="kecepatan" className="sr-only">
@@ -531,13 +574,23 @@ function Reader({
                   <option value={1}>Biasa</option>
                   <option value={1.2}>Cepat</option>
                 </select>
+                {!speech.speaking && resumeAt !== null && (
+                  <button
+                    type="button"
+                    onClick={() => play(0)}
+                    className="inline-flex h-11 items-center gap-1.5 rounded-lg border-2 border-[var(--reader-line)] bg-white px-3 text-[15px] font-bold text-tinta hover:border-papan"
+                  >
+                    <RotateCcw className="size-5" aria-hidden />
+                    Dari awal
+                  </button>
+                )}
                 <button
                   type="button"
-                  onClick={() => (speech.speaking ? speech.stop() : play())}
+                  onClick={() => (speech.speaking ? pause() : play(resumeAt ?? 0))}
                   className="inline-flex h-11 items-center gap-2 rounded-lg bg-aksen px-4 text-[16px] font-bold text-white hover:brightness-110"
                 >
                   {speech.speaking ? <Pause className="size-5" aria-hidden /> : <Play className="size-5" aria-hidden />}
-                  {speech.speaking ? "Berhenti" : "Dengarkan"}
+                  {speech.speaking ? "Jeda" : resumeAt !== null ? "Lanjutkan" : "Dengarkan"}
                 </button>
               </div>
             )}
@@ -600,11 +653,11 @@ function Reader({
             </span>
             <button
               type="button"
-              onClick={() => speech.stop()}
+              onClick={pause}
               className="inline-flex h-11 items-center gap-2 rounded-lg bg-white px-4 text-[16px] font-bold text-tinta"
             >
               <Pause className="size-5" aria-hidden />
-              Berhenti
+              Jeda
             </button>
           </div>
         </div>
