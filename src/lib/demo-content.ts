@@ -62,6 +62,14 @@ Cahaya matahari memberi tenaga. Air dan karbon dioksida berubah menjadi gula dan
 
 Oksigen keluar ke udara. Kita menghirup oksigen untuk bernapas. Jadi, merawat tumbuhan berarti menjaga udara kita.`;
 
+export const FOTOSINTESIS_RINGKASAN = `- Tumbuhan hijau membuat makanannya sendiri melalui fotosintesis.
+- Fotosintesis terjadi terutama di daun yang mengandung klorofil.
+- Klorofil menangkap energi dari cahaya matahari.
+- Bahannya air dari tanah, karbon dioksida dari udara, dan cahaya matahari.
+- Karbon dioksida masuk ke daun melalui stomata.
+- Hasilnya gula untuk makanan tumbuhan dan oksigen yang dilepas ke udara.
+- Kita menghirup oksigen itu untuk bernapas.`;
+
 export const FOTOSINTESIS_JAWA = `## Fotosintesis: Carane Tetuwuhan Gawe Panganan
 
 Manungsa lan kewan oleh panganan kanthi cara mangan. Tetuwuhan ora kaya ngono. Tetuwuhan sing ijo bisa gawe panganane dhewe. Proses iki diarani fotosintesis.

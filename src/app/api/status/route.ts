@@ -1,6 +1,6 @@
 import { ok } from "@/lib/api";
 import { databaseUrl, getDb } from "@/lib/db";
-import { aiEnabled } from "@/lib/claude";
+import { aiProviders } from "@/lib/claude";
 
 export const dynamic = "force-dynamic";
 
@@ -22,7 +22,9 @@ export async function GET() {
   return ok({
     database,
     detail,
-    ai: aiEnabled() ? "aktif" : "nonaktif (ANTHROPIC_API_KEY kosong)",
+    ai: aiProviders().length
+      ? `aktif: ${aiProviders().join(" + ")}`
+      : "nonaktif (ANTHROPIC_API_KEY dan GEMINI_API_KEY kosong)",
     sessionSecret: process.env.SESSION_SECRET ? "diisi" : "memakai cadangan dari DATABASE_URL",
   });
 }

@@ -58,7 +58,7 @@ export function PhotoToText({
         {busy ? <Spinner /> : <Camera className="size-4" aria-hidden />}
         {busy ? "Membaca halaman… (±15 detik)" : label}
       </Button>
-      {!aiOn && <span className="text-[14px] text-tinta-2">Butuh ANTHROPIC_API_KEY.</span>}
+      {!aiOn && <span className="text-[14px] text-tinta-2">Butuh ANTHROPIC_API_KEY atau GEMINI_API_KEY.</span>}
       {aiOn && !busy && <Badge tone="ai">AI</Badge>}
       {preview && busy && (
         // eslint-disable-next-line @next/next/no-img-element

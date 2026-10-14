@@ -1,9 +1,24 @@
 import "server-only";
-import type { z } from "zod";
+import {
+  AiError,
+  parseJson,
+  sleep,
+  type AiContent,
+  type AiProvider,
+  type GenerateOptions,
+  type GenerateResult,
+} from "./ai-common";
+import { geminiEnabled, geminiGenerateJson } from "./gemini";
 
 // Klien Claude API (Anthropic Messages API) memakai REST biasa, tanpa SDK, supaya mudah dibaca.
 // Dokumentasi: https://platform.claude.com/docs/en/api/messages
 // Output JSON terstruktur: https://platform.claude.com/docs/en/build-with-claude/structured-outputs
+//
+// generateJson() di bawah juga mengatur cadangan lintas penyedia: bila Claude gagal (kunci ditolak,
+// kredit habis, sibuk, waktu habis), permintaan yang sama dikirim ke Gemini (gemini.ts), dan sebaliknya.
+
+export { AiError };
+export type ClaudeContent = AiContent;
 
 const BASE_URL = (process.env.ANTHROPIC_BASE_URL || "https://api.anthropic.com").replace(/\/$/, "");
 const API_VERSION = "2023-06-01";
@@ -11,42 +26,28 @@ const API_VERSION = "2023-06-01";
 // Haiku dulu (cepat & murah). Bila tidak tersedia atau sedang sibuk, app pindah ke Sonnet.
 const DEFAULT_MODELS = ["claude-haiku-5-5", "claude-sonnet-5-5"];
 
-const ATTEMPT_TIMEOUT_MS = 40_000;
+const ATTEMPT_TIMEOUT_MS = 25_000;
 const TOTAL_BUDGET_MS = 55_000; // di bawah batas 60 detik fungsi Vercel (maxDuration = 60)
+const FALLBACK_RESERVE_MS = 18_000; // waktu yang disisakan untuk penyedia cadangan
 
-export class AiError extends Error {
-  constructor(
-    message: string,
-    public status: number,
-  ) {
-    super(message);
-    this.name = "AiError";
-  }
+export function claudeEnabled() {
+  return Boolean(process.env.ANTHROPIC_API_KEY);
 }
 
+/** Fitur AI aktif bila minimal satu kunci (Claude atau Gemini) diisi. */
 export function aiEnabled() {
-  return Boolean(process.env.ANTHROPIC_API_KEY);
+  return claudeEnabled() || geminiEnabled();
+}
+
+/** Penyedia yang kuncinya terisi, untuk /api/status. */
+export function aiProviders(): AiProvider[] {
+  return [...(claudeEnabled() ? ["claude" as const] : []), ...(geminiEnabled() ? ["gemini" as const] : [])];
 }
 
 function modelList() {
   const custom = process.env.ANTHROPIC_MODEL?.trim();
   return [...new Set([...(custom ? [custom] : []), ...DEFAULT_MODELS])];
 }
-
-export type ClaudeContent =
-  | { type: "text"; text: string }
-  | { type: "image"; source: { type: "base64"; media_type: string; data: string } };
-
-type GenerateOptions<T> = {
-  system: string;
-  /** Isi pesan pengguna. Gambar sebaiknya diletakkan sebelum teks. */
-  content: ClaudeContent[];
-  /** JSON Schema untuk output terstruktur (setiap object wajib additionalProperties: false). */
-  schema: Record<string, unknown>;
-  validator: z.ZodType<T>;
-  temperature?: number;
-  maxTokens?: number;
-};
 
 /** Variasi permintaan bila API menolak sebuah parameter (HTTP 400): makin ke bawah makin sederhana. */
 const VARIANTS = [
@@ -64,38 +65,56 @@ function extractText(payload: unknown): { text: string; stopReason?: string } {
   return { text, stopReason: p.stop_reason };
 }
 
-function parseJson(text: string): unknown {
-  const cleaned = text
-    .trim()
-    .replace(/^```(?:json)?\s*/i, "")
-    .replace(/```$/, "")
-    .trim();
-  return JSON.parse(cleaned);
+/**
+ * Meminta JSON yang lolos validasi Zod dari penyedia AI yang tersedia.
+ * Urutan: `prefer` dulu (default Claude), lalu penyedia lain sebagai cadangan bila kuncinya diisi.
+ */
+export async function generateJson<T>(opts: GenerateOptions<T>): Promise<GenerateResult<T>> {
+  const order: AiProvider[] = opts.prefer === "gemini" ? ["gemini", "claude"] : ["claude", "gemini"];
+  const ready = order.filter((p) => (p === "claude" ? claudeEnabled() : geminiEnabled()));
+  if (!ready.length) {
+    throw new AiError("Fitur AI belum aktif: isi ANTHROPIC_API_KEY atau GEMINI_API_KEY.", 503);
+  }
+
+  const deadline = Date.now() + TOTAL_BUDGET_MS;
+  let lastError: AiError | null = null;
+
+  for (const [i, provider] of ready.entries()) {
+    const backup = ready[i + 1];
+    const until = backup ? deadline - FALLBACK_RESERVE_MS : deadline;
+    try {
+      return provider === "claude" ? await claudeGenerateJson(opts, until) : await geminiGenerateJson(opts, until);
+    } catch (err) {
+      if (!(err instanceof AiError)) throw err;
+      // Materi terlalu panjang: penyedia lain akan gagal dengan alasan yang sama.
+      if (err.status === 422) throw err;
+      lastError = err;
+      if (backup) console.warn(`[ai] ${provider} gagal (${err.message}) → coba ${backup}`);
+    }
+  }
+  throw lastError ?? new AiError("AI sedang tidak bisa dipakai. Coba lagi, atau tulis versi secara manual.", 502);
 }
 
-const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
-
 /**
- * Meminta Claude menghasilkan JSON yang lolos validasi Zod.
+ * Meminta Claude menghasilkan JSON yang lolos validasi Zod, paling lambat sampai `deadline` (epoch ms).
  * Cadangan: parameter ditolak → permintaan lebih sederhana; model sibuk/tidak ada → model berikutnya.
  */
-export async function generateJson<T>(opts: GenerateOptions<T>): Promise<{ data: T; model: string }> {
+export async function claudeGenerateJson<T>(opts: GenerateOptions<T>, deadline: number): Promise<GenerateResult<T>> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
     throw new AiError("Fitur AI belum aktif: ANTHROPIC_API_KEY belum diisi.", 503);
   }
 
-  const started = Date.now();
   let lastError = "Tidak ada model yang bisa dipakai.";
 
   for (const model of modelList()) {
     for (const variant of VARIANTS) {
-      const remaining = TOTAL_BUDGET_MS - (Date.now() - started);
+      const remaining = deadline - Date.now();
       if (remaining < 4_000) {
         throw new AiError("AI terlalu lama merespons. Coba lagi sebentar lagi.", 504);
       }
 
-      const content: ClaudeContent[] = variant.schema
+      const content: AiContent[] = variant.schema
         ? opts.content
         : [
             ...opts.content,

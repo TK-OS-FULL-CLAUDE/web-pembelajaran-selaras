@@ -56,7 +56,7 @@ export const NEEDS: NeedInfo[] = [
     key: "sulitFokus",
     label: "Sulit fokus",
     short: "Perhatian mudah teralih, sulit menyelesaikan tugas panjang",
-    modes: ["Teks mudah", "Kuis satu soal per layar"],
+    modes: ["Teks mudah", "Ringkasan", "Kuis satu soal per layar"],
     tips: [
       "Pecah tugas panjang menjadi langkah kecil dengan target yang jelas.",
       "Berikan instruksi satu per satu dan minta siswa mengulanginya.",

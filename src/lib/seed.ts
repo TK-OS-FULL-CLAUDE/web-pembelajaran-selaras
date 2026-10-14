@@ -13,6 +13,7 @@ import {
   FOTOSINTESIS_JAWA_GLOSSARY,
   FOTOSINTESIS_MUDAH,
   FOTOSINTESIS_QUIZ,
+  FOTOSINTESIS_RINGKASAN,
 } from "./demo-content";
 import { hashPassword } from "./password";
 import { fingerprint } from "./text";
@@ -50,6 +51,8 @@ const DEMO_SESSIONS: DemoSession[] = [
   { alias: "Tegar", prefs: p("asli"), score: null, minutesAgo: 77 },
   { alias: "Mega", prefs: p("mudah"), score: null, minutesAgo: 75 },
   { alias: "Hana", prefs: p("asli"), score: 5, minutesAgo: 74 },
+  { alias: "Rizki", prefs: p("ringkasan", { dengar: true }), score: 4, minutesAgo: 72 },
+  { alias: "Nisa", prefs: p("ringkasan", { besar: true }), score: 3, minutesAgo: 70 },
 ];
 
 /**
@@ -96,6 +99,14 @@ export async function seedDemo(sql: Sql, { reset }: { reset: boolean }) {
       origin: "ai",
       checked: true,
       lang: "jw",
+      basedOn,
+      updatedAt: now,
+    },
+    ringkasan: {
+      text: FOTOSINTESIS_RINGKASAN,
+      glossary: [],
+      origin: "ai",
+      checked: true,
       basedOn,
       updatedAt: now,
     },

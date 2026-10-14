@@ -15,6 +15,7 @@ import {
   Play,
   Printer,
   RotateCcw,
+  ScrollText,
   Settings2,
   SpaceIcon,
   Volume2,
@@ -44,6 +45,7 @@ export type StudentLesson = {
   versions: {
     mudah?: { text: string; glossary: GlossaryItem[] };
     daerah?: { text: string; glossary: GlossaryItem[]; lang: RegionalLang };
+    ringkasan?: { text: string; glossary: GlossaryItem[] };
   };
   quiz: QuizQuestion[];
 };
@@ -287,6 +289,15 @@ function ChooseMode({
       show: !!lesson.versions.mudah,
     },
     {
+      id: "ringkasan",
+      title: "Poin penting saja",
+      desc: "Ringkasan singkat isi materi.",
+      on: prefs.versi === "ringkasan",
+      toggle: () => onChange({ versi: prefs.versi === "ringkasan" ? "asli" : "ringkasan" }),
+      sample: <ScrollText className="size-7" aria-hidden />,
+      show: !!lesson.versions.ringkasan,
+    },
+    {
       id: "daerah",
       title: lang ? `Pakai ${LANG_SHORT[lang]}` : "Bahasa daerah",
       desc: "Materi dalam bahasa rumahmu.",
@@ -442,6 +453,7 @@ function Reader({
     { key: "asli", label: "Teks asli" },
     ...(lesson.versions.mudah ? [{ key: "mudah" as const, label: "Teks mudah" }] : []),
     ...(lesson.versions.daerah ? [{ key: "daerah" as const, label: LANG_SHORT[lesson.versions.daerah.lang] }] : []),
+    ...(lesson.versions.ringkasan ? [{ key: "ringkasan" as const, label: "Ringkasan" }] : []),
   ];
 
   const toggles = [
@@ -457,7 +469,11 @@ function Reader({
       <div className="no-print border-b border-[var(--reader-line)] bg-[var(--reader-bg)]">
         <div className="mx-auto max-w-3xl space-y-2 px-4 py-2.5">
           {versions.length > 1 && (
-            <div className="flex gap-1 rounded-xl bg-black/5 p-1" role="group" aria-label="Versi teks">
+            <div
+              className={cx("gap-1 rounded-xl bg-black/5 p-1", versions.length > 3 ? "grid grid-cols-2 sm:flex" : "flex")}
+              role="group"
+              aria-label="Versi teks"
+            >
               {versions.map((v) => (
                 <button
                   key={v.key}
