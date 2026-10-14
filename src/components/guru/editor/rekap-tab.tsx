@@ -11,13 +11,19 @@ import { Button, Card, EmptyState, Spinner } from "../../ui";
 const MODE_LABEL: Record<keyof LessonStats["prefCounts"], string> = {
   mudah: "Teks mudah",
   daerah: "Bahasa daerah",
+  ringkasan: "Ringkasan",
   dengar: "Dibacakan",
   besar: "Huruf besar",
   kontras: "Kontras tinggi",
   spasi: "Spasi lega",
 };
 
-const VERSI_LABEL = { asli: "Teks asli", mudah: "Teks mudah", daerah: "Bahasa daerah" } as const;
+const VERSI_LABEL = {
+  asli: "Teks asli",
+  mudah: "Teks mudah",
+  daerah: "Bahasa daerah",
+  ringkasan: "Ringkasan",
+} as const;
 
 function describePrefs(p: LessonStats["recent"][number]["prefs"]) {
   const parts: string[] = [VERSI_LABEL[p?.versi ?? "asli"]];

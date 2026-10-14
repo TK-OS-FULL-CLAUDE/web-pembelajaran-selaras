@@ -30,7 +30,13 @@ const INFO: Record<VersionKey, { title: string; text: string }> = {
     title: "Bahasa daerah",
     text: "Materi yang sama dalam bahasa ibu siswa, dengan glosarium dua bahasa.",
   },
+  ringkasan: {
+    title: "Ringkasan",
+    text: "3–7 poin utama materi, untuk siswa yang sulit fokus pada teks panjang atau ingin mengulang dengan cepat.",
+  },
 };
+
+const VERSION_KEYS: VersionKey[] = ["mudah", "daerah", "ringkasan"];
 
 export function VersiTab({
   lessonId,
@@ -48,13 +54,14 @@ export function VersiTab({
   goTo: (tab: TabKey) => void;
 }) {
   const toast = useToast();
-  const [busy, setBusy] = useState<Record<VersionKey, boolean>>({ mudah: false, daerah: false });
+  const [busy, setBusy] = useState<Record<VersionKey, boolean>>({ mudah: false, daerah: false, ringkasan: false });
   const [lang, setLang] = useState<RegionalLang>(lesson.versions.daerah?.lang ?? cls?.needs.bahasa ?? "jw");
   const bodyPrint = fingerprint(lesson.body);
   const needs = cls?.needs;
   const recommended: Record<VersionKey, boolean> = {
     mudah: !!needs && needs.disleksia + needs.sulitFokus + needs.bahasaDaerah > 0,
     daerah: !!needs && needs.bahasaDaerah > 0,
+    ringkasan: !!needs && needs.sulitFokus + needs.disleksia > 0,
   };
 
   const setVersion = (key: VersionKey, version: LessonVersion | undefined) =>
@@ -79,9 +86,9 @@ export function VersiTab({
           ? { glossary: res.suggestedGlossary }
           : {}),
       }));
-      toast.ok(
-        `Draf ${key === "mudah" ? "teks mudah" : LANG_LABEL[res.version.lang ?? lang]} siap. Baca dan cek dulu.`,
-      );
+      const name =
+        key === "mudah" ? "teks mudah" : key === "ringkasan" ? "ringkasan" : LANG_LABEL[res.version.lang ?? lang];
+      toast.ok(`Draf ${name} siap. Baca dan cek dulu.`);
     } catch (err) {
       toast.error((err as Error).message);
     } finally {
@@ -90,7 +97,7 @@ export function VersiTab({
   }
 
   const tooShort = lesson.body.trim().length < 40;
-  const anyBusy = busy.mudah || busy.daerah;
+  const anyBusy = VERSION_KEYS.some((k) => busy[k]);
 
   return (
     <div className="space-y-6">
@@ -112,10 +119,7 @@ export function VersiTab({
             <Button
               variant="ai"
               disabled={anyBusy}
-              onClick={() => {
-                generate("mudah");
-                generate("daerah");
-              }}
+              onClick={() => VERSION_KEYS.forEach((k) => generate(k))}
             >
               {anyBusy ? <Spinner /> : <Sparkles className="size-4" aria-hidden />}
               {anyBusy ? "AI sedang menulis draf…" : "Buat draf semua versi dengan AI"}
@@ -126,7 +130,7 @@ export function VersiTab({
       )}
 
       <div className="grid gap-6 xl:grid-cols-2">
-        {(["mudah", "daerah"] as const).map((key) => {
+        {VERSION_KEYS.map((key) => {
           const v = lesson.versions[key];
           const stale = !!v?.basedOn && v.basedOn !== bodyPrint;
           return (
@@ -141,7 +145,7 @@ export function VersiTab({
               <div className="flex flex-wrap items-start justify-between gap-2">
                 <div>
                   <h2 id={`versi-${key}`} className="font-display text-lg font-bold">
-                    {key === "daerah" ? `${INFO.daerah.title}: ${LANG_LABEL[v?.lang ?? lang]}` : INFO.mudah.title}
+                    {key === "daerah" ? `${INFO.daerah.title}: ${LANG_LABEL[v?.lang ?? lang]}` : INFO[key].title}
                   </h2>
                   <p className="mt-0.5 text-[14px] text-tinta-2">{INFO[key].text}</p>
                 </div>

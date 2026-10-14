@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { fail, ok, readJson, withTeacher } from "@/lib/api";
-import { makeRegionalVersion, makeSimpleVersion } from "@/lib/ai-tasks";
+import { makeRegionalVersion, makeSimpleVersion, makeSummaryVersion } from "@/lib/ai-tasks";
 import { getClass, getLesson } from "@/lib/data";
 import { fingerprint } from "@/lib/text";
 import type { LessonVersion } from "@/lib/types";
@@ -9,7 +9,7 @@ export const maxDuration = 60;
 
 const schema = z.object({
   lessonId: z.string().uuid(),
-  jenis: z.enum(["mudah", "daerah"]),
+  jenis: z.enum(["mudah", "daerah", "ringkasan"]),
   bahasa: z.enum(["jw", "su"]).optional(),
   // isi editor terbaru (bisa belum tersimpan); bila kosong dipakai isi di database
   body: z.string().max(30_000).optional(),
@@ -42,6 +42,16 @@ export async function POST(req: Request) {
         updatedAt: new Date().toISOString(),
       };
       suggestedGlossary = result.glossary;
+    } else if (input.jenis === "ringkasan") {
+      const result = await makeSummaryVersion({ body, grade, subject: lesson.subject });
+      version = {
+        text: result.text,
+        glossary: [],
+        origin: "ai",
+        checked: false,
+        basedOn: fingerprint(body),
+        updatedAt: new Date().toISOString(),
+      };
     } else {
       const lang = input.bahasa ?? cls?.needs.bahasa ?? "jw";
       const result = await makeRegionalVersion({ body, grade, lang });

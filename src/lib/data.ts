@@ -267,10 +267,18 @@ export async function recordStudentEvent(input: {
 export type LessonStats = {
   sessions: number;
   adaptiveSessions: number;
-  prefCounts: { mudah: number; daerah: number; besar: number; kontras: number; spasi: number; dengar: number };
+  prefCounts: {
+    mudah: number;
+    daerah: number;
+    ringkasan: number;
+    besar: number;
+    kontras: number;
+    spasi: number;
+    dengar: number;
+  };
   quizAttempts: number;
   avgScorePct: number | null;
-  byVersion: { versi: "asli" | "mudah" | "daerah"; attempts: number; avgPct: number | null }[];
+  byVersion: { versi: StudentPrefs["versi"]; attempts: number; avgPct: number | null }[];
   recent: {
     alias: string | null;
     versi: string;
@@ -302,13 +310,14 @@ export async function getLessonStats(lessonId: string): Promise<LessonStats> {
     from student_events where lesson_id = ${lessonId} and kind = 'quiz' and total > 0
     order by session_id, created_at desc`;
 
-  const prefCounts = { mudah: 0, daerah: 0, besar: 0, kontras: 0, spasi: 0, dengar: 0 };
+  const prefCounts = { mudah: 0, daerah: 0, ringkasan: 0, besar: 0, kontras: 0, spasi: 0, dengar: 0 };
   let adaptive = 0;
   for (const { prefs } of opens) {
     const isAdaptive = prefs.versi !== "asli" || prefs.besar || prefs.kontras || prefs.spasi || prefs.dengar;
     if (isAdaptive) adaptive++;
     if (prefs.versi === "mudah") prefCounts.mudah++;
     if (prefs.versi === "daerah") prefCounts.daerah++;
+    if (prefs.versi === "ringkasan") prefCounts.ringkasan++;
     if (prefs.besar) prefCounts.besar++;
     if (prefs.kontras) prefCounts.kontras++;
     if (prefs.spasi) prefCounts.spasi++;
@@ -318,7 +327,7 @@ export async function getLessonStats(lessonId: string): Promise<LessonStats> {
   const pct = (s: number, t: number) => (t > 0 ? (s / t) * 100 : 0);
   const avg = (xs: number[]) => (xs.length ? Math.round(xs.reduce((a, b) => a + b, 0) / xs.length) : null);
 
-  const byVersion = (["asli", "mudah", "daerah"] as const).map((versi) => {
+  const byVersion = (["asli", "mudah", "daerah", "ringkasan"] as const).map((versi) => {
     const items = quizzes.filter((q) => (q.prefs?.versi ?? "asli") === versi);
     return { versi, attempts: items.length, avgPct: avg(items.map((q) => pct(q.score, q.total))) };
   });

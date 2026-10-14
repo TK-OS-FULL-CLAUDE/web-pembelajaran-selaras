@@ -17,7 +17,7 @@ export type NeedKey = "lowVision" | "tuli" | "disleksia" | "sulitFokus" | "bahas
 
 export type GlossaryItem = { kata: string; arti: string };
 
-export type VersionKey = "mudah" | "daerah";
+export type VersionKey = "mudah" | "daerah" | "ringkasan";
 
 export type LessonVersion = {
   text: string;

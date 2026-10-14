@@ -90,6 +90,7 @@ const versionInput = z.object({
 export const versionsInput = z.object({
   mudah: versionInput.optional(),
   daerah: versionInput.optional(),
+  ringkasan: versionInput.optional(),
 });
 
 export const quizInput = z
@@ -105,7 +106,7 @@ export const quizInput = z
   .max(30);
 
 export const prefsInput = z.object({
-  versi: z.enum(["asli", "mudah", "daerah"]),
+  versi: z.enum(["asli", "mudah", "daerah", "ringkasan"]),
   besar: z.boolean(),
   kontras: z.boolean(),
   spasi: z.boolean(),

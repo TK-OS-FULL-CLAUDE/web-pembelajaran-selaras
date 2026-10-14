@@ -3,7 +3,7 @@
 // memakai akun demo, lalu menghapus lagi data uji yang dibuatnya.
 //
 // Pakai:  npm run cek -- https://selaras-xxx.vercel.app
-//         npm run cek -- https://selaras-xxx.vercel.app --ai   (ikut uji Claude API; memakai sedikit kredit)
+//         npm run cek -- https://selaras-xxx.vercel.app --ai   (ikut uji API AI Claude/Gemini; memakai sedikit kredit)
 //         npm run cek                                          (default http://localhost:3000)
 
 const args = process.argv.slice(2);
@@ -134,9 +134,14 @@ if (dbOk) {
     });
 
     if (withAi) {
-      await step("Claude API membuat 1 draf soal", async () => {
+      await step("AI membuat 1 draf soal (Gemini dulu, cadangan Claude)", async () => {
         const d = expect(await call("POST", "/api/ai/kuis", { lessonId, count: 1 }), 200, "AI kuis");
         return d.questions?.[0]?.q?.slice(0, 50);
+      });
+      await step("AI membuat draf ringkasan (Claude dulu, cadangan Gemini)", async () => {
+        const d = expect(await call("POST", "/api/ai/versi", { lessonId, jenis: "ringkasan" }), 200, "AI ringkasan");
+        if (d.version?.checked !== false) throw new Error("draf AI seharusnya belum dicek");
+        return d.version?.text?.split("\n")[0]?.slice(0, 50);
       });
     }
   }
@@ -156,6 +161,6 @@ if (dbOk) {
 console.log(
   failed
     ? `\n${red(`${failed} pemeriksaan gagal.`)} Lihat pesan di atas, lalu cek Environment Variables di Vercel.\n`
-    : `\n${green("Semua pemeriksaan lolos.")}${withAi ? "" : dim(" Tambahkan --ai untuk ikut menguji Claude API.")}\n`,
+    : `\n${green("Semua pemeriksaan lolos.")}${withAi ? "" : dim(" Tambahkan --ai untuk ikut menguji API AI.")}\n`,
 );
 process.exit(failed ? 1 : 0);

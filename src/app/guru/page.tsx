@@ -46,8 +46,9 @@ export default async function GuruHome() {
 
       {!aiEnabled() && (
         <Notice tone="info" title="Fitur AI belum aktif">
-          Isi <code className="rounded bg-white px-1">ANTHROPIC_API_KEY</code> di environment variables untuk memakai foto
-          buku → teks dan draf versi otomatis. Semua fitur lain tetap jalan.
+          Isi <code className="rounded bg-white px-1">ANTHROPIC_API_KEY</code> dan/atau{" "}
+          <code className="rounded bg-white px-1">GEMINI_API_KEY</code> di environment variables untuk memakai foto buku →
+          teks dan draf versi otomatis. Semua fitur lain tetap jalan.
         </Notice>
       )}
 

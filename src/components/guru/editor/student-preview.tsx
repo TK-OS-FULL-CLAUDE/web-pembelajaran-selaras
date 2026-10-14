@@ -30,6 +30,7 @@ export function StudentPreview({
     ...(versions.daerah?.text.trim()
       ? [{ key: "daerah" as const, label: LANG_SHORT[versions.daerah.lang ?? "jw"].replace("Basa ", "") }]
       : []),
+    ...(versions.ringkasan?.text.trim() ? [{ key: "ringkasan" as const, label: "Ringkas" }] : []),
   ];
   const current = versi === "asli" ? null : versions[versi];
   const text = current?.text ?? body;

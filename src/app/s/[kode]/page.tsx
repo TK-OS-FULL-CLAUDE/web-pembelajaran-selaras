@@ -19,10 +19,12 @@ export default async function StudentPage({ params }: Props) {
 
   // Hanya versi yang sudah dicek guru yang dikirim ke browser siswa.
   const versions: StudentLesson["versions"] = {};
-  const { mudah, daerah } = lesson.versions;
+  const { mudah, daerah, ringkasan } = lesson.versions;
   if (mudah?.checked && mudah.text.trim()) versions.mudah = { text: mudah.text, glossary: mudah.glossary ?? [] };
   if (daerah?.checked && daerah.text.trim())
     versions.daerah = { text: daerah.text, glossary: daerah.glossary ?? [], lang: daerah.lang ?? "jw" };
+  if (ringkasan?.checked && ringkasan.text.trim())
+    versions.ringkasan = { text: ringkasan.text, glossary: ringkasan.glossary ?? [] };
 
   const data: StudentLesson = {
     code: lesson.share_code,
