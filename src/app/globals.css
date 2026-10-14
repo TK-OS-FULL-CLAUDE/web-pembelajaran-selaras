@@ -1,0 +1,165 @@
+@import "tailwindcss";
+
+/* Design system Selaras — rasio kontras dihitung, lolos WCAG AA (lihat PRD bagian Desain). */
+@theme {
+  --color-papan: #0b5c5c; /* 7,78:1 di putih */
+  --color-papan-600: #0e7c7b; /* 5,01:1 */
+  --color-papan-50: #e6f4f3;
+  --color-papan-100: #cce7e5;
+  --color-tinta: #1f2937; /* 14,68:1 */
+  --color-tinta-2: #4b5563; /* 7,56:1 */
+  --color-batas: #64748b; /* garis input, 4,76:1 */
+  --color-garis: #d5dde6; /* garis dekoratif */
+  --color-kertas: #f8fafc;
+  --color-aksen: #b45309; /* 5,02:1 — draf AI & cincin fokus */
+  --color-aksen-50: #fff7ed;
+  --color-stabilo: #fde68a;
+  --color-berhasil: #15803d;
+  --color-galat: #b91c1c;
+  --color-info: #1d4ed8;
+
+  --font-sans: "Atkinson Hyperlegible", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Plus Jakarta Sans Variable", "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+  body {
+    background: var(--color-kertas);
+    color: var(--color-tinta);
+    font-family: var(--font-sans);
+    font-size: 16px;
+    line-height: 1.6;
+  }
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-display);
+    letter-spacing: -0.01em;
+    line-height: 1.2;
+    text-wrap: balance;
+  }
+  :focus-visible {
+    outline: 3px solid var(--color-aksen);
+    outline-offset: 2px;
+    border-radius: 6px;
+  }
+  ::selection {
+    background: var(--color-stabilo);
+    color: var(--color-tinta);
+  }
+}
+
+/* Tautan lewati navigasi untuk pengguna keyboard dan pembaca layar */
+.skip-link {
+  position: absolute;
+  left: 1rem;
+  top: -4rem;
+  z-index: 100;
+  background: var(--color-papan);
+  color: white;
+  padding: 0.6rem 1rem;
+  border-radius: 0.5rem;
+}
+.skip-link:focus {
+  top: 1rem;
+}
+
+/* ---------- Ruang baca siswa ---------- */
+
+.reader {
+  --reader-size: 19px;
+  --reader-leading: 1.7;
+  --reader-tracking: 0;
+  --reader-word: 0;
+  --reader-bg: #ffffff;
+  --reader-ink: var(--color-tinta);
+  --reader-soft: var(--color-tinta-2);
+  --reader-line: var(--color-garis);
+  --reader-term: var(--color-aksen);
+  --reader-mark: var(--color-stabilo);
+  background: var(--reader-bg);
+  color: var(--reader-ink);
+}
+.reader[data-besar="true"] {
+  --reader-size: 26px;
+  --reader-leading: 1.65;
+}
+.reader[data-spasi="true"] {
+  --reader-leading: 1.95;
+  --reader-tracking: 0.06em;
+  --reader-word: 0.16em;
+}
+.reader[data-kontras="true"] {
+  --reader-bg: #fffbe6;
+  --reader-ink: #000000;
+  --reader-soft: #1a1a1a;
+  --reader-line: #000000;
+  --reader-term: #000000;
+  --reader-mark: #ffd400;
+}
+.reader-text {
+  font-size: var(--reader-size);
+  line-height: var(--reader-leading);
+  letter-spacing: var(--reader-tracking);
+  word-spacing: var(--reader-word);
+  max-width: 38rem;
+}
+.reader-text h2 {
+  font-size: 1.3em;
+  font-weight: 800;
+  margin: 0 0 0.6em;
+}
+.reader-text p,
+.reader-text ul {
+  margin: 0 0 1em;
+}
+.reader-text ul {
+  padding-left: 1.2em;
+  list-style: disc;
+}
+.reader[data-kontras="true"] .reader-text h2 {
+  color: #000;
+}
+.term {
+  color: inherit;
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  text-decoration-thickness: 2px;
+  text-decoration-color: var(--reader-term);
+  text-underline-offset: 0.22em;
+  cursor: help;
+  border-radius: 4px;
+}
+.term:hover {
+  background: color-mix(in srgb, var(--reader-mark) 55%, transparent);
+}
+.sentence-active {
+  background: var(--reader-mark);
+  box-shadow: 0 0 0 3px var(--reader-mark);
+  border-radius: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  .reader {
+    background: #fff !important;
+  }
+  body {
+    background: #fff;
+  }
+}
