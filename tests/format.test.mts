@@ -19,6 +19,7 @@ import {
   stableShuffle,
 } from "../src/lib/quiz";
 import { analyze, containsTerm } from "../src/lib/readability";
+import { contentSlides, projectorSlides } from "../src/lib/proyektor";
 import type { QuizQuestion } from "../src/lib/types";
 
 let passed = 0;
@@ -185,6 +186,32 @@ test("Kunci soal stabil dan pengacakan menjodohkan tidak pernah sama dengan urut
     assert.deepEqual([...out].sort(), [0, 1, 2]);
     assert.deepEqual(stableShuffle([0, 1, 2], seed), out, "selalu sama untuk teks yang sama");
   }
+});
+
+test("Mode proyektor: layar baru di tiap judul, gambar sendiri, bagian panjang dipecah di batas paragraf", () => {
+  const id = "0a7e5e1a-5e1a-4a5a-9f00-000000000001";
+  const para = (i: number) => `Paragraf ${i} ${"kata ".repeat(25).trim()}.`;
+  const long = [0, 1, 2, 3].map(para).join("\n\n");
+  const s = contentSlides(
+    `## Judul\n\nPembuka singkat.\n\n### Bagian A\nIsi A.\n\n${figureLine(id, "Diagram")}\n\n### Bagian B\n\n${long}\n\n---`,
+  );
+  assert.deepEqual(
+    s.map((x) => x.kind),
+    ["teks", "teks", "gambar", "teks", "teks"],
+  );
+  assert.ok(s[0].kind === "teks" && s[0].text.startsWith("## Judul") && s[0].text.includes("Pembuka"));
+  assert.deepEqual(s[2], { kind: "gambar", id, caption: "Diagram" });
+  assert.ok(s[3].kind === "teks" && s[3].text.startsWith("### Bagian B") && s[3].text.includes("Paragraf 1"));
+  assert.ok(s[3].kind === "teks" && !s[3].text.includes("Paragraf 2"));
+  assert.ok(s[4].kind === "teks" && s[4].text.startsWith("Paragraf 2"));
+  // Judul tidak ditinggal sendirian walau paragraf sesudahnya panjang; garis pemisah saja bukan layar.
+  const lone = contentSlides(`### Judul\n\n${"kata ".repeat(90).trim()}.`);
+  assert.equal(lone.length, 1);
+  assert.deepEqual(contentSlides("---\n\n"), []);
+  assert.deepEqual(
+    projectorSlides("Teks pendek.", 2).map((x) => x.kind),
+    ["teks", "soal", "soal"],
+  );
 });
 
 console.log(`\n${passed} uji lulus`);

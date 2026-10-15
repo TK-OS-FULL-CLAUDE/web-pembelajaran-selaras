@@ -18,6 +18,7 @@ import {
   FileText,
   Layers,
   ListChecks,
+  Presentation,
   Send,
   Settings2,
   Trash2,
@@ -94,6 +95,9 @@ export function LessonEditor(props: EditorProps) {
   const [saveState, setSaveState] = useState<SaveState>("saved");
   const [saveError, setSaveError] = useState<string | null>(null);
   const [manageOpen, setManageOpen] = useState(false);
+  const [openingProjector, setOpeningProjector] = useState(false);
+  const router = useRouter();
+  const toast = useToast();
 
   const changeCount = useRef(0); // bertambah setiap ada perubahan di editor
   const savedChangeCount = useRef(0); // perubahan terakhir yang sudah tersimpan
@@ -187,6 +191,18 @@ export function LessonEditor(props: EditorProps) {
     return serverRevision.current;
   };
 
+  /** Mode proyektor membaca materi dari server, jadi simpan dulu perubahan yang belum tersimpan. */
+  const openProjector = async (from: TabKey) => {
+    setOpeningProjector(true);
+    try {
+      await flushOrThrow();
+      router.push(`/proyektor/${props.lessonId}?dari=${from}`);
+    } catch (err) {
+      toast.error((err as Error).message);
+      setOpeningProjector(false);
+    }
+  };
+
   const uncheckedVersions = Object.values(lesson.versions).filter((v) => v && v.text.trim() && !v.checked).length;
   const uncheckedFigures = figureIds(lesson.body).filter(
     (id) => !lesson.figures[id]?.alt?.trim() || !lesson.figures[id]?.altChecked,
@@ -249,6 +265,10 @@ export function LessonEditor(props: EditorProps) {
           <Button variant="ghost" aria-expanded={manageOpen} onClick={() => setManageOpen((o) => !o)}>
             <Settings2 className="size-4" aria-hidden />
             Kelola materi
+          </Button>
+          <Button variant="secondary" onClick={() => openProjector(tab)} disabled={openingProjector}>
+            {openingProjector ? <Spinner /> : <Presentation className="size-4" aria-hidden />}
+            Mode proyektor
           </Button>
           {status === "published" && shareCode && (
             <a href={`/s/${shareCode}`} target="_blank" rel="noreferrer" className={buttonClass("secondary")}>
@@ -392,6 +412,8 @@ export function LessonEditor(props: EditorProps) {
             }}
             onUnpublished={() => setStatus("draft")}
             goTo={selectTab}
+            onProjector={() => openProjector("bagikan")}
+            projectorBusy={openingProjector}
           />
         )}
         {tab === "rekap" && (

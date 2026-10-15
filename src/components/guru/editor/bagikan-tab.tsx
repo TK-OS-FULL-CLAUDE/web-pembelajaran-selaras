@@ -2,7 +2,7 @@
 
 // Peran 2: review → terbit → link + QR.
 
-import { Check, Copy, Download, ExternalLink, Maximize2, Send, Undo2, X } from "lucide-react";
+import { Check, Copy, Download, ExternalLink, Maximize2, Presentation, Send, Undo2, X } from "lucide-react";
 import QRCode from "qrcode";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/client";
@@ -22,6 +22,8 @@ export function BagikanTab({
   onPublished,
   onUnpublished,
   goTo,
+  onProjector,
+  projectorBusy,
 }: {
   lessonId: string;
   lesson: EditableLesson;
@@ -31,6 +33,8 @@ export function BagikanTab({
   onPublished: (code: string) => void;
   onUnpublished: () => void;
   goTo: (tab: TabKey) => void;
+  onProjector: () => void;
+  projectorBusy: boolean;
 }) {
   const toast = useToast();
   const [busy, setBusy] = useState(false);
@@ -232,6 +236,29 @@ export function BagikanTab({
           <p className="mt-4 text-tinta-2">Link dan QR muncul di sini setelah materi diterbitkan.</p>
         )}
       </Card>
+
+      <section
+        aria-labelledby="judul-proyektor"
+        className="flex flex-col gap-4 rounded-[1.5rem] border-2 border-papan bg-papan-50 p-5 sm:flex-row sm:items-center lg:col-span-2"
+      >
+        <span className="flex size-14 shrink-0 items-center justify-center rounded-2xl bg-papan text-white" aria-hidden>
+          <Presentation className="size-7" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <h2 id="judul-proyektor" className="font-display text-lg font-bold">
+            Mode proyektor
+          </h2>
+          <p className="mt-1 text-tinta-2">
+            Untuk kelas yang siswanya tidak memakai HP: tampilkan materi ke seluruh kelas lewat proyektor atau TV.
+            Huruf sangat besar, satu bagian per layar, bisa dibacakan, lalu kuis bersama dengan jawaban yang Anda buka.
+            Tidak tercatat di rekap. Bisa dipakai walau materi belum terbit.
+          </p>
+        </div>
+        <Button onClick={onProjector} disabled={projectorBusy} className="shrink-0">
+          {projectorBusy ? <Spinner /> : <Presentation className="size-5" aria-hidden />}
+          Buka mode proyektor
+        </Button>
+      </section>
 
       {bigQr && qr && (
         <div

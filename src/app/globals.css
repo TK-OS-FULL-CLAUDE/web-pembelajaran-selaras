@@ -400,6 +400,14 @@ sup {
   outline-offset: 2px;
 }
 
+/* Mode proyektor: baris teks lebih lebar dan gambar pas satu layar */
+.reader[data-proyektor="true"] .reader-text {
+  max-width: 32em;
+}
+.reader[data-proyektor="true"] .figur img {
+  max-height: 50vh;
+}
+
 .term {
   color: inherit;
   text-decoration: underline;
