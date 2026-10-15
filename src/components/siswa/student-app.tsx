@@ -36,6 +36,7 @@ import {
   type VersionKey,
 } from "@/lib/types";
 import { ReaderText, useReaderStructure } from "../reader-text";
+import { AskTutor } from "./ask-tutor";
 import { ReadingRuler } from "./reading-ruler";
 import { useSpeech, type SpeechRate } from "../use-speech";
 import { cx } from "../ui";
@@ -445,6 +446,8 @@ function Reader({
   // Kalimat tempat bacaan dijeda, supaya "Lanjutkan" tidak mengulang dari awal.
   const [resumeAt, setResumeAt] = useState<number | null>(null);
   const [ruler, setRuler] = useState(false);
+  // Yang sedang dibacakan adalah jawaban tutor, bukan teks materi (jangan menyorot kalimat materi).
+  const [answerMode, setAnswerMode] = useState(false);
 
   useEffect(() => {
     setRuler(readStorage<boolean>(RULER_KEY) === true);
@@ -485,8 +488,14 @@ function Reader({
   ];
 
   const play = (startAt = 0) => {
+    setAnswerMode(false);
     setResumeAt(null);
     speech.speak(sentences, { lang: speechLang, rate, startAt });
+  };
+  const speakAnswer = (answer: string) => {
+    setAnswerMode(true);
+    setResumeAt(null);
+    speech.speak([answer.replace(/^-s*/gm, "")], { lang: speechLang, rate });
   };
   const pause = () => {
     setResumeAt(Math.max(0, speech.current));
@@ -608,13 +617,22 @@ function Reader({
           className="mt-3"
           lang={VERSION_HTML_LANG[prefs.versi]}
         >
-          <ReaderText text={text} glossary={glossary} activeSentence={speech.current} onTerm={setTerm} />
+          <ReaderText text={text} glossary={glossary} activeSentence={answerMode ? -1 : speech.current} onTerm={setTerm} />
         </div>
         {glossary.length > 0 && (
           <p className="no-print mt-2 text-[15px] text-[var(--reader-soft)]">
             Kata bergaris titik-titik bisa diketuk untuk melihat artinya.
           </p>
         )}
+
+        <AskTutor
+          code={lesson.code}
+          versi={prefs.versi}
+          canSpeak={speech.supported}
+          answerSpeaking={answerMode && speech.speaking}
+          onSpeak={speakAnswer}
+          onStopSpeak={() => speech.stop()}
+        />
 
         <div className="no-print mt-10 flex flex-col gap-3 sm:flex-row">
           {lesson.quiz.length > 0 && (
@@ -655,11 +673,11 @@ function Reader({
             </span>
             <button
               type="button"
-              onClick={pause}
+              onClick={answerMode ? () => speech.stop() : pause}
               className="inline-flex h-11 items-center gap-2 rounded-lg bg-white px-4 text-[16px] font-bold text-tinta"
             >
               <Pause className="size-5" aria-hidden />
-              Jeda
+              {answerMode ? "Berhenti" : "Jeda"}
             </button>
           </div>
         </div>
