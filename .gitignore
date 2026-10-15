@@ -19,3 +19,5 @@ next-env.d.ts
 # misc
 .DS_Store
 npm-debug.log*
+
+peran2-mesin-ai.md

@@ -69,6 +69,7 @@ export const needsInput = z.object({
   tuli: z.coerce.number().int().min(0).max(200),
   disleksia: z.coerce.number().int().min(0).max(200),
   sulitFokus: z.coerce.number().int().min(0).max(200),
+  diskalkulia: z.coerce.number().int().min(0).max(200).default(0),
   bahasaDaerah: z.coerce.number().int().min(0).max(200),
   bahasa: z.enum(["jw", "su"]).nullable(),
 });
@@ -111,6 +112,8 @@ export const quizInput = z
         .optional(),
       explain: z.string().max(800),
       origin: z.enum(["ai", "guru"]).optional(),
+      hints: z.array(z.string().max(400)).max(3).optional(),
+      calc: z.string().max(200).optional(),
     }),
   )
   .max(40);
@@ -173,11 +176,15 @@ const kitItem = <T extends z.ZodType>(data: T) =>
     updatedAt: z.string().max(40),
   });
 
+const tugasInput = z.object({ judul: kitText(200), tugas: kitText(1200), langkah: kitLines });
+const jenjangInput = z.object({ dasar: tugasInput, inti: tugasInput, tantangan: tugasInput });
+
 export const teachingKitInput = z.object({
   modul: kitItem(modulInput).optional(),
   lkpd: kitItem(lkpdInput).optional(),
   lkpdMudah: kitItem(lkpdInput).optional(),
   rubrik: kitItem(rubrikInput).optional(),
+  jenjang: kitItem(jenjangInput).optional(),
 });
 
 export const prefsInput = z.object({

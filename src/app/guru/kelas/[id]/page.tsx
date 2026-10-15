@@ -19,7 +19,12 @@ export default async function ClassPage({ params }: { params: Promise<{ id: stri
   if (!cls) notFound();
   const lessons = await listLessons(teacher.id, cls.id);
   const special =
-    cls.needs.lowVision + cls.needs.tuli + cls.needs.disleksia + cls.needs.sulitFokus + cls.needs.bahasaDaerah;
+    cls.needs.lowVision +
+    cls.needs.tuli +
+    cls.needs.disleksia +
+    cls.needs.sulitFokus +
+    cls.needs.diskalkulia +
+    cls.needs.bahasaDaerah;
 
   return (
     <div className="space-y-10">

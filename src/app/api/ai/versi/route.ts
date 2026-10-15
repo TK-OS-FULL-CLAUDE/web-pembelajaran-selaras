@@ -54,7 +54,7 @@ export async function POST(req: Request) {
         updatedAt: new Date().toISOString(),
       };
     } else {
-      const result = await makeRegionalVersion({ body, grade, lang: LANG_FOR_VERSION[input.jenis] });
+      const result = await makeRegionalVersion({ body, grade, lang: LANG_FOR_VERSION[input.jenis], subject: lesson.subject });
       version = {
         text: result.text,
         glossary: result.glossary,

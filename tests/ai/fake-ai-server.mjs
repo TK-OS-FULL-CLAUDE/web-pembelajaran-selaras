@@ -23,6 +23,8 @@ function modeFor(provider, model) {
 /** Jawaban palsu yang masuk akal, ditebak dari isi prompt. */
 function answerFor(prompt, provider, m) {
   const tag = `(${provider})`;
+  const adaptif = adaptifAnswer(prompt, tag);
+  if (adaptif) return adaptif;
   const perangkat = perangkatAnswer(prompt, tag);
   if (perangkat) return perangkat;
   if (prompt.includes("Salin teks utama dari foto")) {
@@ -83,6 +85,68 @@ function answerFor(prompt, provider, m) {
       { kata: "fotosintesis", arti: "tidak ada di teks sumber" },
     ],
   };
+}
+
+/** Teks prompt asli (prompt diterima dalam bentuk JSON.stringify). */
+function unescape(prompt) {
+  return prompt.replace(/\\n/g, "\n").replace(/\\"/g, '"');
+}
+
+/**
+ * Jawaban palsu fitur adaptif & Matematika: kuis Matematika (satu kunci sengaja salah hitung), bank latihan,
+ * analisis rekap, pemeriksa kesetiaan, dan tugas berjenjang.
+ */
+function adaptifAnswer(prompt, tag) {
+  const text = unescape(prompt);
+  if (prompt.includes("Jenis soal yang dipakai") && prompt.includes("Ini materi Matematika")) {
+    return {
+      soal: [
+        { jenis: "pg", konsep: "Pecahan senilai", pertanyaan: `Pecahan yang senilai dengan 2/3 adalah … ${tag}`, pilihan: ["4/6", "3/4", "2/6", "4/3"], jawaban: [0], isian: [], pasangan: [], pembahasan: "2 × 2 = 4 dan 3 × 2 = 6.", petunjuk: ["Kalikan pembilang dan penyebut.", "Dikali 2."], hitungan: "2/3" },
+        // Kunci sengaja salah: 3/4 - 1/4 = 1/2, bukan 1/4 → harus bertanda "Periksa hitungan".
+        { jenis: "pg", konsep: "Pengurangan pecahan", pertanyaan: "3/4 - 1/4 = …", pilihan: ["1/2", "1/4", "2/8", "1"], jawaban: [1], isian: [], pasangan: [], pembahasan: "Kurangi pembilangnya.", petunjuk: ["Penyebutnya sudah sama."], hitungan: "3/4 - 1/4" },
+        { jenis: "isian", konsep: "Pecahan senilai", pertanyaan: "1/2 = …/10", pilihan: [], jawaban: [], isian: ["5"], pasangan: [], pembahasan: "1 × 5 = 5.", petunjuk: ["2 dikali berapa menjadi 10?"], hitungan: "10/2" },
+      ],
+    };
+  }
+  if (prompt.includes("soal latihan untuk SETIAP konsep")) {
+    const names = [...text.matchAll(/Konsep "([^"]+)"/g)].map((m) => m[1]);
+    const math = prompt.includes("Ini materi Matematika");
+    return {
+      soal: names.flatMap((konsep) => [
+        { jenis: "bs", konsep, pertanyaan: `Latihan ${konsep}: pernyataan ini benar ${tag}.`, pilihan: [], jawaban: [0], isian: [], pasangan: [], pembahasan: "Benar, sesuai materi.", petunjuk: ["Baca lagi materinya.", "Perhatikan kata kuncinya."], hitungan: "" },
+        math
+          ? { jenis: "isian", konsep, pertanyaan: "Sederhanakan 3/9.", pilihan: [], jawaban: [], isian: ["1/3"], pasangan: [], pembahasan: "3 : 3 = 1 dan 9 : 3 = 3.", petunjuk: ["Bagi dengan 3."], hitungan: "3/9" }
+          : { jenis: "pg", konsep, pertanyaan: `Mana yang benar tentang ${konsep}?`, pilihan: ["Sesuai materi", "Tidak sesuai", "Tidak tahu", "Lainnya"], jawaban: [0], isian: [], pasangan: [], pembahasan: "Sesuai materi.", petunjuk: ["Ingat isi materi."], hitungan: "" },
+      ]),
+    };
+  }
+  if (prompt.includes("Baca hasil kuis kelas")) {
+    const konsep = text.match(/\[konsep: ([^;\]]+);/)?.[1] ?? "";
+    return {
+      ringkasan: `Sebagian besar kelas memahami materi, tetapi satu konsep masih sering keliru ${tag}.`,
+      temuan: [
+        { konsep, soal: [3, 99], dugaan: "Kemungkinan siswa mengira oksigen adalah bahan fotosintesis.", saran: "Pakai kartu bahan dan hasil, lalu bahas bersama." },
+        { konsep: "Konsep karangan", soal: [1], dugaan: "Dugaan kedua.", saran: "Saran kedua." },
+      ],
+      caraBelajar: "Jumlah sesi per cara belajar masih kecil, jadi belum bisa disimpulkan.",
+      penjelasan: "Tumbuhan memakai air, karbon dioksida, dan cahaya.\n- Oksigen adalah hasil, bukan bahan.",
+    };
+  }
+  if (prompt.includes("Bandingkan draf")) {
+    const draft = text.match(/Draf [^\n]*:\n"""\n([\s\S]*?)\n"""/)?.[1] ?? "";
+    const words = draft.replace(/[#>*|-]/g, " ").split(/\s+/).filter(Boolean).slice(0, 5).join(" ");
+    return {
+      temuan: [
+        { kutipan: words, jenis: "fakta_baru", penjelasan: `Contoh temuan palsu ${tag}.` },
+        { kutipan: "kalimat yang tidak ada di draf mana pun", jenis: "angka", penjelasan: "Harus dibuang karena kutipannya tidak ada." },
+      ],
+    };
+  }
+  if (prompt.includes("Susun draf tugas berjenjang")) {
+    const tugas = (judul) => ({ judul, tugas: `Kerjakan tugas ${judul.toLowerCase()} ${tag}.`, langkah: ["1. Baca materi.", "- Kerjakan bersama teman."] });
+    return { dasar: tugas("Ayo ulangi"), inti: tugas("Ayo berlatih"), tantangan: tugas("Ayo jelaskan") };
+  }
+  return null;
 }
 
 /** Jawaban palsu Generator Perangkat Ajar (src/lib/ai-perangkat.ts). Sengaja diberi nomor/butir untuk diuji dirapikan. */

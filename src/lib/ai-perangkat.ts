@@ -2,9 +2,19 @@ import "server-only";
 import { z } from "zod";
 import { NEEDS } from "./accommodations";
 import { generateJson } from "./claude";
+import { mathMode } from "./matematika";
 import { cleanLines } from "./perangkat";
 import { FIGURE_LINE } from "./text";
-import { LANG_LABEL, RUBRIK_LEVELS, type ClassNeeds, type Lkpd, type ModulAjar, type Rubrik } from "./types";
+import {
+  JENJANG_INFO,
+  LANG_LABEL,
+  RUBRIK_LEVELS,
+  type ClassNeeds,
+  type Jenjang,
+  type Lkpd,
+  type ModulAjar,
+  type Rubrik,
+} from "./types";
 
 // Prompt Generator Perangkat Ajar (fitur tambahan Peran 2). Terpisah dari ai-tasks.ts supaya mudah ditinjau.
 // Prinsip sama: AI hanya menyiapkan DRAF dari materi guru, guru wajib mengecek sebelum mencetak.
@@ -24,6 +34,26 @@ export type KitInput = {
   subject: string;
   grade: string;
 };
+
+const isMath = (input: KitInput) => mathMode(input.subject, input.body);
+
+// Aturan khusus Matematika untuk perangkat ajar.
+const MATH_MODUL_RULE = `Ini materi Matematika:
+- Kegiatan inti mengikuti urutan konkret → gambar → simbol: siswa memakai benda nyata (lidi, kancing, kertas lipat, dsb.), lalu gambar atau garis bilangan, baru menulis lambang dan angka.
+- Sebut satu contoh soal yang dikerjakan bersama langkah demi langkah, memakai angka dari materi.
+- Asesmen menilai langkah pengerjaan, bukan hanya jawaban akhir.`;
+
+const MATH_LKPD_RULE = `Ini materi Matematika:
+- Aktivitas boleh berisi soal latihan dengan angka baru selama cara hitungnya sama dengan materi, disusun dari yang mudah ke yang lebih sulit.
+- Minta siswa menuliskan langkah atau cara hitungnya, tidak hanya jawaban.
+- Satu aktivitas memakai benda nyata atau gambar (misalnya melipat kertas, menggambar garis bilangan).
+- Pecahan ditulis 3/4, pangkat ditulis s^2, perkalian ×, pembagian :.`;
+
+const MATH_LKPD_MUDAH_RULE = `Ini materi Matematika, untuk siswa yang juga bisa kesulitan berhitung:
+- Angka kecil dan satu langkah per soal. Sertakan satu contoh yang sudah dikerjakan sebelum soal pertama.
+- Minta siswa memakai benda atau gambar (lingkari, warnai, hitung gambar) sebelum menulis angka.`;
+
+const MATH_RUBRIK_RULE = `Ini materi Matematika: pakai kriteria pemahaman konsep, langkah penyelesaian, ketepatan hitung, dan penalaran/menjelaskan cara (boleh 3–5 kriteria dari daftar ini).`;
 
 const STR_ARRAY = { type: "array", items: { type: "string" } };
 const TAHAP_SCHEMA = {
@@ -95,7 +125,7 @@ Isi yang diminta:
 - "pendahuluan", "inti", "penutup": langkah kegiatan berurutan (pendahuluan 2–4 langkah, inti 3–6 langkah, penutup 2–3 langkah). "menit" adalah lama tiap tahap; jumlah ketiganya tepat ${input.menit}. Kegiatan inti melibatkan siswa aktif (mengamati, berdiskusi, mencoba) dan mengerjakan LKPD.
 - "asesmen": 2–3 butir. Sebut jenisnya (diagnostik, formatif, atau sumatif) dan caranya, misalnya pertanyaan pemantik, LKPD dengan rubrik, kuis singkat di Selaras.
 - "akomodasi": satu butir untuk setiap kebutuhan di profil kelas di bawah, berupa tindakan konkret guru di kegiatan pelajaran ini. Bila tidak ada kebutuhan khusus, tulis 1 butir umum tentang memberi pilihan cara belajar.
-
+${isMath(input) ? `${MATH_MODUL_RULE}\n` : ""}
 Profil kebutuhan kelas:
 ${needsForPrompt(input.needs)}
 
@@ -194,7 +224,7 @@ Isi yang diminta:
 
 Aturan:
 - Semua pertanyaan bisa dijawab dari isi materi atau dari kegiatan yang diminta. Jangan menambah fakta di luar materi.
-- Sapa siswa dengan "kamu". Kalimat jelas dan sesuai usia.
+- Sapa siswa dengan "kamu". Kalimat jelas dan sesuai usia.${isMath(input) ? `\n${MATH_LKPD_RULE}` : ""}
 - Jangan menulis kunci jawaban.
 - ${PLAIN_RULE}
 
@@ -229,7 +259,7 @@ Aturan:
 - Kalimat pendek, paling banyak 10 kata, kata sehari-hari.
 - Pertanyaan bisa dijawab dengan satu kata, satu kalimat pendek, melingkari, atau menggambar. Tulis cara menjawabnya di pertanyaan, misalnya "(lingkari)" atau "(gambar)".
 - Pakai HANYA isi dari teks mudah. Jangan menambah fakta.
-- Sapa siswa dengan "kamu". Jangan menulis kunci jawaban.
+- Sapa siswa dengan "kamu". Jangan menulis kunci jawaban.${isMath(input) ? `\n${MATH_LKPD_MUDAH_RULE}` : ""}
 - ${PLAIN_RULE}
 
 ${DATA_RULE}
@@ -279,7 +309,7 @@ Isi yang diminta:
 - "kriteria": 3–5 kriteria. Setiap kriteria punya "nama" (aspek yang dinilai, misalnya pemahaman konsep, ketepatan jawaban, kerja sama) dan "level": tepat 4 deskripsi berurutan untuk tingkat ${RUBRIK_LEVELS.map((l, i) => `${i + 1} = ${l}`).join(", ")}.
 
 Aturan:
-- Kriteria sesuai tujuan pembelajaran dan isi materi.
+- Kriteria sesuai tujuan pembelajaran dan isi materi.${isMath(input) ? `\n- ${MATH_RUBRIK_RULE}` : ""}
 - Setiap deskripsi menyebut perilaku atau hasil kerja yang bisa diamati guru, paling banyak 25 kata, dan jelas bedanya dengan tingkat sebelahnya.
 - Bahasa positif. Tingkat 1 menyebut bantuan yang masih dibutuhkan, bukan kegagalan siswa.
 - ${PLAIN_RULE}
@@ -313,4 +343,60 @@ ${materi(input)}`,
     data: { judul: data.judul || `Rubrik penilaian: ${input.title}`, kriteria: data.kriteria },
     model,
   };
+}
+
+// ---------- 4. Tugas berjenjang (Teaching at the Right Level) ----------
+
+const tugasSchema = z.object({
+  judul: z.string().trim().min(2).max(160),
+  tugas: z.string().trim().min(10).max(1200),
+  langkah: lines(8).catch([]),
+});
+const jenjangSchema = z.object({ dasar: tugasSchema, inti: tugasSchema, tantangan: tugasSchema });
+const TUGAS_SCHEMA = {
+  type: "object",
+  properties: { judul: { type: "string" }, tugas: { type: "string" }, langkah: STR_ARRAY },
+  required: ["judul", "tugas", "langkah"],
+  additionalProperties: false,
+};
+
+export async function makeJenjang(
+  input: KitInput & { tujuan?: string[]; konsep?: string[] },
+): Promise<{ data: Jenjang; model: string }> {
+  const tujuan = input.tujuan?.length ? `\nTujuan pembelajaran:\n- ${input.tujuan.join("\n- ")}\n` : "";
+  const konsep = input.konsep?.length ? `\nKonsep yang dinilai di kuis: ${input.konsep.join(", ")}.\n` : "";
+  const { data, model } = await generateJson({
+    system: SYSTEM,
+    content: [
+      {
+        type: "text",
+        text: `Susun draf tugas berjenjang (pembelajaran berdiferensiasi, Teaching at the Right Level) untuk ${input.grade || "siswa SD"} setelah kuis materi di bawah. Siswa dikelompokkan otomatis menurut skor kuis:
+- "dasar" (${JENJANG_INFO.dasar.label}, ${JENJANG_INFO.dasar.range}): mengulang konsep inti dengan bantuan benda, gambar, atau contoh yang sudah dikerjakan.
+- "inti" (${JENJANG_INFO.inti.label}, ${JENJANG_INFO.inti.range}): berlatih memakai konsep pada soal atau kegiatan baru yang setara.
+- "tantangan" (${JENJANG_INFO.tantangan.label}, ${JENJANG_INFO.tantangan.range}): menerapkan atau menjelaskan konsep pada situasi baru, atau membantu teman.
+${tujuan}${konsep}
+Untuk setiap kelompok isi:
+- "judul": judul tugas yang menyemangati, paling banyak 8 kata, tanpa menyebut "lemah", "pintar", atau label kemampuan.
+- "tugas": 1–3 kalimat yang menjelaskan apa yang dikerjakan siswa, disapa dengan "kamu".
+- "langkah": 2–5 langkah singkat. Bisa dikerjakan sendiri atau berpasangan dalam 10–15 menit dengan alat sederhana.
+
+Aturan:
+- Ketiga tugas membahas materi yang sama dengan tingkat bantuan berbeda. Jangan menambah fakta di luar materi.
+- Kalimat ramah dan sesuai usia. ${PLAIN_RULE}${isMath(input) ? "\n- Ini materi Matematika: tugas dasar memakai benda nyata atau gambar dan angka kecil; tugas tantangan meminta siswa menjelaskan caranya atau membuat soal sendiri." : ""}
+
+${DATA_RULE}
+
+${materi(input)}`,
+      },
+    ],
+    schema: {
+      type: "object",
+      properties: { dasar: TUGAS_SCHEMA, inti: TUGAS_SCHEMA, tantangan: TUGAS_SCHEMA },
+      required: ["dasar", "inti", "tantangan"],
+      additionalProperties: false,
+    },
+    validator: jenjangSchema,
+    temperature: 0.5,
+  });
+  return { data, model };
 }

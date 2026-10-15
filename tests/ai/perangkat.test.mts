@@ -30,7 +30,7 @@ const BODY = `## Daur Air
 Air di bumi selalu bergerak. Matahari memanaskan air di laut. Air berubah menjadi uap. Peristiwa ini disebut penguapan.`;
 const MUDAH = "Air selalu bergerak. Matahari membuat air panas. Air jadi uap. Ini namanya penguapan.";
 const BASE = { body: BODY, title: "Daur Air", subject: "IPAS", grade: "Kelas 4 SD" };
-const NEEDS = { totalSiswa: 28, lowVision: 0, tuli: 1, disleksia: 3, sulitFokus: 0, bahasaDaerah: 12, bahasa: "jw" as const };
+const NEEDS = { totalSiswa: 28, lowVision: 0, tuli: 1, disleksia: 3, sulitFokus: 0, diskalkulia: 0, bahasaDaerah: 12, bahasa: "jw" as const };
 
 let passed = 0;
 async function test(name: string, fn: () => Promise<void> | void) {
@@ -103,7 +103,7 @@ await test("Modul ajar: Claude dulu; profil kelas & alokasi masuk prompt; nomor/
 await test("Profil kelas kosong → prompt menyebutnya, tanpa data siswa", () => {
   assert.equal(ai.needsForPrompt(null), "Profil kebutuhan kelas belum diisi.");
   assert.match(
-    ai.needsForPrompt({ totalSiswa: 20, lowVision: 0, tuli: 0, disleksia: 0, sulitFokus: 0, bahasaDaerah: 0, bahasa: null }),
+    ai.needsForPrompt({ totalSiswa: 20, lowVision: 0, tuli: 0, disleksia: 0, sulitFokus: 0, diskalkulia: 0, bahasaDaerah: 0, bahasa: null }),
     /Tidak ada kebutuhan khusus/,
   );
 });

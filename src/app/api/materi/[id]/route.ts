@@ -26,6 +26,7 @@ const patchSchema = z.object({
   target_grade: z.string().trim().max(80).optional(),
   is_template: z.boolean().optional(),
   teachingKit: teachingKitInput.optional(),
+  practice: quizInput.optional(),
   // Revisi yang dilihat editor; bila materi sudah diubah di tempat lain, simpan ditolak (409).
   baseRevision: z.number().int().min(1).optional(),
   // true = guru sengaja menimpa perubahan dari tempat lain.

@@ -6,16 +6,21 @@ import {
   ArrowDown,
   ArrowRight,
   ArrowUp,
+  Calculator,
   Check,
+  CheckCircle2,
   ChevronDown,
   CircleAlert,
+  Lightbulb,
   Plus,
   Sparkles,
+  Target,
   Trash2,
   X,
 } from "lucide-react";
 import { useState } from "react";
 import { api } from "@/lib/client";
+import { checkCalc, mathMode } from "@/lib/matematika";
 import { QUIZ_TONE, TONES } from "@/lib/modes";
 import { blankQuestion, convertQuestion, questionProblem, quizType } from "@/lib/quiz";
 import { QUIZ_TYPES, QUIZ_TYPE_LABEL, type QuizQuestion, type QuizType } from "@/lib/types";
@@ -51,6 +56,7 @@ export function KuisTab({
   const [aiTypes, setAiTypes] = useState<QuizType[]>(["pg", "bs", "pgk", "isian", "jodoh"]);
   const [aiCount, setAiCount] = useState(5);
   const quiz = lesson.quiz;
+  const math = mathMode(lesson.subject, lesson.body);
 
   const setQuiz = (fn: (q: QuizQuestion[]) => QuizQuestion[]) => update((l) => ({ quiz: fn(l.quiz) }));
   // Menyunting soal dari AI berarti guru sudah memeriksanya.
@@ -75,13 +81,20 @@ export function KuisTab({
   async function draftWithAi() {
     setBusy(true);
     try {
-      const res = await api<{ questions: QuizQuestion[] }>("/api/ai/kuis", {
+      const res = await api<{ questions: QuizQuestion[]; math?: boolean }>("/api/ai/kuis", {
         method: "POST",
         body: { lessonId, body: lesson.body, count: aiCount, types: aiTypes },
       });
       setQuiz((qs) => [...qs, ...res.questions]);
       setAiOpen(false);
-      toast.ok(`${res.questions.length} draf soal ditambahkan. Periksa kunci jawabannya.`);
+      const flagged = res.questions.filter((q) => checkCalc(q)?.ok === false).length;
+      toast.ok(
+        `${res.questions.length} draf soal ditambahkan. ${
+          res.math
+            ? `Hitungannya sudah dihitung ulang aplikasi${flagged ? `; ${flagged} soal bertanda "Periksa hitungan"` : ""}. `
+            : ""
+        }Periksa kunci jawabannya.`,
+      );
     } catch (err) {
       toast.error((err as Error).message);
     } finally {
@@ -250,6 +263,7 @@ export function KuisTab({
             key={i}
             q={q}
             i={i}
+            math={math}
             total={quiz.length}
             edit={(patch) => edit(i, patch)}
             replace={(next) => setQuiz((qs) => qs.map((x, j) => (j === i ? next : x)))}
@@ -262,6 +276,8 @@ export function KuisTab({
         {addMenu}
         {aiButton}
       </div>
+
+      <PracticeBank lessonId={lessonId} lesson={lesson} update={update} aiOn={aiOn} math={math} />
     </div>
   );
 }
@@ -270,6 +286,9 @@ function QuestionCard({
   q,
   i,
   total,
+  math = false,
+  idPrefix = "",
+  noun = "Soal",
   edit,
   replace,
   move,
@@ -278,6 +297,11 @@ function QuestionCard({
   q: QuizQuestion;
   i: number;
   total: number;
+  /** Materi Matematika: tampilkan kolom hitungan pemeriksa kunci. */
+  math?: boolean;
+  /** Awalan id supaya kartu kuis dan kartu bank latihan bisa tampil di halaman yang sama. */
+  idPrefix?: string;
+  noun?: string;
   edit: (patch: Partial<QuizQuestion>) => void;
   replace: (q: QuizQuestion) => void;
   move: (dir: -1 | 1) => void;
@@ -286,6 +310,9 @@ function QuestionCard({
   const type = quizType(q);
   const tone = TONES[QUIZ_TONE[type]];
   const problem = questionProblem(q);
+  const calc = checkCalc(q);
+  const uid = `${idPrefix}${i}`;
+  const hints = [0, 1, 2].map((k) => q.hints?.[k] ?? "");
 
   return (
     <li
@@ -298,12 +325,14 @@ function QuestionCard({
       <div className="p-5">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="font-display text-lg font-extrabold">Soal {i + 1}</span>
-            <label htmlFor={`jenis-${i}`} className="sr-only">
-              Jenis soal {i + 1}
+            <span className="font-display text-lg font-extrabold">
+              {noun} {i + 1}
+            </span>
+            <label htmlFor={`jenis-${uid}`} className="sr-only">
+              Jenis {noun.toLowerCase()} {i + 1}
             </label>
             <select
-              id={`jenis-${i}`}
+              id={`jenis-${uid}`}
               value={type}
               onChange={(e) => replace(convertQuestion(q, e.target.value as QuizType))}
               className={cx("h-9 rounded-full border-0 px-3 pr-8 text-[13px] font-bold", tone.chip)}
@@ -315,31 +344,39 @@ function QuestionCard({
               ))}
             </select>
             {q.origin === "ai" && <Badge tone="ai">Draf AI, periksa kuncinya</Badge>}
+            {calc && !calc.ok && (
+              <Badge tone="aksen">
+                <Calculator className="size-3.5" aria-hidden />
+                Periksa hitungan
+              </Badge>
+            )}
           </div>
           <div className="flex gap-1">
-            <IconButton label={`Naikkan soal ${i + 1}`} disabled={i === 0} onClick={() => move(-1)}>
+            <IconButton label={`Naikkan ${noun.toLowerCase()} ${i + 1}`} disabled={i === 0} onClick={() => move(-1)}>
               <ArrowUp className="size-4" aria-hidden />
             </IconButton>
-            <IconButton label={`Turunkan soal ${i + 1}`} disabled={i === total - 1} onClick={() => move(1)}>
+            <IconButton label={`Turunkan ${noun.toLowerCase()} ${i + 1}`} disabled={i === total - 1} onClick={() => move(1)}>
               <ArrowDown className="size-4" aria-hidden />
             </IconButton>
-            <IconButton label={`Hapus soal ${i + 1}`} danger onClick={remove}>
+            <IconButton label={`Hapus ${noun.toLowerCase()} ${i + 1}`} danger onClick={remove}>
               <Trash2 className="size-4" aria-hidden />
             </IconButton>
           </div>
         </div>
         <p className="mt-1 text-[13px] text-tinta-2">{TYPE_HINT[type]}</p>
-        <label htmlFor={`konsep-${i}`} className="mt-3 block text-sm font-bold">Konsep yang dinilai</label>
-        <input id={`konsep-${i}`} className={`${inputClass} mt-1 h-11`} maxLength={100}
+        <label htmlFor={`konsep-${uid}`} className="mt-3 block text-sm font-bold">
+          Konsep yang dinilai
+        </label>
+        <input id={`konsep-${uid}`} className={`${inputClass} mt-1 h-11`} maxLength={100}
           value={q.concept ?? ""} onChange={(e) => edit({ concept: e.target.value })}
           placeholder="Contoh: Penyebut dan pembilang" />
         <p className="mt-1 text-sm text-tinta-2">Gunakan nama konsep yang sama untuk soal terkait agar hasilnya dikelompokkan di rekap.</p>
 
-        <label htmlFor={`soal-${i}`} className="mt-3 block text-[14px] font-bold">
+        <label htmlFor={`soal-${uid}`} className="mt-3 block text-[14px] font-bold">
           {type === "bs" ? "Pernyataan" : type === "jodoh" ? "Perintah" : "Pertanyaan"}
         </label>
         <textarea
-          id={`soal-${i}`}
+          id={`soal-${uid}`}
           rows={2}
           className={`${inputClass} mt-1`}
           placeholder={
@@ -354,7 +391,7 @@ function QuestionCard({
         />
 
         <div className="mt-3">
-          {(type === "pg" || type === "pgk") && <OptionsEditor q={q} i={i} multi={type === "pgk"} edit={edit} />}
+          {(type === "pg" || type === "pgk") && <OptionsEditor q={q} i={i} uid={uid} noun={noun} multi={type === "pgk"} edit={edit} />}
           {type === "bs" && (
             <fieldset>
               <legend className="mb-1.5 text-[14px] font-bold">Kunci jawaban</legend>
@@ -381,25 +418,96 @@ function QuestionCard({
               </div>
             </fieldset>
           )}
-          {type === "isian" && <AcceptedEditor q={q} i={i} edit={edit} />}
-          {type === "jodoh" && <PairsEditor q={q} i={i} edit={edit} />}
+          {type === "isian" && <AcceptedEditor q={q} i={i} noun={noun} edit={edit} />}
+          {type === "jodoh" && <PairsEditor q={q} i={i} noun={noun} edit={edit} />}
         </div>
 
-        <label htmlFor={`bahas-${i}`} className="mt-4 block text-[14px] font-bold">
+        <label htmlFor={`bahas-${uid}`} className="mt-4 block text-[14px] font-bold">
           Pembahasan
         </label>
         <input
-          id={`bahas-${i}`}
+          id={`bahas-${uid}`}
           className={`${inputClass} mt-1 h-11`}
           placeholder="Kenapa jawaban itu benar (ditampilkan setelah siswa menjawab)"
           value={q.explain}
           onChange={(e) => edit({ explain: e.target.value })}
         />
+        <fieldset className="mt-4">
+          <legend className="flex items-center gap-1.5 text-[14px] font-bold">
+            <Lightbulb className="size-4 text-aksen" aria-hidden />
+            Petunjuk bertahap (opsional)
+          </legend>
+          <p className="text-[13px] text-tinta-2">
+            Siswa membukanya satu per satu sebelum menjawab. Jangan tulis jawabannya di sini.
+          </p>
+          <div className="mt-1.5 grid gap-2 md:grid-cols-3">
+            {hints.map((h, k) => (
+              <input
+                key={k}
+                aria-label={`Petunjuk ${k + 1} ${noun.toLowerCase()} ${i + 1}`}
+                className={`${inputClass} h-11`}
+                maxLength={400}
+                placeholder={["Ingatkan bagian materi", "Langkah berpikir", "Hampir sampai jawaban"][k]}
+                value={h}
+                onChange={(e) => {
+                  const next = hints.map((x, j) => (j === k ? e.target.value : x));
+                  while (next.length && !next[next.length - 1].trim()) next.pop();
+                  edit({ hints: next });
+                }}
+              />
+            ))}
+          </div>
+        </fieldset>
+
+        {(math || q.calc) && (type === "pg" || type === "isian") && (
+          <div className="mt-4">
+            <label htmlFor={`hitung-${uid}`} className="flex items-center gap-1.5 text-[14px] font-bold">
+              <Calculator className="size-4 text-tinta-2" aria-hidden />
+              Hitungan untuk memeriksa kunci (Matematika)
+            </label>
+            <input
+              id={`hitung-${uid}`}
+              className={`${inputClass} mt-1 h-11 font-mono`}
+              maxLength={200}
+              placeholder="Contoh: 3/4 - 1/8"
+              value={q.calc ?? ""}
+              onChange={(e) => edit({ calc: e.target.value })}
+              aria-describedby={`hitung-hasil-${uid}`}
+            />
+            <p
+              id={`hitung-hasil-${uid}`}
+              className={cx(
+                "mt-1 flex items-center gap-1.5 text-[14px]",
+                !calc ? "text-tinta-2" : calc.ok ? "text-berhasil" : "font-bold text-aksen",
+              )}
+            >
+              {calc ? (
+                calc.ok ? (
+                  <CheckCircle2 className="size-4" aria-hidden />
+                ) : (
+                  <CircleAlert className="size-4" aria-hidden />
+                )
+              ) : null}
+              {calc
+                ? calc.message
+                : "Opsional. Aplikasi menghitung ulang ekspresi ini dan membandingkannya dengan kunci jawaban."}
+            </p>
+          </div>
+        )}
+
         {problem && (
           <p className="mt-3 flex items-center gap-1.5 text-[14px] font-bold text-aksen">
             <CircleAlert className="size-4" aria-hidden />
-            {problem} Soal ini belum ditampilkan ke siswa.
+            {problem} {noun === "Soal" ? "Soal ini belum ditampilkan ke siswa." : "Latihan ini belum dipakai."}
           </p>
+        )}
+        {q.origin === "ai" && (
+          <div className="mt-4 border-t border-garis pt-3">
+            <Button size="sm" onClick={() => edit({})}>
+              <Check className="size-4" aria-hidden />
+              Tandai sudah dicek
+            </Button>
+          </div>
         )}
       </div>
     </li>
@@ -409,11 +517,15 @@ function QuestionCard({
 function OptionsEditor({
   q,
   i,
+  uid,
+  noun,
   multi,
   edit,
 }: {
   q: QuizQuestion;
   i: number;
+  uid: string;
+  noun: string;
   multi: boolean;
   edit: (patch: Partial<QuizQuestion>) => void;
 }) {
@@ -444,7 +556,7 @@ function OptionsEditor({
           <div key={oi} className="flex items-center gap-2">
             <input
               type={multi ? "checkbox" : "radio"}
-              name={`benar-${i}`}
+              name={`benar-${uid}`}
               checked={right}
               onChange={() => toggle(oi)}
               className="size-5 shrink-0 accent-[#15803D]"
@@ -454,7 +566,7 @@ function OptionsEditor({
               {LETTERS[oi]}
             </span>
             <input
-              aria-label={`Pilihan ${LETTERS[oi]} soal ${i + 1}`}
+              aria-label={`Pilihan ${LETTERS[oi]} ${noun.toLowerCase()} ${i + 1}`}
               className={cx(inputClass, "h-11", right && "border-berhasil bg-hijau-50/60")}
               value={opt}
               onChange={(e) => edit({ options: q.options.map((o, k) => (k === oi ? e.target.value : o)) })}
@@ -480,7 +592,17 @@ function OptionsEditor({
   );
 }
 
-function AcceptedEditor({ q, i, edit }: { q: QuizQuestion; i: number; edit: (patch: Partial<QuizQuestion>) => void }) {
+function AcceptedEditor({
+  q,
+  i,
+  noun,
+  edit,
+}: {
+  q: QuizQuestion;
+  i: number;
+  noun: string;
+  edit: (patch: Partial<QuizQuestion>) => void;
+}) {
   const accepted = q.accepted?.length ? q.accepted : [""];
   return (
     <fieldset className="space-y-2">
@@ -490,7 +612,7 @@ function AcceptedEditor({ q, i, edit }: { q: QuizQuestion; i: number; edit: (pat
       {accepted.map((a, k) => (
         <div key={k} className="flex items-center gap-2">
           <input
-            aria-label={`Jawaban diterima ${k + 1} soal ${i + 1}`}
+            aria-label={`Jawaban diterima ${k + 1} ${noun.toLowerCase()} ${i + 1}`}
             className={cx(inputClass, "h-11")}
             value={a}
             placeholder={k === 0 ? "Contoh: penguapan" : "Bentuk lain"}
@@ -516,7 +638,17 @@ function AcceptedEditor({ q, i, edit }: { q: QuizQuestion; i: number; edit: (pat
   );
 }
 
-function PairsEditor({ q, i, edit }: { q: QuizQuestion; i: number; edit: (patch: Partial<QuizQuestion>) => void }) {
+function PairsEditor({
+  q,
+  i,
+  noun,
+  edit,
+}: {
+  q: QuizQuestion;
+  i: number;
+  noun: string;
+  edit: (patch: Partial<QuizQuestion>) => void;
+}) {
   const pairs = q.pairs ?? [];
   const set = (k: number, side: "kiri" | "kanan", v: string) =>
     edit({ pairs: pairs.map((p, j) => (j === k ? { ...p, [side]: v } : p)) });
@@ -526,7 +658,7 @@ function PairsEditor({ q, i, edit }: { q: QuizQuestion; i: number; edit: (patch:
       {pairs.map((p, k) => (
         <div key={k} className="grid grid-cols-[1fr_auto_1fr_auto] items-center gap-2">
           <input
-            aria-label={`Kiri pasangan ${k + 1} soal ${i + 1}`}
+            aria-label={`Kiri pasangan ${k + 1} ${noun.toLowerCase()} ${i + 1}`}
             className={cx(inputClass, "h-11")}
             value={p.kiri}
             placeholder="Contoh: Akar"
@@ -534,7 +666,7 @@ function PairsEditor({ q, i, edit }: { q: QuizQuestion; i: number; edit: (patch:
           />
           <ArrowRight className="size-4 text-mawar" aria-hidden />
           <input
-            aria-label={`Kanan pasangan ${k + 1} soal ${i + 1}`}
+            aria-label={`Kanan pasangan ${k + 1} ${noun.toLowerCase()} ${i + 1}`}
             className={cx(inputClass, "h-11")}
             value={p.kanan}
             placeholder="Contoh: Menyerap air"
@@ -586,5 +718,149 @@ function IconButton({
     >
       {children}
     </button>
+  );
+}
+
+/**
+ * Bank latihan adaptif: soal tambahan per konsep. Setelah kuis, siswa yang salah pada sebuah konsep
+ * mendapat latihan dari bank ini (hanya soal yang sudah dicek guru), lengkap dengan petunjuk bertahap.
+ */
+function PracticeBank({
+  lessonId,
+  lesson,
+  update,
+  aiOn,
+  math,
+}: {
+  lessonId: string;
+  lesson: EditableLesson;
+  update: UpdateLesson;
+  aiOn: boolean;
+  math: boolean;
+}) {
+  const toast = useToast();
+  const [busy, setBusy] = useState(false);
+  const bank = lesson.practice ?? [];
+  const setBank = (fn: (b: QuizQuestion[]) => QuizQuestion[]) => update((l) => ({ practice: fn(l.practice ?? []) }));
+  const edit = (i: number, patch: Partial<QuizQuestion>) =>
+    setBank((b) => b.map((q, j) => (j === i ? { ...q, ...patch, origin: "guru" } : q)));
+  const move = (i: number, dir: -1 | 1) =>
+    setBank((b) => {
+      const next = [...b];
+      const j = i + dir;
+      if (j < 0 || j >= next.length) return b;
+      [next[i], next[j]] = [next[j], next[i]];
+      return next;
+    });
+
+  // Konsep di kuis dan berapa soal latihan yang sudah dicek untuk tiap konsep.
+  const concepts = [...new Map(lesson.quiz.filter((q) => q.concept?.trim()).map((q) => [q.concept!.trim().toLocaleLowerCase(), q.concept!.trim()])).values()];
+  const readyFor = (c: string) =>
+    bank.filter((q) => q.origin === "guru" && q.concept?.trim().toLocaleLowerCase() === c.toLocaleLowerCase()).length;
+  const unchecked = bank.filter((q) => q.origin === "ai").length;
+
+  async function generate() {
+    setBusy(true);
+    try {
+      const empty = concepts.filter((c) => !bank.some((q) => q.concept?.trim().toLocaleLowerCase() === c.toLocaleLowerCase()));
+      const res = await api<{ questions: QuizQuestion[] }>("/api/ai/latihan", {
+        method: "POST",
+        body: {
+          lessonId,
+          body: lesson.body,
+          concepts: (empty.length ? empty : concepts).slice(0, 6).map((konsep) => ({ konsep })),
+          perConcept: 2,
+        },
+      });
+      setBank((b) => [...b, ...res.questions].slice(0, 40));
+      toast.ok(`${res.questions.length} draf soal latihan ditambahkan. Cek dulu sebelum dipakai siswa.`);
+    } catch (err) {
+      toast.error((err as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <section aria-labelledby="bank-latihan" className="rounded-2xl border border-garis bg-white p-5 shadow-kartu">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="max-w-2xl">
+          <h2 id="bank-latihan" className="flex items-center gap-2 font-display text-lg font-extrabold">
+            <Target className="size-5 text-papan" aria-hidden />
+            Latihan adaptif
+          </h2>
+          <p className="mt-1 text-[14px] text-tinta-2">
+            Setelah kuis, siswa yang salah pada sebuah konsep langsung mendapat latihan untuk konsep itu, lengkap
+            dengan petunjuk bertahap. Hanya soal latihan yang sudah Anda tandai dicek yang dipakai. Hasil latihan tidak
+            mengubah nilai kuis.
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {aiOn && (
+            <Button
+              variant="ai"
+              disabled={busy || !concepts.length || lesson.body.trim().length < 40}
+              onClick={generate}
+            >
+              {busy ? <Spinner /> : <Sparkles className="size-4" aria-hidden />}
+              {busy ? "Menyusun latihan…" : "Buat soal latihan dengan AI"}
+            </Button>
+          )}
+          <Button
+            variant="secondary"
+            onClick={() =>
+              setBank((b) => [...b, { ...blankQuestion("pg"), concept: concepts[0] ?? "" }].slice(0, 40))
+            }
+          >
+            <Plus className="size-4" aria-hidden />
+            Tambah soal latihan
+          </Button>
+        </div>
+      </div>
+
+      {concepts.length ? (
+        <ul className="mt-4 flex flex-wrap gap-2" aria-label="Kesiapan latihan per konsep">
+          {concepts.map((c) => {
+            const n = readyFor(c);
+            return (
+              <li key={c}>
+                <Badge tone={n ? "ok" : "neutral"}>
+                  {n ? <Check className="size-3.5" aria-hidden /> : null}
+                  {c}: {n} latihan siap
+                </Badge>
+              </li>
+            );
+          })}
+        </ul>
+      ) : (
+        <p className="mt-4 rounded-xl bg-aksen-50 px-3 py-2 text-[14px] text-aksen">
+          Isi &ldquo;Konsep yang dinilai&rdquo; pada soal kuis di atas dulu. Latihan dicocokkan dengan soal yang salah
+          lewat nama konsep.
+        </p>
+      )}
+      {unchecked > 0 && (
+        <p className="mt-2 text-[14px] font-bold text-aksen">{unchecked} soal latihan masih draf AI dan belum dipakai.</p>
+      )}
+
+      {bank.length > 0 && (
+        <ol className="mt-4 space-y-4">
+          {bank.map((q, i) => (
+            <QuestionCard
+              key={i}
+              q={q}
+              i={i}
+              total={bank.length}
+              math={math}
+              idPrefix="latihan-"
+              noun="Latihan"
+              edit={(patch) => edit(i, patch)}
+              replace={(next) => setBank((b) => b.map((x, j) => (j === i ? next : x)))}
+              move={(dir) => move(i, dir)}
+              remove={() => setBank((b) => b.filter((_, j) => j !== i))}
+            />
+          ))}
+        </ol>
+      )}
+    </section>
   );
 }

@@ -7,6 +7,7 @@ const NEED_TONE: Record<NeedKey, ToneKey> = {
   tuli: "sian",
   disleksia: "ungu",
   sulitFokus: "jingga",
+  diskalkulia: "hijau",
   bahasaDaerah: "mawar",
 };
 

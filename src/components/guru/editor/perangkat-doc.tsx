@@ -3,7 +3,17 @@
 
 import type { ReactNode } from "react";
 import { filled } from "@/lib/perangkat";
-import { RUBRIK_LEVELS, type KegiatanTahap, type Lkpd, type ModulAjar, type Rubrik } from "@/lib/types";
+import {
+  JENJANG_INFO,
+  JENJANG_KEYS,
+  RUBRIK_LEVELS,
+  type Jenjang,
+  type KegiatanTahap,
+  type Lkpd,
+  type ModulAjar,
+  type Rubrik,
+} from "@/lib/types";
+import { InlineText } from "../../reader-text";
 
 /** Judul dengan tingkat yang menyesuaikan tempatnya (h3 di dalam kartu, h1 saat dicetak). */
 function H({ level, className, children }: { level: number; className: string; children: ReactNode }) {
@@ -23,7 +33,9 @@ function Items({ items, ordered = false }: { items: string[]; ordered?: boolean 
   return (
     <Tag>
       {list.map((s, i) => (
-        <li key={i}>{s}</li>
+        <li key={i}>
+          <InlineText text={s} />
+        </li>
       ))}
     </Tag>
   );
@@ -155,7 +167,7 @@ export function LkpdDoc({
               <ol className="dok-soal">
                 {filled(a.pertanyaan).map((q, j) => (
                   <li key={j}>
-                    {q}
+                    <InlineText text={q} />
                     <div aria-hidden className="dok-jawab">
                       {Array.from({ length: lines }, (_, k) => (
                         <span key={k} className="dok-garis" />
@@ -211,6 +223,38 @@ export function RubrikDoc({ data, checked, level = 1 }: { data: Rubrik; checked:
           Skor tiap kriteria 1–4. Nilai akhir = jumlah skor ÷ {rows.length * 4} × 100.
         </p>
       )}
+    </article>
+  );
+}
+
+export function JenjangDoc({ data, checked, level = 1 }: { data: Jenjang; checked: boolean; level?: number }) {
+  return (
+    <article className="dok">
+      <DraftMark checked={checked} />
+      <p className="dok-kecil">Tugas Berjenjang (Teaching at the Right Level)</p>
+      <H level={level} className="dok-judul">
+        Tugas setelah kuis
+      </H>
+      <p>
+        Siswa mengerjakan tugas sesuai kelompok skor kuisnya. Di Selaras, tugas ini muncul otomatis di layar hasil
+        kuis siswa setelah guru menandainya sudah dicek.
+      </p>
+      {JENJANG_KEYS.map((key) => {
+        const t = data[key];
+        return (
+          <section key={key} className="dok-jenjang">
+            <H level={level + 1} className="dok-bagian">
+              {JENJANG_INFO[key].label} ({JENJANG_INFO[key].range}): {t.judul || "—"}
+            </H>
+            {t.tugas.trim() && (
+              <p>
+                <InlineText text={t.tugas.trim()} />
+              </p>
+            )}
+            {filled(t.langkah).length > 0 && <Items items={t.langkah} ordered />}
+          </section>
+        );
+      })}
     </article>
   );
 }

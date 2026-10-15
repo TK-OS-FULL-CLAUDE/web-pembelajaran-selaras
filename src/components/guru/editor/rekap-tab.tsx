@@ -11,6 +11,8 @@ import { MODE_TONE, QUIZ_TONE, TONES, type ModeKey } from "@/lib/modes";
 import { questionKey, quizType } from "@/lib/quiz";
 import { QUIZ_TYPE_LABEL, VERSION_LABEL, isRegionalVersion, type QuizQuestion, type VersionKey } from "@/lib/types";
 import { Badge, Button, Card, EmptyState, Spinner, StatCard, cx } from "../../ui";
+import type { EditableLesson, TabKey, UpdateLesson } from "./lesson-editor";
+import { AnalysisCard, GroupsCard } from "./rekap-ai";
 
 const MODE_LABEL: Record<keyof LessonStats["prefCounts"], string> = {
   mudah: VERSION_LABEL.mudah,
@@ -76,7 +78,25 @@ function BarRow({
   );
 }
 
-export function RekapTab({ lessonId, stats, published, quiz }: { lessonId: string; stats: LessonStats; published: boolean; quiz: QuizQuestion[] }) {
+export function RekapTab({
+  lessonId,
+  stats,
+  published,
+  quiz,
+  lesson,
+  update,
+  aiOn,
+  goTo,
+}: {
+  lessonId: string;
+  stats: LessonStats;
+  published: boolean;
+  quiz: QuizQuestion[];
+  lesson: EditableLesson;
+  update: UpdateLesson;
+  aiOn: boolean;
+  goTo: (tab: TabKey) => void;
+}) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
 
@@ -114,6 +134,8 @@ export function RekapTab({ lessonId, stats, published, quiz }: { lessonId: strin
         i,
         attempts: s?.attempts ?? 0,
         pct: s && s.attempts ? Math.round((s.correct / s.attempts) * 100) : null,
+        wrong: s?.wrong ?? [],
+        hints: s?.hints ?? 0,
       };
     })
     .filter((x) => x.q.q.trim());
@@ -151,6 +173,10 @@ export function RekapTab({ lessonId, stats, published, quiz }: { lessonId: strin
           value={formatDuration(stats.avgDurationSec)}
         />
       </div>
+
+      <AnalysisCard lessonId={lessonId} stats={stats} lesson={lesson} update={update} aiOn={aiOn} goTo={goTo} />
+
+      <GroupsCard stats={stats} lesson={lesson} goTo={goTo} />
 
       <Card className="p-5">
         <h2 className="text-lg font-bold">Konsep yang perlu dibahas ulang</h2>
@@ -231,7 +257,7 @@ export function RekapTab({ lessonId, stats, published, quiz }: { lessonId: strin
             </p>
           ) : (
             <ol className="mt-3 divide-y divide-garis">
-              {questions.map(({ q, i, attempts, pct }) => (
+              {questions.map(({ q, i, attempts, pct, wrong, hints }) => (
                 <li key={i} className="grid gap-2 py-3 sm:grid-cols-[1fr_14rem] sm:items-center">
                   <div className="min-w-0">
                     <p className="font-bold">
@@ -240,6 +266,12 @@ export function RekapTab({ lessonId, stats, published, quiz }: { lessonId: strin
                     <Badge tone={QUIZ_TONE[quizType(q)]} className="mt-1">
                       {QUIZ_TYPE_LABEL[quizType(q)]}
                     </Badge>
+                    {wrong.length > 0 && (
+                      <p className="mt-1 text-[14px] text-tinta-2">
+                        Jawaban salah yang sering: {wrong.map((w) => `“${w.text}” (${w.n})`).join(", ")}
+                      </p>
+                    )}
+                    {hints > 0 && <p className="text-[14px] text-tinta-2">Petunjuk dibuka di {hints} sesi.</p>}
                   </div>
                   {pct === null ? (
                     <p className="text-[14px] text-tinta-2">Belum ada jawaban</p>

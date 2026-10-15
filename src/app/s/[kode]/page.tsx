@@ -54,6 +54,12 @@ export default async function StudentPage({ params }: Props) {
     figures,
     // Soal yang belum lengkap tidak ditampilkan; pilihan kosong dibuang dan kunci jawabannya disesuaikan.
     quiz: (lesson.quiz ?? []).map(playableQuestion).filter((q): q is QuizQuestion => q !== null),
+    // Latihan adaptif dan tugas berjenjang: hanya yang sudah dicek guru.
+    practice: (lesson.practice ?? [])
+      .filter((q) => q.origin !== "ai" && q.concept?.trim())
+      .map(playableQuestion)
+      .filter((q): q is QuizQuestion => q !== null),
+    jenjang: lesson.jenjang?.checked ? lesson.jenjang.data : null,
   };
 
   return <StudentApp lesson={data} />;

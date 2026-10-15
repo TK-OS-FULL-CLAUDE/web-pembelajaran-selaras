@@ -32,6 +32,7 @@ import { MODE_TONE, TONES } from "@/lib/modes";
 import { ReaderText } from "../../reader-text";
 import { Badge, Button, IconChip, Notice, Spinner, Textarea, cx } from "../../ui";
 import { useToast } from "../../toast";
+import { FaithfulnessCheck } from "./faithfulness-check";
 import { GlossaryEditor } from "./glossary-editor";
 import type { EditableLesson, TabKey, UpdateLesson } from "./lesson-editor";
 import { VersionComparison } from "./version-comparison";
@@ -297,6 +298,13 @@ export function VersiTab({
                   <p className="mt-1 text-[14px] text-tinta-2">
                     {wordCount(v.text)} kata, materi asli {wordCount(lesson.body)} kata.
                   </p>
+                  <FaithfulnessCheck
+                    lessonId={lessonId}
+                    target={key}
+                    draft={v.text}
+                    source={lesson.body}
+                    aiOn={aiOn}
+                  />
                   {isRegionalVersion(key) && (
                     <div className="mt-4">
                       <p className="mb-2 text-[15px] font-bold">Glosarium dua bahasa</p>

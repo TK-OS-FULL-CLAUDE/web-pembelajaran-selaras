@@ -22,7 +22,16 @@ const schema = z
     durasi: z.number().int().min(0).max(10_800).optional(),
     /** Benar/salah tiap soal; k = kunci soal. */
     detail: z
-      .array(z.object({ k: z.string().regex(/^[0-9a-f]{1,8}$/), b: z.boolean() }))
+      .array(
+        z.object({
+          k: z.string().regex(/^[0-9a-f]{1,8}$/),
+          b: z.boolean(),
+          /** Jawaban siswa yang dipilih/ditulis (untuk melihat pengecoh yang sering dipilih). */
+          j: z.string().max(120).optional(),
+          /** Jumlah petunjuk yang dibuka. */
+          h: z.number().int().min(0).max(3).optional(),
+        }),
+      )
       .max(40)
       .optional(),
   })

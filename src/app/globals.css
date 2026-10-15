@@ -205,6 +205,28 @@
 .reader-text h3 + * {
   margin-top: 0.55em;
 }
+/* Notasi matematika: pecahan bersusun dan pangkat (lihat parseInline di src/lib/text.ts) */
+.pecahan-susun {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  vertical-align: middle;
+  margin: 0 0.12em;
+  font-size: 0.86em;
+  line-height: 1.12;
+  font-variant-numeric: lining-nums tabular-nums;
+}
+.pecahan-atas {
+  border-bottom: 0.09em solid currentColor;
+  padding: 0 0.18em;
+}
+.pecahan-susun > span:last-child {
+  padding: 0 0.18em;
+}
+sup {
+  font-size: 0.72em;
+  line-height: 0;
+}
 .reader-text strong {
   font-weight: 700;
   color: var(--reader-ink);

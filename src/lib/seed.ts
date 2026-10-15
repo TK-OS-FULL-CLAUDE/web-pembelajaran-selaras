@@ -38,14 +38,32 @@ import {
   TUMBUHAN_SUNDA,
   TUMBUHAN_SUNDA_GLOSSARY,
 } from "./demo-content";
+import {
+  DEMO_SHARE_CODE_PECAHAN,
+  FOTOSINTESIS_EXTRA,
+  FOTOSINTESIS_JENJANG,
+  FOTOSINTESIS_PRACTICE,
+  PECAHAN_BODY,
+  PECAHAN_EXTRA,
+  PECAHAN_GLOSSARY,
+  PECAHAN_MUDAH,
+  PECAHAN_PRACTICE,
+  PECAHAN_QUIZ,
+  PECAHAN_RINGKASAN,
+  PROSEDUR_EXTRA,
+  TUMBUHAN_EXTRA,
+  type QuizExtra,
+} from "./demo-adaptif";
 import { DEMO_IMAGES } from "./demo-images";
 import { hashPassword } from "./password";
 import { questionKey } from "./quiz";
 import { figureIds, fingerprint } from "./text";
-import type { GlossaryItem, LessonFigures, LessonVersions, QuizQuestion, StudentPrefs } from "./types";
+import type { GlossaryItem, Jenjang, LessonFigures, LessonVersions, QuizQuestion, StudentPrefs, TeachingKit } from "./types";
 
 // Data demo sesuai rencana build: 1 guru, 2 kelas, 3 materi terbit (masing-masing 4 versi yang sudah
 // dicek + kuis 5 soal), 1 draf untuk mendemokan AI, dan ±60 hasil kuis di semua cara belajar.
+// Ditambah (demo-adaptif.ts): konsep & petunjuk per soal, jawaban salah yang khas untuk analisis rekap,
+// bank latihan adaptif dan tugas berjenjang (Fotosintesis), serta materi Matematika "Pecahan Senilai" (DEMO04).
 
 type DemoLesson = {
   classKey: "4B" | "6A";
@@ -53,9 +71,15 @@ type DemoLesson = {
   subject: string;
   body: string;
   glossary: GlossaryItem[];
-  texts: { mudah: string; ringkasan: string; jawa: string; sunda: string };
-  regionalGlossary: { jawa: GlossaryItem[]; sunda: GlossaryItem[] };
+  texts: { mudah: string; ringkasan: string; jawa?: string; sunda?: string };
+  regionalGlossary?: { jawa: GlossaryItem[]; sunda: GlossaryItem[] };
   quiz: QuizQuestion[];
+  /** Konsep, petunjuk, dan jawaban salah yang sering dipilih per soal (demo-adaptif.ts). */
+  extra: QuizExtra[];
+  /** Bank latihan adaptif yang sudah dicek guru. */
+  practice?: QuizQuestion[];
+  /** Tugas berjenjang (TaRL) yang sudah dicek guru. */
+  jenjang?: Jenjang;
   shareCode: string;
   hoursAgo: number;
   sessions: number;
@@ -78,6 +102,9 @@ const DEMO_LESSONS: DemoLesson[] = [
     },
     regionalGlossary: { jawa: FOTOSINTESIS_JAWA_GLOSSARY, sunda: FOTOSINTESIS_SUNDA_GLOSSARY },
     quiz: FOTOSINTESIS_QUIZ,
+    extra: FOTOSINTESIS_EXTRA,
+    practice: FOTOSINTESIS_PRACTICE,
+    jenjang: FOTOSINTESIS_JENJANG,
     shareCode: DEMO_SHARE_CODE,
     hoursAgo: 26,
     sessions: 24,
@@ -92,6 +119,7 @@ const DEMO_LESSONS: DemoLesson[] = [
     texts: { mudah: TUMBUHAN_MUDAH, ringkasan: TUMBUHAN_RINGKASAN, jawa: TUMBUHAN_JAWA, sunda: TUMBUHAN_SUNDA },
     regionalGlossary: { jawa: TUMBUHAN_JAWA_GLOSSARY, sunda: TUMBUHAN_SUNDA_GLOSSARY },
     quiz: TUMBUHAN_QUIZ,
+    extra: TUMBUHAN_EXTRA,
     shareCode: DEMO_SHARE_CODE_TUMBUHAN,
     hoursAgo: 5,
     sessions: 20,
@@ -106,10 +134,26 @@ const DEMO_LESSONS: DemoLesson[] = [
     texts: { mudah: PROSEDUR_MUDAH, ringkasan: PROSEDUR_RINGKASAN, jawa: PROSEDUR_JAWA, sunda: PROSEDUR_SUNDA },
     regionalGlossary: { jawa: PROSEDUR_JAWA_GLOSSARY, sunda: PROSEDUR_SUNDA_GLOSSARY },
     quiz: PROSEDUR_QUIZ,
+    extra: PROSEDUR_EXTRA,
     shareCode: DEMO_SHARE_CODE_PROSEDUR,
     hoursAgo: 3,
     sessions: 22,
     homeLang: "sunda",
+  },
+  {
+    classKey: "4B",
+    title: "Pecahan Senilai",
+    subject: "Matematika",
+    body: PECAHAN_BODY,
+    glossary: PECAHAN_GLOSSARY,
+    texts: { mudah: PECAHAN_MUDAH, ringkasan: PECAHAN_RINGKASAN },
+    quiz: PECAHAN_QUIZ,
+    extra: PECAHAN_EXTRA,
+    practice: PECAHAN_PRACTICE,
+    shareCode: DEMO_SHARE_CODE_PECAHAN,
+    hoursAgo: 2,
+    sessions: 22,
+    homeLang: "jawa",
   },
 ];
 
@@ -131,7 +175,7 @@ type DemoSession = {
   alias: string;
   prefs: StudentPrefs;
   score: number | null;
-  detail: { k: string; b: boolean }[] | null;
+  detail: { k: string; b: boolean; j?: string; h?: number }[] | null;
   seconds: number;
   minutesAgo: number;
 };
@@ -163,8 +207,20 @@ function demoSessions(lesson: DemoLesson, seed: number): DemoSession[] {
     const finished = rand() < 0.88;
     // Siswa yang memakai versi teks lain sedikit lebih sering benar (sesuai tujuan Selaras; data fiktif).
     const boost = versi === "asli" ? 0 : 0.06;
+    // Jawaban salah memakai pengecoh yang khas (yang pertama paling sering), supaya analisis rekap punya bahan.
     const detail = finished
-      ? lesson.quiz.map((q, qi) => ({ k: questionKey(q), b: rand() < DIFFICULTY[qi % DIFFICULTY.length] + boost }))
+      ? lesson.quiz.map((q, qi) => {
+          const b = rand() < DIFFICULTY[qi % DIFFICULTY.length] + boost;
+          const wrong = lesson.extra[qi]?.wrong ?? [];
+          const r = rand();
+          const hint = rand();
+          return {
+            k: questionKey(q),
+            b,
+            ...(!b && wrong.length ? { j: wrong[r < 0.62 ? 0 : r < 0.88 ? Math.min(1, wrong.length - 1) : wrong.length - 1] } : {}),
+            ...((q.hints?.length || lesson.extra[qi]?.hints.length) && hint < (b ? 0.12 : 0.35) ? { h: hint < 0.1 ? 2 : 1 } : {}),
+          };
+        })
       : null;
     const score = detail ? detail.filter((d) => d.b).length : null;
     return {
@@ -242,22 +298,32 @@ export async function seedDemo(sql: Sql, { reset }: { reset: boolean }) {
     const versions: LessonVersions = {
       mudah: version(demo.texts.mudah),
       ringkasan: version(demo.texts.ringkasan),
-      jawa: version(demo.texts.jawa, demo.regionalGlossary.jawa),
-      sunda: version(demo.texts.sunda, demo.regionalGlossary.sunda),
+      ...(demo.texts.jawa ? { jawa: version(demo.texts.jawa, demo.regionalGlossary?.jawa) } : {}),
+      ...(demo.texts.sunda ? { sunda: version(demo.texts.sunda, demo.regionalGlossary?.sunda) } : {}),
     };
+    // Soal kuis demo diberi konsep dan petunjuk bertahap (latihan adaptif & rekap konsep).
+    const quiz = demo.quiz.map((q, i) => ({
+      ...q,
+      concept: q.concept ?? demo.extra[i]?.concept,
+      ...(q.hints?.length || demo.extra[i]?.hints.length ? { hints: q.hints ?? demo.extra[i].hints } : {}),
+    }));
+    const teachingKit: TeachingKit = demo.jenjang
+      ? { jenjang: { data: demo.jenjang, origin: "ai", checked: true, basedOn, updatedAt: at.toISOString() } }
+      : {};
 
     const [lesson] = await sql<{ id: string }[]>`
-      insert into lessons (teacher_id, class_id, title, subject, body, glossary, versions, quiz, figures, status, share_code, published_at, created_at, updated_at)
+      insert into lessons (teacher_id, class_id, title, subject, body, glossary, versions, quiz, practice, teaching_kit, figures, status, share_code, published_at, created_at, updated_at)
       values (
         ${teacherId}, ${classIds[demo.classKey]}, ${demo.title}, ${demo.subject}, ${demo.body},
-        ${sql.json(demo.glossary)}, ${sql.json(versions as never)}, ${sql.json(demo.quiz as never)},
+        ${sql.json(demo.glossary)}, ${sql.json(versions as never)}, ${sql.json(quiz as never)},
+        ${sql.json((demo.practice ?? []) as never)}, ${sql.json(teachingKit as never)},
         ${sql.json(demoFigures([demo.body, ...Object.values(demo.texts)].join("\n")) as never)},
         'published', ${demo.shareCode}, ${at}, ${at}, ${at}
       )
       returning id`;
 
     const events: Record<string, unknown>[] = [];
-    for (const [i, s] of demoSessions(demo, 7 + n * 31).entries()) {
+    for (const [i, s] of demoSessions({ ...demo, quiz }, 7 + n * 31).entries()) {
       const openedAt = new Date(Date.now() - s.minutesAgo * 60_000);
       const base = { lesson_id: lesson.id, session_id: `demo-${n + 1}-${i + 1}`, student_alias: s.alias };
       events.push({

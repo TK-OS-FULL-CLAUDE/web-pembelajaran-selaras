@@ -19,7 +19,15 @@ import {
 } from "lucide-react";
 import { Fragment, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { figureSpeech, parseBlocks, parseInline, sentenceRanges, type CalloutKind, type Inline } from "@/lib/text";
+import {
+  figureSpeech,
+  inlineSpeech,
+  parseBlocks,
+  parseInline,
+  sentenceRanges,
+  type CalloutKind,
+  type Inline,
+} from "@/lib/text";
 import type { GlossaryItem, LessonFigures } from "@/lib/types";
 
 type SentenceRef = { index: number; start: number; end: number };
@@ -53,7 +61,7 @@ export function buildStructure(text: string, figures?: LessonFigures) {
     if (whole && ranges.length > 1) ranges = [[ranges[0][0], ranges[ranges.length - 1][1]]];
     return {
       inline,
-      sentences: ranges.map(([start, end]) => ({ index: add(inline.plain.slice(start, end)), start, end })),
+      sentences: ranges.map(([start, end]) => ({ index: add(inlineSpeech(inline, start, end)), start, end })),
     };
   };
 
@@ -123,12 +131,37 @@ function renderMarked(inline: Inline, s: number, e: number, key: string): ReactN
     if (b <= a) continue;
     let node: ReactNode = inline.plain.slice(a, b);
     const active = inline.marks.filter((m) => m.start <= a && m.end >= b);
+    const frac = active.find((m) => m.type === "frac");
+    if (frac && frac.start === a && frac.end === b) node = <Fraction text={inline.plain.slice(a, b)} />;
+    if (active.some((m) => m.type === "sup")) node = <sup>{node}</sup>;
     if (active.some((m) => m.type === "i")) node = <em>{node}</em>;
     if (active.some((m) => m.type === "b")) node = <strong>{node}</strong>;
     if (active.some((m) => m.type === "m")) node = <mark>{node}</mark>;
     out.push(<Fragment key={`${key}-${a}`}>{node}</Fragment>);
   }
   return out;
+}
+
+/** Pecahan bersusun. Pembaca layar membacanya "3 per 4". */
+function Fraction({ text }: { text: string }) {
+  const [top, bottom] = text.split("/");
+  return (
+    <span className="pecahan">
+      <span className="sr-only">
+        {top} per {bottom}
+      </span>
+      <span className="pecahan-susun" aria-hidden>
+        <span className="pecahan-atas">{top}</span>
+        <span>{bottom}</span>
+      </span>
+    </span>
+  );
+}
+
+/** Teks satu baris dengan format Selaras (tebal, miring, pangkat, pecahan), mis. untuk soal kuis dan LKPD. */
+export function InlineText({ text }: { text: string }) {
+  const inline = parseInline(text);
+  return <>{renderMarked(inline, 0, inline.plain.length, "t")}</>;
 }
 
 const CALLOUT_ICON: Record<CalloutKind, LucideIcon> = {

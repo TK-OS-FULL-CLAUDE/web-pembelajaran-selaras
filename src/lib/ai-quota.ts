@@ -12,14 +12,15 @@ export function aiLimitPerHour(): number {
   return Number.isFinite(n) && n > 0 ? Math.floor(n) : DEFAULT_LIMIT_PER_HOUR;
 }
 
+export type AiKind = "foto" | "versi" | "kuis" | "perangkat" | "latihan" | "analisis" | "periksa" | "alt";
+
 /**
  * Catat satu permintaan AI untuk guru ini, atau tolak (HTTP 429) bila batas per jam sudah tercapai.
  * Panggil tepat sebelum memanggil AI, setelah input lolos validasi.
  */
 export async function consumeAiQuota(
   teacherId: string,
-  kind: "foto" | "versi" | "kuis" | "alt" | "perangkat",
-): Promise<void> {
+  kind: AiKind): Promise<void> {
   const sql = await getDb();
   const limit = aiLimitPerHour();
   const [row] = await sql<{ used: number; oldest: Date | null }[]>`

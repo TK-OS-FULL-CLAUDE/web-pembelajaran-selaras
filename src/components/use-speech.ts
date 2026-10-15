@@ -4,6 +4,7 @@
 // Teks dibacakan per kalimat supaya kalimat yang sedang dibaca bisa disorot.
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { spokenMath } from "@/lib/matematika";
 
 export type SpeechRate = 0.8 | 1 | 1.2;
 
@@ -48,7 +49,8 @@ export function useSpeech() {
       setCurrent(-1);
       return;
     }
-    const utter = new SpeechSynthesisUtterance(queue.current[index]);
+    // Simbol matematika dibacakan sebagai kata ("3 × 4" → "3 kali 4"); teks lain tidak berubah.
+    const utter = new SpeechSynthesisUtterance(spokenMath(queue.current[index]));
     const voice = pickVoice(settings.current.lang);
     if (voice) {
       utter.voice = voice;

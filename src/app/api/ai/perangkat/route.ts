@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { fail, ok, readJson, withTeacher } from "@/lib/api";
 import { AiError } from "@/lib/ai-common";
-import { makeLkpd, makeLkpdMudah, makeModulAjar, makeRubrik } from "@/lib/ai-perangkat";
+import { makeJenjang, makeLkpd, makeLkpdMudah, makeModulAjar, makeRubrik } from "@/lib/ai-perangkat";
 import { consumeAiQuota } from "@/lib/ai-quota";
 import { getClass, getLesson } from "@/lib/data";
 import { defaultAlokasi, modulIdentity } from "@/lib/perangkat";
@@ -18,7 +18,7 @@ const shortLines = z
 
 const schema = z.object({
   lessonId: z.string().uuid(),
-  jenis: z.enum(["modul", "lkpd", "lkpdMudah", "rubrik"]),
+  jenis: z.enum(["modul", "lkpd", "lkpdMudah", "rubrik", "jenjang"]),
   // Isi editor terbaru (bisa belum tersimpan); bila kosong dipakai isi di database.
   body: z.string().max(30_000).optional(),
   mudahText: z.string().max(30_000).optional(),
@@ -78,6 +78,10 @@ export async function POST(req: Request) {
       } else if (input.jenis === "lkpdMudah") {
         const { data } = await makeLkpdMudah({ ...base, mudahText });
         item = { data, ...meta(fingerprint(mudahText)) };
+      } else if (input.jenis === "jenjang") {
+        const konsep = [...new Set(lesson.quiz.map((q) => q.concept?.trim()).filter((c): c is string => !!c))];
+        const { data } = await makeJenjang({ ...base, tujuan: input.tujuan, konsep });
+        item = { data, ...meta(fingerprint(body)) };
       } else {
         const { data } = await makeRubrik({ ...base, tujuan: input.tujuan, aktivitas: input.aktivitas });
         item = { data, ...meta(fingerprint(body)) };

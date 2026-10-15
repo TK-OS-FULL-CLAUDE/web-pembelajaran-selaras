@@ -51,6 +51,7 @@ export type EditableLesson = {
   quiz: QuizQuestion[];
   figures: LessonFigures;
   teachingKit: TeachingKit;
+  practice: QuizQuestion[];
 };
 
 /** Perubahan biasa, atau fungsi bila perubahan bergantung pada isi terbaru (mis. hasil AI yang datang belakangan). */
@@ -393,7 +394,18 @@ export function LessonEditor(props: EditorProps) {
             goTo={selectTab}
           />
         )}
-        {tab === "rekap" && <RekapTab lessonId={props.lessonId} stats={props.stats} published={status === "published"} quiz={lesson.quiz} />}
+        {tab === "rekap" && (
+          <RekapTab
+            lessonId={props.lessonId}
+            stats={props.stats}
+            published={status === "published"}
+            quiz={lesson.quiz}
+            lesson={lesson}
+            update={update}
+            aiOn={props.aiOn}
+            goTo={selectTab}
+          />
+        )}
       </div>
     </div>
   );
