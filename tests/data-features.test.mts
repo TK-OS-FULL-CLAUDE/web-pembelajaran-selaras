@@ -5,7 +5,8 @@ import { randomBytes, randomUUID } from "node:crypto";
 import nextEnv from "@next/env";
 import postgres from "postgres";
 import { SCHEMA_STATEMENTS } from "../src/lib/schema";
-import { createClass, createLesson, updateLesson, duplicateLesson, listLessons, recordStudentEvent, getLessonStats, publishLesson, getPublishedLesson, cleanupImages } from "../src/lib/data";
+import { SCHEMA_VERSION } from "../src/lib/db";
+import { createClass, createLesson, updateLesson, duplicateLesson, listLessons, recordStudentEvent, getLessonStats, publishLesson, getPublishedLesson, cleanupImages, listLessonAudiences, setLessonAudience, unpublishLesson } from "../src/lib/data";
 import { listRevisions, getRevision, restoreRevision } from "../src/lib/lesson-history";
 import { DEFAULT_PREFS, EMPTY_NEEDS } from "../src/lib/types";
 import { questionKey } from "../src/lib/quiz";
@@ -20,6 +21,7 @@ const rollback = new Error("ROLLBACK_TEST_OK");
 let passed = 0;
 const previousSql = globalThis.__selarasSql;
 const previousReady = globalThis.__selarasReady;
+const previousVersion = globalThis.__selarasSchemaVersion;
 try {
   await sql.begin(async (tx) => {
     await tx.unsafe(`create schema "${namespace}"`);
@@ -27,6 +29,7 @@ try {
     for (let run = 0; run < 2; run++) for (const statement of SCHEMA_STATEMENTS) await tx.unsafe(statement);
     globalThis.__selarasSql = tx as unknown as typeof sql;
     globalThis.__selarasReady = Promise.resolve();
+    globalThis.__selarasSchemaVersion = SCHEMA_VERSION;
     const [teacher] = await tx`insert into teachers(email, name, school, password_hash) values ('uji@example.invalid', 'Guru uji', 'Sekolah uji', 'not-a-password') returning id`;
     const [other] = await tx`insert into teachers(email, name, password_hash) values ('lain@example.invalid', 'Guru lain', 'not-a-password') returning id`;
     const cls = await createClass(teacher.id, { name: "6A", grade: "SD 6", needs: EMPTY_NEEDS });
@@ -60,10 +63,10 @@ try {
     assert.equal(stats.avgScorePct, 50); assert.equal(stats.byConcept[0].sessions, 2); assert.equal(stats.byConcept[0].pct, 50);
     passed++; console.log("✓ Dua siswa terpisah; retry idempoten; hasil terlambat tidak menimpa percobaan terbaru");
     const restored = await restoreRevision(teacher.id, lesson.id, 1, 2);
-    assert.ok(restored?.ok); assert.equal(restored.lesson.status, "draft"); assert.equal(restored.lesson.body, lesson.body);
+    assert.ok(restored?.ok); assert.equal(restored.lesson.status, "published"); assert.equal(restored.lesson.body, lesson.body);
     assert.equal(restored.lesson.revision, 3); assert.equal((await getLessonStats(lesson.id)).totalQuizAttempts, 3);
-    assert.equal(await getPublishedLesson(pub!.share_code!), null);
-    passed++; console.log("✓ Pemulihan menjadi draf baru tanpa menghapus hasil kuis");
+    assert.equal((await getPublishedLesson(pub!.share_code!))?.body, "Materi diperbarui untuk belajar pecahan.");
+    passed++; console.log("✓ Pemulihan menjadi draf perubahan; siswa tetap melihat terbitan sebelumnya dan hasil kuis tersimpan");
     const imageId = randomUUID();
     await tx`insert into lesson_images(id, teacher_id, mime, data, bytes, created_at) values (${imageId}, ${teacher.id}, 'image/png', ${Buffer.from([1, 2])}, 2, now() - interval '3 hours')`;
     await updateLesson(teacher.id, lesson.id, { body: `![contoh](gambar:${imageId})` }, { baseRevision: 3 });
@@ -74,6 +77,65 @@ try {
     await recordStudentEvent({ ...first, sessionId: "siswa-C", eventId: "attempt-C1", alias: "C" });
     assert.equal((await getLessonStats(lesson.id)).sessions, 3);
     passed++; console.log("✓ Sesi kuis tetap dihitung jika catatan membuka materi belum tiba");
+
+    const clsB = await createClass(teacher.id, { name: "6B", grade: "SD 6", needs: { ...EMPTY_NEEDS, tuli: 1 } });
+    const foreignClass = await createClass(other.id, { name: "Kelas guru lain", grade: "SD 6", needs: EMPTY_NEEDS });
+    assert.equal(await setLessonAudience(other.id, lesson.id, clsB.id, true), null);
+    assert.equal(await setLessonAudience(teacher.id, lesson.id, foreignClass.id, true), null);
+    const audienceB = await setLessonAudience(teacher.id, lesson.id, clsB.id, true);
+    assert.ok(audienceB);
+    const audienceA = (await listLessonAudiences(teacher.id, lesson.id)).find((a) => a.class_id === cls.id)!;
+    assert.notEqual(audienceA.share_code, audienceB.share_code);
+    assert.equal((await getPublishedLesson(audienceB.share_code))?.class_name, "6B");
+    assert.equal((await getPublishedLesson(audienceB.share_code))?.body, "Materi diperbarui untuk belajar pecahan.");
+    assert.ok((await listLessons(teacher.id, clsB.id)).some((l) => l.id === lesson.id));
+    passed++; console.log("✓ Satu materi masuk dua kelas dengan kode sendiri; kelas guru lain ditolak");
+
+    await recordStudentEvent({ ...second, audienceId: audienceB.id, eventId: "attempt-B-class", sessionId: "siswa-A", score: 0 });
+    assert.equal((await getLessonStats(lesson.id, { audienceId: audienceA.id })).sessions, 3);
+    assert.equal((await getLessonStats(lesson.id, { audienceId: audienceB.id })).sessions, 1);
+    assert.equal((await getLessonStats(lesson.id)).sessions, 4);
+    assert.equal((await getLessonStats(lesson.id, { audienceId: audienceA.id })).totalQuizAttempts, 4);
+    assert.equal((await getLessonStats(lesson.id, { audienceId: audienceB.id })).totalQuizAttempts, 1);
+    assert.equal((await listLessons(teacher.id, clsB.id)).find((l) => l.id === lesson.id)?.sessions, 1);
+    passed++; console.log("✓ Rekap per kelas terpisah, termasuk saat ID sesi sama pada dua kelas");
+
+    const feedback = { ...event, kind: "confused" as const, audienceId: audienceB.id, eventId: "feedback-B1", feedback: { section: "Membandingkan pecahan", revision: 2 } };
+    await recordStudentEvent(feedback); await recordStudentEvent(feedback);
+    await recordStudentEvent({ ...feedback, eventId: "feedback-B2" });
+    const confused = await getLessonStats(lesson.id, { audienceId: audienceB.id });
+    assert.equal(confused.confusion.length, 1); assert.equal(confused.confusion[0].sessions, 1);
+    assert.equal((await getLessonStats(lesson.id, { audienceId: audienceA.id })).confusion.length, 0);
+    assert.equal(confused.totalQuizAttempts, 1);
+    passed++; console.log("✓ Belum paham dihitung sekali per sesi/bagian/versi dan tidak mengubah hasil kuis");
+
+    assert.equal(await publishLesson(teacher.id, lesson.id, 2), null);
+    assert.equal((await getPublishedLesson(pub!.share_code!))?.body, "Materi diperbarui untuk belajar pecahan.");
+    const republished = await publishLesson(teacher.id, lesson.id, 5);
+    assert.equal(republished?.published_revision, 5);
+    assert.equal((await getPublishedLesson(audienceA.share_code))?.body, "Tanpa gambar");
+    assert.equal((await getPublishedLesson(audienceB.share_code))?.body, "Tanpa gambar");
+    assert.equal(republished?.share_code, pub?.share_code);
+    passed++; console.log("✓ Revisi lama gagal terbit; satu penerbitan memperbarui semua kelas dengan link tetap");
+
+    await setLessonAudience(teacher.id, lesson.id, clsB.id, false);
+    assert.equal(await getPublishedLesson(audienceB.share_code), null);
+    assert.ok(await getPublishedLesson(audienceA.share_code));
+    assert.equal((await getLessonStats(lesson.id, { audienceId: audienceB.id })).totalQuizAttempts, 1);
+    assert.ok(!(await listLessons(teacher.id, clsB.id)).some((l) => l.id === lesson.id));
+    const enabledB = await setLessonAudience(teacher.id, lesson.id, clsB.id, true);
+    assert.equal(enabledB?.share_code, audienceB.share_code);
+    await unpublishLesson(teacher.id, lesson.id);
+    assert.equal(await getPublishedLesson(audienceA.share_code), null);
+    assert.equal(await getPublishedLesson(audienceB.share_code), null);
+    passed++; console.log("✓ Nonaktif per kelas mempertahankan rekap/kode; tarik materi menutup semua kelas");
+
+    await publishLesson(teacher.id, lesson.id, 5);
+    await updateLesson(teacher.id, lesson.id, { body: "Draf belum boleh tampil" }, { baseRevision: 5 });
+    for (const statement of SCHEMA_STATEMENTS) await tx.unsafe(statement);
+    assert.equal((await getPublishedLesson(audienceA.share_code))?.body, "Tanpa gambar");
+    assert.equal((await getLessonStats(lesson.id, { audienceId: audienceB.id })).sessions, 1);
+    passed++; console.log("✓ Migrasi berulang tidak menerbitkan draf atau mencampur ulang data antarkelas");
     throw rollback;
   });
 } catch (error) {
@@ -82,5 +144,6 @@ try {
 } finally {
   globalThis.__selarasSql = previousSql;
   globalThis.__selarasReady = previousReady;
+  globalThis.__selarasSchemaVersion = previousVersion;
   await sql.end();
 }

@@ -3,6 +3,7 @@ import { auditLesson, conceptStats, csvCell, comparisonTokens } from "../src/lib
 import { clearLearnerPreferences, enqueueEvent, flushEvents, outboxState, queuedEvents, type StudentEvent } from "../src/lib/student-outbox";
 import { DEFAULT_PREFS, type QuizQuestion } from "../src/lib/types";
 import { questionKey } from "../src/lib/quiz";
+import { feedbackSections } from "../src/lib/feedback";
 
 class MemoryStorage {
   data = new Map<string, string>();
@@ -80,5 +81,22 @@ await test("Pembanding menandai perubahan urutan, bukan hanya kata baru", () => 
   assert.equal(comparisonTokens("A\nB", "A\nB").some((t) => t.changed), false);
   assert.ok(comparisonTokens("A\nB", "B\nA").some((t) => t.changed));
   assert.ok(comparisonTokens("air menyerap akar", "akar menyerap air").some((t) => t.changed));
+});
+await test("Bagian belum paham mengikuti judul versi bacaan dan menghapus duplikasi", () => {
+  assert.deepEqual(feedbackSections("Tanpa judul bagian."), ["Materi secara keseluruhan"]);
+  assert.deepEqual(feedbackSections("## Pecahan\nIsi.\n## Pecahan\nIsi lain.\n### Membandingkan"),
+    ["Materi secara keseluruhan", "Pecahan", "Membandingkan"]);
+});
+await test("Laporan belum paham tetap terikat kelas/siswa lama setelah Ganti siswa saat offline", async () => {
+  globalThis.fetch = async () => { throw new Error("offline"); };
+  const report: StudentEvent = { ...event("feedback-offline", "student-before"), kind: "confused", code: "KELASB",
+    feedback: { section: "Pecahan", revision: 3 } };
+  enqueueEvent(report); await flushEvents(); clearLearnerPreferences(storage);
+  report.code = "KELASC"; report.feedback!.section = "Diubah";
+  const pending = queuedEvents()[0];
+  assert.equal(pending.code, "KELASB"); assert.equal(pending.sessionId, "student-before");
+  assert.deepEqual(pending.feedback, { section: "Pecahan", revision: 3 });
+  globalThis.fetch = async () => new Response("{}"); await flushEvents();
+  assert.equal(outboxState().pending, 0);
 });
 console.log(`${passed} pengujian siswa dan guru lulus.`);

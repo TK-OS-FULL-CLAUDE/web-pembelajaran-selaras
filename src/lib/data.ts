@@ -34,7 +34,8 @@ export function isUuid(value: string | null | undefined): value is string {
 export async function listClasses(teacherId: string) {
   const sql = await getDb();
   const rows = await sql<(ClassRow & { lesson_count: number })[]>`
-    select c.*, (select count(*)::int from lessons l where l.class_id = c.id) as lesson_count
+    select c.*, (select count(*)::int from lessons l where l.class_id = c.id or exists
+      (select 1 from lesson_audiences a where a.lesson_id = l.id and a.class_id = c.id and a.active)) as lesson_count
     from classes c where c.teacher_id = ${teacherId}
     order by c.created_at asc`;
   return rows.map((r) => ({ ...r, needs: normalizeNeeds(r.needs) }));
@@ -74,10 +75,10 @@ export async function updateClass(
 export async function deleteClass(teacherId: string, classId: string) {
   if (!isUuid(classId)) return false;
   const sql = await getDb();
-  // Satu transaksi: materi dan kelas terhapus bersama, atau tidak sama sekali.
-  // Materi dihapus lebih dulu: jika kelas dihapus duluan, class_id materi berubah jadi null (on delete set null).
+  // Materi bersama dan hasil belajar dipertahankan ketika sebuah kelas dihapus.
   return sql.begin(async (tx) => {
-    await tx`delete from lessons where class_id = ${classId} and teacher_id = ${teacherId}`;
+    await tx`update lesson_audiences a set active = false from lessons l
+      where a.lesson_id = l.id and a.class_id = ${classId} and l.teacher_id = ${teacherId}`;
     const rows = await tx`delete from classes where id = ${classId} and teacher_id = ${teacherId} returning id`;
     return rows.length > 0;
   });
@@ -88,18 +89,24 @@ export async function deleteClass(teacherId: string, classId: string) {
 export type LessonSummary = Pick<
   LessonRow,
   "id" | "title" | "subject" | "status" | "share_code" | "class_id" | "updated_at" | "versions"
-> & { class_name: string | null; sessions: number; topic: string; target_grade: string; is_template: boolean; grade: string };
+> & { class_name: string | null; sessions: number; topic: string; target_grade: string; is_template: boolean; grade: string; audience_id: string | null; has_draft: boolean };
 
 export async function listLessons(teacherId: string, classId?: string) {
   const sql = await getDb();
   return sql<LessonSummary[]>`
     select l.id, l.title, l.subject, l.status, l.share_code, l.class_id, l.updated_at, l.versions,
-      c.name as class_name, l.topic, l.target_grade, l.is_template, coalesce(nullif(l.target_grade, ''), c.grade, '') as grade,
-      (select count(distinct e.session_id)::int from student_events e where e.lesson_id = l.id and e.kind in ('open', 'quiz')) as sessions
+      coalesce((select string_agg(coalesce(ac.name, a.class_name), ', ' order by ac.name) from lesson_audiences a
+        left join classes ac on ac.id = a.class_id where a.lesson_id = l.id and a.active), c.name) as class_name,
+      l.topic, l.target_grade, l.is_template, coalesce(nullif(l.target_grade, ''), c.grade, '') as grade,
+      l.status = 'published' and l.revision is distinct from l.published_revision as has_draft,
+      (select a.id from lesson_audiences a where a.lesson_id = l.id and a.class_id = ${classId ?? null}) as audience_id,
+      (select count(distinct (e.audience_id, e.session_id))::int from student_events e where e.lesson_id = l.id and e.kind in ('open', 'quiz', 'confused')
+        ${classId ? sql`and e.audience_id in (select a.id from lesson_audiences a where a.lesson_id = l.id and a.class_id = ${classId})` : sql``}) as sessions
     from lessons l
     left join classes c on c.id = l.class_id
     where l.teacher_id = ${teacherId}
-      ${classId ? sql`and l.class_id = ${classId}` : sql``}
+      ${classId ? sql`and (l.class_id = ${classId} or exists (select 1 from lesson_audiences a
+        where a.lesson_id = l.id and a.class_id = ${classId} and a.active))` : sql``}
     order by l.updated_at desc`;
 }
 
@@ -154,7 +161,7 @@ export async function updateLesson(
   teacherId: string,
   lessonId: string,
   patch: LessonPatch,
-  opts: { baseRevision?: number; force?: boolean; restoreDraft?: boolean } = {},
+  opts: { baseRevision?: number; force?: boolean } = {},
 ): Promise<UpdateResult> {
   if (!isUuid(lessonId)) return { ok: false, reason: "not_found" };
   const sql = await getDb();
@@ -172,7 +179,6 @@ export async function updateLesson(
       topic = coalesce(${patch.topic ?? null}, topic),
       target_grade = coalesce(${patch.target_grade ?? null}, target_grade),
       is_template = coalesce(${patch.is_template ?? null}, is_template),
-      status = case when ${opts.restoreDraft ?? false} then 'draft' else status end,
       teaching_kit = coalesce(${json(patch.teachingKit)}::jsonb, teaching_kit),
       practice = coalesce(${json(patch.practice)}::jsonb, practice),
       revision = revision + 1,
@@ -201,7 +207,8 @@ export async function countLessonsInClass(teacherId: string, classId: string) {
   if (!isUuid(classId)) return 0;
   const sql = await getDb();
   const [row] = await sql<{ n: number }[]>`
-    select count(*)::int as n from lessons where class_id = ${classId} and teacher_id = ${teacherId}`;
+    select count(*)::int as n from lessons l where teacher_id = ${teacherId} and
+      (class_id = ${classId} or exists (select 1 from lesson_audiences a where a.lesson_id = l.id and a.class_id = ${classId} and a.active))`;
   return row.n;
 }
 
@@ -222,22 +229,25 @@ function newShareCode() {
   return code;
 }
 
-export async function publishLesson(teacherId: string, lessonId: string) {
+export async function publishLesson(teacherId: string, lessonId: string, baseRevision?: number) {
   const sql = await getDb();
   const lesson = await getLesson(teacherId, lessonId);
   if (!lesson) return null;
-  if (lesson.share_code) {
-    const rows = await sql<LessonRow[]>`
-      update lessons set status = 'published', published_at = coalesce(published_at, now())
-      where id = ${lessonId} and teacher_id = ${teacherId} returning *`;
-    return rows[0];
-  }
   for (let attempt = 0; attempt < 5; attempt++) {
     try {
       const rows = await sql<LessonRow[]>`
-        update lessons set status = 'published', share_code = ${newShareCode()}, published_at = now()
-        where id = ${lessonId} and teacher_id = ${teacherId} returning *`;
-      return rows[0];
+        with published as (
+          update lessons l set status = 'published', share_code = coalesce(share_code, ${newShareCode()}),
+            published_at = now(), published_content = to_jsonb(l) - 'published_content', published_revision = revision
+          where id = ${lessonId} and teacher_id = ${teacherId} and revision = ${baseRevision ?? lesson.revision}
+          returning l.*
+        ), audience as (
+          insert into lesson_audiences(lesson_id, class_id, class_name, share_code)
+          select p.id, p.class_id, c.name, p.share_code from published p left join classes c on c.id = p.class_id
+          where not exists (select 1 from lesson_audiences a where a.lesson_id = p.id and a.share_code = p.share_code)
+          returning id
+        ) select * from published`;
+      return rows[0] ?? null;
     } catch (err) {
       if ((err as { code?: string }).code !== "23505") throw err; // kode kembar, coba lagi
     }
@@ -253,12 +263,44 @@ export async function unpublishLesson(teacherId: string, lessonId: string) {
   return rows[0] ?? null;
 }
 
+export type LessonAudience = { id: string; class_id: string | null; class_name: string | null; share_code: string; active: boolean };
+
+export async function listLessonAudiences(teacherId: string, lessonId: string) {
+  if (!isUuid(lessonId)) return [];
+  const sql = await getDb();
+  return sql<LessonAudience[]>`select a.id, a.class_id, coalesce(c.name, a.class_name) as class_name, a.share_code, a.active
+    from lesson_audiences a join lessons l on l.id = a.lesson_id left join classes c on c.id = a.class_id
+    where l.id = ${lessonId} and l.teacher_id = ${teacherId} order by class_name nulls first, a.id`;
+}
+
+/** Satu kode per kelas; menonaktifkan link mempertahankan hasil yang sudah masuk. */
+export async function setLessonAudience(teacherId: string, lessonId: string, classId: string, active: boolean) {
+  if (!isUuid(lessonId) || !isUuid(classId)) return null;
+  const sql = await getDb();
+  for (let attempt = 0; attempt < 5; attempt++) {
+    try {
+      const rows = await sql<LessonAudience[]>`
+        insert into lesson_audiences(lesson_id, class_id, class_name, share_code, active)
+        select l.id, c.id, c.name, ${newShareCode()}, ${active}
+        from lessons l join classes c on c.teacher_id = l.teacher_id
+        where l.id = ${lessonId} and l.teacher_id = ${teacherId} and c.id = ${classId}
+          and l.share_code is not null and c.id is distinct from l.class_id
+        on conflict (lesson_id, class_id) do update set active = excluded.active, class_name = excluded.class_name
+        returning *`;
+      return rows[0] ?? null;
+    } catch (err) { if ((err as { code?: string }).code !== "23505") throw err; }
+  }
+  throw new Error("Gagal membuat kode kelas. Coba lagi.");
+}
+
 // ---------- Sisi siswa ----------
 
 export type PublicLesson = Pick<
   LessonRow,
   "id" | "title" | "subject" | "body" | "glossary" | "versions" | "quiz" | "figures" | "practice"
 > & {
+  audience_id: string;
+  published_revision: number;
   /** Hanya tugas berjenjang dari perangkat ajar; bagian lain perangkat ajar tidak pernah dipilih. */
   jenjang: KitItem<Jenjang> | null;
   share_code: string;
@@ -270,22 +312,26 @@ export type PublicLesson = Pick<
 export async function getPublishedLesson(code: string) {
   const sql = await getDb();
   const rows = await sql<PublicLesson[]>`
-    select l.id, l.title, l.subject, l.body, l.glossary, l.versions, l.quiz, l.figures, l.practice,
-      l.teaching_kit->'jenjang' as jenjang, l.share_code,
-      c.name as class_name, t.name as teacher_name, t.school as school_name
+    select l.id, p.title, p.subject, p.body, p.glossary, p.versions, p.quiz, p.figures, p.practice,
+      p.teaching_kit->'jenjang' as jenjang, a.share_code, a.id as audience_id, l.published_revision,
+      coalesce(c.name, a.class_name) as class_name, t.name as teacher_name, t.school as school_name
     from lessons l
+    join lesson_audiences a on a.lesson_id = l.id and a.active
+    cross join lateral jsonb_populate_record(null::lessons, l.published_content) p
     join teachers t on t.id = l.teacher_id
-    left join classes c on c.id = l.class_id
-    where upper(l.share_code) = ${code.toUpperCase()} and l.status = 'published'`;
+    left join classes c on c.id = a.class_id
+    where a.share_code = ${code.toUpperCase()} and l.status = 'published' and l.published_content is not null`;
   return rows[0] ?? null;
 }
 
 export async function recordStudentEvent(input: {
+  audienceId?: string;
+  feedback?: { section: string; revision: number };
   eventId?: string;
   occurredAt?: string;
   lessonId: string;
   sessionId: string;
-  kind: "open" | "quiz";
+  kind: "open" | "quiz" | "confused";
   alias: string | null;
   prefs: StudentPrefs;
   score?: number;
@@ -297,11 +343,13 @@ export async function recordStudentEvent(input: {
 }) {
   const sql = await getDb();
   await sql`
-    insert into student_events (lesson_id, session_id, kind, student_alias, prefs, score, total, duration_sec, detail, event_id, occurred_at)
+    insert into student_events (lesson_id, session_id, kind, student_alias, prefs, score, total, duration_sec, detail, event_id, occurred_at, audience_id, feedback)
     values (${input.lessonId}, ${input.sessionId}, ${input.kind}, ${input.alias}, ${sql.json(input.prefs)},
       ${input.score ?? null}, ${input.total ?? null}, ${input.durationSec ?? null},
       ${input.detail ? sql.json(input.detail as never) : null}, ${input.eventId ?? null},
-      least(coalesce(${input.occurredAt ?? null}::timestamptz, now()), now()))
+      least(coalesce(${input.occurredAt ?? null}::timestamptz, now()), now()),
+      coalesce(${input.audienceId ?? null}::uuid, (select a.id from lesson_audiences a join lessons l on l.id = a.lesson_id where l.id = ${input.lessonId} and a.share_code = l.share_code)),
+      ${input.feedback ? sql.json(input.feedback) : null})
     on conflict (lesson_id, event_id) do nothing`;
 }
 
@@ -311,6 +359,7 @@ export type QuestionResult = { k: string; b: boolean; j?: string; h?: number };
 // ---------- Rekap ----------
 
 export type LessonStats = {
+  confusion: { section: string; versi: string; revision: number; sessions: number }[];
   byConcept: ConceptStat[];
   totalQuizAttempts: number;
   sessions: number;
@@ -341,13 +390,20 @@ export type LessonStats = {
   }[];
 };
 
-export async function getLessonStats(lessonId: string, { allRecent = false } = {}): Promise<LessonStats> {
+export async function getLessonStats(lessonId: string, { allRecent = false, audienceId }: { allRecent?: boolean; audienceId?: string } = {}): Promise<LessonStats> {
   const sql = await getDb();
+  const scope = audienceId ? sql`and audience_id = ${audienceId}` : sql``;
+  const confusion = await sql<LessonStats["confusion"]>`
+    select feedback->>'section' as section, prefs->>'versi' as versi,
+      (feedback->>'revision')::int as revision, count(distinct (audience_id, session_id))::int as sessions
+    from student_events where lesson_id = ${lessonId} and kind = 'confused' and feedback is not null ${scope}
+    group by feedback->>'section', prefs->>'versi', feedback->>'revision'
+    order by sessions desc, section`;
   // Termasuk kuis: kiriman hasil dapat tiba sebelum catatan buka saat jaringan terputus.
   const opens = await sql<{ session_id: string; prefs: StudentPrefs }[]>`
-    select distinct on (session_id) session_id, prefs
-    from student_events where lesson_id = ${lessonId} and kind in ('open', 'quiz')
-    order by session_id, coalesce(occurred_at, created_at) desc, id desc`;
+    select distinct on (audience_id, student_events.session_id) concat(audience_id, ':', session_id) as session_id, prefs
+    from student_events where lesson_id = ${lessonId} and kind in ('open', 'quiz', 'confused') ${scope}
+    order by audience_id, student_events.session_id, coalesce(occurred_at, created_at) desc, id desc`;
   const quizzes = await sql<
     {
       session_id: string;
@@ -360,12 +416,13 @@ export async function getLessonStats(lessonId: string, { allRecent = false } = {
       created_at: string;
     }[]
   >`
-    select distinct on (session_id) session_id, student_alias, prefs, score, total, duration_sec, detail,
+    select distinct on (audience_id, student_events.session_id) concat(audience_id, ':', session_id) as session_id, student_alias, prefs, score, total, duration_sec, detail,
       coalesce(occurred_at, created_at) as created_at
-    from student_events where lesson_id = ${lessonId} and kind = 'quiz' and total > 0
-    order by session_id, coalesce(occurred_at, created_at) desc, id desc`;
-  const [lessonRow] = await sql<{ versions: LessonVersions; quiz: QuizQuestion[] }[]>`select versions, quiz from lessons where id = ${lessonId}`;
-  const [attemptCount] = await sql<{ n: number }[]>`select count(*)::int as n from student_events where lesson_id = ${lessonId} and kind = 'quiz' and total > 0`;
+    from student_events where lesson_id = ${lessonId} and kind = 'quiz' and total > 0 ${scope}
+    order by audience_id, student_events.session_id, coalesce(occurred_at, created_at) desc, id desc`;
+  const [lessonRow] = await sql<{ versions: LessonVersions; quiz: QuizQuestion[] }[]>`
+    select coalesce(published_content->'versions', versions) as versions, coalesce(published_content->'quiz', quiz) as quiz from lessons where id = ${lessonId}`;
+  const [attemptCount] = await sql<{ n: number }[]>`select count(*)::int as n from student_events where lesson_id = ${lessonId} and kind = 'quiz' and total > 0 ${scope}`;
   const availableVersions = VERSION_KEYS.filter((k) => {
     const v = lessonRow?.versions?.[k];
     return !!v?.checked && !!v.text?.trim();
@@ -455,6 +512,7 @@ export async function getLessonStats(lessonId: string, { allRecent = false } = {
 
   return {
     byConcept: conceptStats(lessonRow?.quiz ?? [], quizzes),
+    confusion,
     totalQuizAttempts: attemptCount.n,
     sessions: opens.length,
     adaptiveSessions: adaptive,
@@ -476,8 +534,8 @@ export async function getTeacherOverview(teacherId: string) {
     select
       (select count(*)::int from lessons where teacher_id = ${teacherId} and status = 'published') as published,
       (select count(*)::int from lessons where teacher_id = ${teacherId} and status = 'draft') as drafts,
-      (select count(distinct e.session_id)::int from student_events e join lessons l on l.id = e.lesson_id
-        where l.teacher_id = ${teacherId} and e.kind in ('open', 'quiz')) as sessions`;
+      (select count(distinct (e.lesson_id, e.audience_id, e.session_id))::int from student_events e join lessons l on l.id = e.lesson_id
+        where l.teacher_id = ${teacherId} and e.kind in ('open', 'quiz', 'confused')) as sessions`;
   return row;
 }
 
@@ -549,7 +607,8 @@ export async function cleanupImages(teacherId: string, { minAgeMinutes = 120 } =
       and not exists (
         select 1 from lessons l
         where l.teacher_id = i.teacher_id
-          and (strpos(l.body, i.id::text) > 0 or strpos(l.versions::text, i.id::text) > 0)
+          and (strpos(l.body, i.id::text) > 0 or strpos(l.versions::text, i.id::text) > 0
+            or strpos(l.published_content::text, i.id::text) > 0)
       )
       and not exists (
         select 1 from lesson_revisions r join lessons l on l.id = r.lesson_id
