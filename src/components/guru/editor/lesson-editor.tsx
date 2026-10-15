@@ -25,7 +25,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { LessonStats } from "@/lib/data";
+import type { LessonStats, LessonAudience } from "@/lib/data";
 import { api, ApiError } from "@/lib/client";
 import { questionProblem } from "@/lib/quiz";
 import { figureIds } from "@/lib/text";
@@ -65,6 +65,10 @@ export type EditorProps = {
   lessonId: string;
   initial: EditableLesson;
   revision: number;
+  publishedRevision: number | null;
+  publishedQuiz: QuizQuestion[];
+  audiences: LessonAudience[];
+  audienceId?: string;
   status: "draft" | "published";
   shareCode: string | null;
   cls: Cls | null;
@@ -92,6 +96,11 @@ export function LessonEditor(props: EditorProps) {
   const [tab, setTab] = useState<TabKey>(props.initialTab);
   const [status, setStatus] = useState(props.status);
   const [shareCode, setShareCode] = useState(props.shareCode);
+  const [publishedRevision, setPublishedRevision] = useState(props.publishedRevision);
+  const [audiences, setAudiences] = useState(props.audiences);
+  const [hasDraft, setHasDraft] = useState(props.publishedRevision !== props.revision);
+  const viewCode = audiences.length ? audiences.find((a) => a.active && a.id === props.audienceId)?.share_code
+    ?? audiences.find((a) => a.active)?.share_code : shareCode;
   const [saveState, setSaveState] = useState<SaveState>("saved");
   const [saveError, setSaveError] = useState<string | null>(null);
   const [manageOpen, setManageOpen] = useState(false);
@@ -108,6 +117,7 @@ export function LessonEditor(props: EditorProps) {
   const saving = useRef<Promise<void> | null>(null);
 
   const update = useCallback((patch: LessonPatch) => {
+    setHasDraft(true);
     setLesson((l) => ({ ...l, ...(typeof patch === "function" ? patch(l) : patch) }));
     changeCount.current++;
     setSaveState((s) => (s === "conflict" ? s : "dirty"));
@@ -270,14 +280,18 @@ export function LessonEditor(props: EditorProps) {
             {openingProjector ? <Spinner /> : <Presentation className="size-4" aria-hidden />}
             Mode proyektor
           </Button>
-          {status === "published" && shareCode && (
-            <a href={`/s/${shareCode}`} target="_blank" rel="noreferrer" className={buttonClass("secondary")}>
+          {status === "published" && viewCode && (
+            <a href={`/s/${viewCode}`} target="_blank" rel="noreferrer" className={buttonClass("secondary")}>
               <ExternalLink className="size-4" aria-hidden />
               Lihat sebagai siswa
             </a>
           )}
         </div>
       </div>
+
+      {status === "published" && <Notice className="mt-4" title={hasDraft ? "Ada draf perubahan" : "Versi terbit sudah sesuai"}>
+        {hasDraft ? `Siswa masih melihat revisi ${publishedRevision}. Periksa draf ini, lalu terbitkan perubahan dari tab Bagikan.` : "Perubahan yang Anda buat akan disimpan sebagai draf. Siswa melihat versi terakhir yang diterbitkan."}
+      </Notice>}
 
       {manageOpen && (
         <ManagePanel
@@ -405,10 +419,17 @@ export function LessonEditor(props: EditorProps) {
             lesson={lesson}
             status={status}
             shareCode={shareCode}
-            flush={async () => { await flushOrThrow(); }}
-            onPublished={(code) => {
+            flush={flushOrThrow}
+            classes={props.classes}
+            primaryClassId={props.cls?.id ?? null}
+            hasDraft={hasDraft}
+            onAudiences={setAudiences}
+            onPublished={(code, revision) => {
               setStatus("published");
               setShareCode(code);
+              setPublishedRevision(revision);
+              setHasDraft(serverRevision.current !== revision || savedChangeCount.current !== changeCount.current);
+              router.refresh();
             }}
             onUnpublished={() => setStatus("draft")}
             goTo={selectTab}
@@ -417,16 +438,28 @@ export function LessonEditor(props: EditorProps) {
           />
         )}
         {tab === "rekap" && (
+          <><label className="mb-5 block max-w-md font-bold">Rekap kelas
+            <Select value={props.audienceId ?? ""} onChange={(e) => {
+              const url = new URL(window.location.href); url.searchParams.set("tab", "rekap");
+              if (e.target.value) url.searchParams.set("kelas", e.target.value); else url.searchParams.delete("kelas");
+              router.replace(url.pathname + url.search);
+            }}>
+              <option value="">Semua kelas</option>
+              {audiences.map((a) => <option key={a.id} value={a.id}>{a.class_name || "Materi umum"}{a.active ? "" : " (link nonaktif)"}</option>)}
+            </Select>
+          </label>
           <RekapTab
+            key={props.audienceId ?? "all"}
+            audienceId={props.audienceId}
             lessonId={props.lessonId}
             stats={props.stats}
             published={status === "published"}
-            quiz={lesson.quiz}
+            quiz={props.publishedQuiz}
             lesson={lesson}
             update={update}
             aiOn={props.aiOn}
             goTo={selectTab}
-          />
+          /></>
         )}
       </div>
     </div>

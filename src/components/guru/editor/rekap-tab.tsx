@@ -79,6 +79,7 @@ function BarRow({
 }
 
 export function RekapTab({
+  audienceId,
   lessonId,
   stats,
   published,
@@ -88,6 +89,7 @@ export function RekapTab({
   aiOn,
   goTo,
 }: {
+  audienceId?: string;
   lessonId: string;
   stats: LessonStats;
   published: boolean;
@@ -147,7 +149,7 @@ export function RekapTab({
         <p className="max-w-2xl text-[16px] text-tinta-2">
           Rekap berdasarkan sesi belajar, bukan jumlah siswa terverifikasi. Percobaan ulang dalam sesi yang sama memakai hasil terakhir. Gunakan Ganti siswa pada perangkat bersama.
         </p>
-        <div className="flex items-center gap-3">{refresh}<a href={`/api/materi/${lessonId}/laporan`} className="rounded-xl border border-papan px-4 py-3 font-bold text-papan">Unduh laporan CSV</a></div>
+        <div className="flex items-center gap-3">{refresh}<a href={`/api/materi/${lessonId}/laporan${audienceId ? `?kelas=${audienceId}` : ""}`} className="rounded-xl border border-papan px-4 py-3 font-bold text-papan">Unduh laporan CSV</a></div>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
@@ -174,14 +176,23 @@ export function RekapTab({
         />
       </div>
 
-      <AnalysisCard lessonId={lessonId} stats={stats} lesson={lesson} update={update} aiOn={aiOn} goTo={goTo} />
+      <Card className="p-5">
+        <h2 className="text-lg font-bold">Bagian yang belum dipahami</h2>
+        <p className="mt-1 text-sm text-tinta-2">Masukan dari tombol “Aku belum paham”. Ketukan berulang pada bagian dan versi yang sama dihitung satu kali per sesi. Bahas ulang bagian dengan laporan terbanyak.</p>
+        {!stats.confusion.length ? <p className="mt-3">Belum ada laporan dari siswa.</p> : <ul className="mt-3 space-y-3">
+          {stats.confusion.map((f, i) => <li key={i} className="rounded-xl border border-garis p-3">
+            <strong>{f.section}</strong><p>{f.sessions} sesi · {VERSION_LABEL[f.versi as keyof typeof VERSION_LABEL] || f.versi} · Revisi terbit {f.revision}</p>
+          </li>)}
+        </ul>}
+      </Card>
+      <AnalysisCard audienceId={audienceId} lessonId={lessonId} stats={stats} lesson={{ ...lesson, quiz }} update={update} aiOn={aiOn} goTo={goTo} />
 
       <GroupsCard stats={stats} lesson={lesson} goTo={goTo} />
 
       <Card className="p-5">
         <h2 className="text-lg font-bold">Konsep yang perlu dibahas ulang</h2>
         <p className="mt-1 text-sm text-tinta-2">{stats.quizAttempts} sesi menyelesaikan kuis · {stats.totalQuizAttempts} percobaan seluruhnya. Persentase dihitung dari jawaban pada hasil terakhir setiap sesi, bukan persentase anak yang menguasai konsep.</p>
-        <p className="mt-2 text-sm text-tinta-2">Atur konsep setiap soal di tab Kuis. Setelah perubahan tersimpan, tekan Perbarui untuk memuat pengelompokan terbaru.</p>
+        <p className="mt-2 text-sm text-tinta-2">Rekap konsep mengikuti kuis terakhir yang diterbitkan. Atur konsep di tab Kuis, lalu terbitkan perubahan.</p>
         <ul className="mt-4 space-y-3">{stats.byConcept.map((c) => <li key={c.concept} className="rounded-xl border border-garis p-4">
           <div className="flex flex-wrap justify-between gap-2"><strong>{c.concept}</strong><span className="font-bold">{c.pct === null ? "Belum ada hasil" : `${c.pct}% benar`}</span></div>
           <p className="mt-1 text-sm">{c.questions} soal · {c.sessions} sesi menjawab · {c.correct}/{c.answers} jawaban benar</p>

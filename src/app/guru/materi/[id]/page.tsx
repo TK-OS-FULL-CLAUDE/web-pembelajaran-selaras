@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { LessonEditor, type TabKey } from "@/components/guru/editor/lesson-editor";
 import { requireTeacher } from "@/lib/auth";
-import { getClass, getLesson, getLessonStats, listClasses } from "@/lib/data";
+import { getClass, getLesson, getLessonStats, listClasses, listLessonAudiences } from "@/lib/data";
 import { aiEnabled } from "@/lib/claude";
 
 export const metadata: Metadata = { title: "Materi" };
@@ -14,15 +14,17 @@ export default async function LessonPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ tab?: string }>;
+  searchParams: Promise<{ tab?: string; kelas?: string }>;
 }) {
-  const [{ id }, { tab }] = await Promise.all([params, searchParams]);
+  const [{ id }, { tab, kelas }] = await Promise.all([params, searchParams]);
   const teacher = await requireTeacher();
   const lesson = await getLesson(teacher.id, id);
   if (!lesson) notFound();
+  const audiences = await listLessonAudiences(teacher.id, id);
+  const audienceId = audiences.some((a) => a.id === kelas) ? kelas : undefined;
   const [cls, stats, classes] = await Promise.all([
     lesson.class_id ? getClass(teacher.id, lesson.class_id) : Promise.resolve(null),
-    getLessonStats(lesson.id),
+    getLessonStats(lesson.id, { audienceId }),
     listClasses(teacher.id),
   ]);
   const initialTab = TAB_KEYS.includes(tab as TabKey) ? (tab as TabKey) : "materi";
@@ -46,6 +48,10 @@ export default async function LessonPage({
         practice: lesson.practice ?? [],
       }}
       revision={lesson.revision}
+      publishedRevision={lesson.published_revision ?? null}
+      publishedQuiz={lesson.published_content?.quiz ?? lesson.quiz}
+      audiences={audiences}
+      audienceId={audienceId}
       status={lesson.status}
       shareCode={lesson.share_code}
       cls={cls ? { id: cls.id, name: cls.name, grade: cls.grade, needs: cls.needs } : null}

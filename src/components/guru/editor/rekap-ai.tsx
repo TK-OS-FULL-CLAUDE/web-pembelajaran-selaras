@@ -16,6 +16,7 @@ import { useToast } from "../../toast";
 import type { EditableLesson, TabKey, UpdateLesson } from "./lesson-editor";
 
 export function AnalysisCard({
+  audienceId,
   lessonId,
   stats,
   lesson,
@@ -23,6 +24,7 @@ export function AnalysisCard({
   aiOn,
   goTo,
 }: {
+  audienceId?: string;
   lessonId: string;
   stats: LessonStats;
   lesson: EditableLesson;
@@ -40,7 +42,7 @@ export function AnalysisCard({
   async function analyze() {
     setBusy(true);
     try {
-      setResult(await api<{ analysis: ClassAnalysis; basedOn: number }>("/api/ai/analisis", { method: "POST", body: { lessonId } }));
+      setResult(await api<{ analysis: ClassAnalysis; basedOn: number }>("/api/ai/analisis", { method: "POST", body: { lessonId, audienceId } }));
     } catch (err) {
       toast.error((err as Error).message);
     } finally {

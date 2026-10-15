@@ -7,7 +7,7 @@ import { api } from "@/lib/client";
 import { Button, Spinner } from "../ui";
 import { useToast } from "../toast";
 
-/** Zona berbahaya di halaman ubah kelas: hapus kelas beserta semua materinya. */
+/** Hapus kelas tanpa menghapus materi bersama atau hasil belajar. */
 export function DeleteClass({ classId, name, lessonCount }: { classId: string; name: string; lessonCount: number }) {
   const router = useRouter();
   const toast = useToast();
@@ -21,7 +21,7 @@ export function DeleteClass({ classId, name, lessonCount }: { classId: string; n
       </h2>
       <p className="mt-1 text-tinta-2">
         {lessonCount > 0
-          ? `${name} beserta ${lessonCount} materinya (termasuk versi, kuis, dan rekap) terhapus permanen. Link siswa berhenti bekerja.`
+          ? `${name} terhapus permanen dan link khusus kelas ini dinonaktifkan. ${lessonCount} materi beserta rekap tetap tersedia di perpustakaan; kelas lain tetap bisa belajar.`
           : `${name} terhapus permanen.`}
       </p>
       <div className="mt-4 flex flex-wrap gap-2">
@@ -45,7 +45,6 @@ export function DeleteClass({ classId, name, lessonCount }: { classId: string; n
             >
               {busy ? <Spinner /> : <Trash2 className="size-4" aria-hidden />}
               Ya, hapus {name}
-              {lessonCount > 0 ? ` dan ${lessonCount} materi` : ""}
             </Button>
             <Button variant="ghost" onClick={() => setConfirm(false)}>
               Batal

@@ -33,7 +33,7 @@ export function LessonList({ lessons, showClass = true }: { lessons: LessonSumma
         return (
           <li key={l.id}>
             <Link
-              href={`/guru/materi/${l.id}`}
+              href={`/guru/materi/${l.id}${l.audience_id ? `?kelas=${l.audience_id}` : ""}`}
               className="group flex items-center gap-4 px-4 py-4 hover:bg-kertas sm:px-5"
             >
               <IconChip icon={FileText} tone={subjectTone(l.subject || l.title)} className="hidden sm:flex" />
@@ -41,6 +41,7 @@ export function LessonList({ lessons, showClass = true }: { lessons: LessonSumma
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="font-display text-[17px] font-bold">{l.title}</span>
                   {l.status === "published" ? <Badge tone="ok">Terbit</Badge> : <Badge>Draf</Badge>}
+                  {l.has_draft && <Badge>Ada draf perubahan</Badge>}
                   {needsCheck && <Badge tone="ai">Versi perlu dicek</Badge>}
                 </div>
                 <p className="mt-0.5 text-[14px] text-tinta-2">
