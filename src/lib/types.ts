@@ -17,7 +17,47 @@ export type NeedKey = "lowVision" | "tuli" | "disleksia" | "sulitFokus" | "bahas
 
 export type GlossaryItem = { kata: string; arti: string };
 
-export type VersionKey = "mudah" | "daerah" | "ringkasan";
+/** Versi teks materi. Basa Jawa dan Basa Sunda adalah dua versi terpisah. */
+export type VersionKey = "mudah" | "ringkasan" | "jawa" | "sunda";
+
+/** Urutan tampil versi di tab Versi, layar siswa, dan rekap. */
+export const VERSION_KEYS: VersionKey[] = ["mudah", "ringkasan", "jawa", "sunda"];
+
+export type RegionalVersionKey = "jawa" | "sunda";
+
+export function isRegionalVersion(key: string): key is RegionalVersionKey {
+  return key === "jawa" || key === "sunda";
+}
+
+/** Bahasa daerah di profil kelas → versi yang cocok. */
+export const VERSION_FOR_LANG: Record<RegionalLang, RegionalVersionKey> = { jw: "jawa", su: "sunda" };
+export const LANG_FOR_VERSION: Record<RegionalVersionKey, RegionalLang> = { jawa: "jw", sunda: "su" };
+
+export const VERSION_LABEL: Record<"asli" | VersionKey, string> = {
+  asli: "Teks asli",
+  mudah: "Teks mudah",
+  ringkasan: "Ringkasan",
+  jawa: "Basa Jawa",
+  sunda: "Basa Sunda",
+};
+
+/** Atribut lang HTML untuk teks tiap versi. */
+export const VERSION_HTML_LANG: Record<"asli" | VersionKey, string> = {
+  asli: "id",
+  mudah: "id",
+  ringkasan: "id",
+  jawa: "jv",
+  sunda: "su",
+};
+
+/** Bahasa suara (Web Speech API) untuk membacakan tiap versi. */
+export const VERSION_SPEECH_LANG: Record<"asli" | VersionKey, string> = {
+  asli: "id-ID",
+  mudah: "id-ID",
+  ringkasan: "id-ID",
+  jawa: "jv-ID",
+  sunda: "su-ID",
+};
 
 export type LessonVersion = {
   text: string;
@@ -26,7 +66,6 @@ export type LessonVersion = {
   origin: "ai" | "guru";
   /** Guru sudah membaca dan menyetujui versi ini */
   checked: boolean;
-  lang?: RegionalLang;
   /** Sidik materi asli saat versi dibuat, untuk mendeteksi materi asli yang berubah */
   basedOn?: string;
   updatedAt: string;

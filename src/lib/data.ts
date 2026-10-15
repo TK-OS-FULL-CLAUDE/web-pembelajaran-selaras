@@ -1,14 +1,16 @@
 import "server-only";
 import { randomInt } from "node:crypto";
 import { getDb } from "./db";
-import type {
-  ClassNeeds,
-  ClassRow,
-  GlossaryItem,
-  LessonRow,
-  LessonVersions,
-  QuizQuestion,
-  StudentPrefs,
+import {
+  VERSION_KEYS,
+  type ClassNeeds,
+  type ClassRow,
+  type GlossaryItem,
+  type LessonRow,
+  type LessonVersions,
+  type QuizQuestion,
+  type StudentPrefs,
+  type VersionKey,
 } from "./types";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -254,12 +256,14 @@ export async function recordStudentEvent(input: {
   prefs: StudentPrefs;
   score?: number;
   total?: number;
+  /** Lama pengerjaan kuis dalam detik. */
+  durationSec?: number;
 }) {
   const sql = await getDb();
   await sql`
-    insert into student_events (lesson_id, session_id, kind, student_alias, prefs, score, total)
+    insert into student_events (lesson_id, session_id, kind, student_alias, prefs, score, total, duration_sec)
     values (${input.lessonId}, ${input.sessionId}, ${input.kind}, ${input.alias}, ${sql.json(input.prefs)},
-      ${input.score ?? null}, ${input.total ?? null})`;
+      ${input.score ?? null}, ${input.total ?? null}, ${input.durationSec ?? null})`;
 }
 
 // ---------- Rekap ----------
@@ -267,24 +271,21 @@ export async function recordStudentEvent(input: {
 export type LessonStats = {
   sessions: number;
   adaptiveSessions: number;
-  prefCounts: {
-    mudah: number;
-    daerah: number;
-    ringkasan: number;
-    besar: number;
-    kontras: number;
-    spasi: number;
-    dengar: number;
-  };
+  prefCounts: Record<VersionKey | "besar" | "kontras" | "spasi" | "dengar", number>;
+  /** Versi yang ada di materi ini (sudah dicek), untuk menyembunyikan baris versi yang tidak tersedia. */
+  availableVersions: VersionKey[];
   quizAttempts: number;
   avgScorePct: number | null;
-  byVersion: { versi: StudentPrefs["versi"]; attempts: number; avgPct: number | null }[];
+  /** Rata-rata lama pengerjaan kuis (detik), dari siswa yang durasinya tercatat. */
+  avgDurationSec: number | null;
+  byVersion: { versi: StudentPrefs["versi"]; attempts: number; avgPct: number | null; avgDurationSec: number | null }[];
   recent: {
     alias: string | null;
     versi: string;
     prefs: StudentPrefs;
     score: number | null;
     total: number | null;
+    durationSec: number | null;
     at: string;
   }[];
 };
@@ -303,21 +304,34 @@ export async function getLessonStats(lessonId: string): Promise<LessonStats> {
       prefs: StudentPrefs;
       score: number;
       total: number;
+      duration_sec: number | null;
       created_at: string;
     }[]
   >`
-    select distinct on (session_id) session_id, student_alias, prefs, score, total, created_at
+    select distinct on (session_id) session_id, student_alias, prefs, score, total, duration_sec, created_at
     from student_events where lesson_id = ${lessonId} and kind = 'quiz' and total > 0
     order by session_id, created_at desc`;
+  const [lessonRow] = await sql<{ versions: LessonVersions }[]>`select versions from lessons where id = ${lessonId}`;
+  const availableVersions = VERSION_KEYS.filter((k) => {
+    const v = lessonRow?.versions?.[k];
+    return !!v?.checked && !!v.text?.trim();
+  });
 
-  const prefCounts = { mudah: 0, daerah: 0, ringkasan: 0, besar: 0, kontras: 0, spasi: 0, dengar: 0 };
+  const prefCounts: LessonStats["prefCounts"] = {
+    mudah: 0,
+    ringkasan: 0,
+    jawa: 0,
+    sunda: 0,
+    besar: 0,
+    kontras: 0,
+    spasi: 0,
+    dengar: 0,
+  };
   let adaptive = 0;
   for (const { prefs } of opens) {
     const isAdaptive = prefs.versi !== "asli" || prefs.besar || prefs.kontras || prefs.spasi || prefs.dengar;
     if (isAdaptive) adaptive++;
-    if (prefs.versi === "mudah") prefCounts.mudah++;
-    if (prefs.versi === "daerah") prefCounts.daerah++;
-    if (prefs.versi === "ringkasan") prefCounts.ringkasan++;
+    if (prefs.versi in prefCounts && prefs.versi !== "asli") prefCounts[prefs.versi]++;
     if (prefs.besar) prefCounts.besar++;
     if (prefs.kontras) prefCounts.kontras++;
     if (prefs.spasi) prefCounts.spasi++;
@@ -327,10 +341,21 @@ export async function getLessonStats(lessonId: string): Promise<LessonStats> {
   const pct = (s: number, t: number) => (t > 0 ? (s / t) * 100 : 0);
   const avg = (xs: number[]) => (xs.length ? Math.round(xs.reduce((a, b) => a + b, 0) / xs.length) : null);
 
-  const byVersion = (["asli", "mudah", "daerah", "ringkasan"] as const).map((versi) => {
-    const items = quizzes.filter((q) => (q.prefs?.versi ?? "asli") === versi);
-    return { versi, attempts: items.length, avgPct: avg(items.map((q) => pct(q.score, q.total))) };
-  });
+  const durations = (items: readonly { duration_sec: number | null }[]) =>
+    items.map((q) => q.duration_sec).filter((d): d is number => typeof d === "number" && d > 0);
+
+  // Baris "Teks asli" selalu tampil; versi lain tampil bila tersedia atau pernah dipakai.
+  const byVersion = (["asli", ...VERSION_KEYS] as const)
+    .map((versi) => {
+      const items = quizzes.filter((q) => (q.prefs?.versi ?? "asli") === versi);
+      return {
+        versi,
+        attempts: items.length,
+        avgPct: avg(items.map((q) => pct(q.score, q.total))),
+        avgDurationSec: avg(durations(items)),
+      };
+    })
+    .filter((v) => v.versi === "asli" || v.attempts > 0 || availableVersions.includes(v.versi));
 
   const recent = [...quizzes]
     .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
@@ -341,6 +366,7 @@ export async function getLessonStats(lessonId: string): Promise<LessonStats> {
       prefs: q.prefs,
       score: q.score,
       total: q.total,
+      durationSec: q.duration_sec,
       at: new Date(q.created_at).toISOString(),
     }));
 
@@ -348,8 +374,10 @@ export async function getLessonStats(lessonId: string): Promise<LessonStats> {
     sessions: opens.length,
     adaptiveSessions: adaptive,
     prefCounts,
+    availableVersions,
     quizAttempts: quizzes.length,
     avgScorePct: avg(quizzes.map((q) => pct(q.score, q.total))),
+    avgDurationSec: avg(durations(quizzes)),
     byVersion,
     recent,
   };

@@ -1,5 +1,18 @@
 // Panduan akomodasi untuk guru, disusun dari praktik umum pendidikan inklusif.
 // Ini bantuan praktis di kelas, bukan pengganti asesmen tenaga profesional atau Guru Pembimbing Khusus.
+//
+// Rujukan regulasi (ditampilkan apa adanya di app, jangan dilebih-lebihkan):
+// - Permendikbudristek No. 48 Tahun 2023 tentang Akomodasi yang Layak untuk Peserta Didik Penyandang
+//   Disabilitas (Lampiran II memuat bentuk akomodasi per ragam disabilitas, termasuk netra/low vision dan rungu).
+//   Akomodasi resmi ditetapkan sekolah lewat asesmen fungsional bersama Unit Layanan Disabilitas (Pasal 12).
+//   Disleksia, sulit fokus, dan bahasa ibu daerah tidak disebut khusus di peraturan ini.
+// - Perpres No. 63 Tahun 2019 Pasal 23 ayat (3): bahasa daerah boleh menjadi bahasa pengantar
+//   di tahun pertama dan kedua SD/MI untuk mendukung pembelajaran.
+
+export const PERMEN_AYL = {
+  label: "Permendikbudristek No. 48 Tahun 2023 tentang Akomodasi yang Layak",
+  url: "https://peraturan.bpk.go.id/Details/285711",
+};
 
 import type { NeedKey } from "./types";
 
@@ -10,6 +23,8 @@ export type NeedInfo = {
   /** Mode Selaras yang membantu kebutuhan ini */
   modes: string[];
   tips: string[];
+  /** Dasar panduan ini, ditampilkan di kartu panduan. */
+  rujukan: string;
 };
 
 export const NEEDS: NeedInfo[] = [
@@ -25,6 +40,8 @@ export const NEEDS: NeedInfo[] = [
       "Beri waktu lebih lama untuk membaca dan menulis.",
       "Jangan menyampaikan informasi penting hanya lewat warna atau gambar.",
     ],
+    rujukan:
+      "Sejalan dengan Permendikbudristek 48/2023, Lampiran II (disabilitas netra, termasuk low vision): media di papan/layar yang bisa diakses.",
   },
   {
     key: "tuli",
@@ -38,6 +55,8 @@ export const NEEDS: NeedInfo[] = [
       "Pastikan siswa melihat Anda sebelum mulai berbicara.",
       "Pasangkan dengan teman yang bisa membantu menyampaikan informasi lisan.",
     ],
+    rujukan:
+      "Sejalan dengan Permendikbudristek 48/2023, Lampiran II (disabilitas rungu): kalimat sederhana lewat tulisan, tuturan, atau isyarat, dan materi multisensorik.",
   },
   {
     key: "disleksia",
@@ -51,6 +70,7 @@ export const NEEDS: NeedInfo[] = [
       "Nilai pemahaman lewat jawaban lisan atau gambar, bukan hanya tulisan.",
       "Beri waktu tambahan untuk tugas membaca dan menulis.",
     ],
+    rujukan: "Praktik umum pendidikan inklusif. Disleksia tidak disebut khusus di Permendikbudristek 48/2023.",
   },
   {
     key: "sulitFokus",
@@ -64,6 +84,7 @@ export const NEEDS: NeedInfo[] = [
       "Dudukkan siswa jauh dari pintu dan sumber keramaian.",
       "Puji usaha saat siswa menyelesaikan satu langkah.",
     ],
+    rujukan: "Praktik umum pendidikan inklusif.",
   },
   {
     key: "bahasaDaerah",
@@ -76,6 +97,7 @@ export const NEEDS: NeedInfo[] = [
       "Pasangkan dengan teman sebahasa yang lebih lancar berbahasa Indonesia.",
       "Di kelas 1–2 SD, bahasa daerah boleh dipakai sebagai bahasa pengantar (Perpres 63/2019 Pasal 23).",
     ],
+    rujukan: "Praktik umum pendidikan multibahasa; Perpres No. 63 Tahun 2019 Pasal 23 ayat (3).",
   },
 ];
 

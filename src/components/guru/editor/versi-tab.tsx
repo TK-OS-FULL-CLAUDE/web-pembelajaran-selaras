@@ -2,19 +2,20 @@
 
 // Peran 2: draf versi dari AI + review guru.
 
-import { Check, PenLine, RefreshCw, Sparkles, Trash2, TriangleAlert } from "lucide-react";
+import { Check, Languages, PenLine, RefreshCw, Sparkles, Trash2, TriangleAlert } from "lucide-react";
 import { useState } from "react";
 import { api } from "@/lib/client";
 import { fingerprint, wordCount } from "@/lib/text";
 import {
-  LANG_LABEL,
+  VERSION_HTML_LANG,
+  VERSION_KEYS,
+  isRegionalVersion,
   type ClassNeeds,
   type GlossaryItem,
   type LessonVersion,
-  type RegionalLang,
   type VersionKey,
 } from "@/lib/types";
-import { Badge, Button, Notice, Select, Spinner, Textarea, cx } from "../../ui";
+import { Badge, Button, Notice, Spinner, Textarea, cx } from "../../ui";
 import { useToast } from "../../toast";
 import { GlossaryEditor } from "./glossary-editor";
 import type { EditableLesson, TabKey, UpdateLesson } from "./lesson-editor";
@@ -26,17 +27,21 @@ const INFO: Record<VersionKey, { title: string; text: string }> = {
     title: "Teks mudah",
     text: "Kalimat pendek dan kata sehari-hari, untuk siswa disleksia, sulit fokus, atau yang masih belajar Bahasa Indonesia.",
   },
-  daerah: {
-    title: "Bahasa daerah",
-    text: "Materi yang sama dalam bahasa ibu siswa, dengan glosarium dua bahasa.",
-  },
   ringkasan: {
     title: "Ringkasan",
     text: "3–7 poin utama materi, untuk siswa yang sulit fokus pada teks panjang atau ingin mengulang dengan cepat.",
   },
+  jawa: {
+    title: "Basa Jawa",
+    text: "Materi yang sama dalam Bahasa Jawa ragam ngoko yang sopan, dengan glosarium dua bahasa.",
+  },
+  sunda: {
+    title: "Basa Sunda",
+    text: "Materi yang sama dalam Bahasa Sunda ragam loma yang sopan, dengan glosarium dua bahasa.",
+  },
 };
 
-const VERSION_KEYS: VersionKey[] = ["mudah", "daerah", "ringkasan"];
+const NO_BUSY: Record<VersionKey, boolean> = { mudah: false, ringkasan: false, jawa: false, sunda: false };
 
 export function VersiTab({
   lessonId,
@@ -54,14 +59,16 @@ export function VersiTab({
   goTo: (tab: TabKey) => void;
 }) {
   const toast = useToast();
-  const [busy, setBusy] = useState<Record<VersionKey, boolean>>({ mudah: false, daerah: false, ringkasan: false });
-  const [lang, setLang] = useState<RegionalLang>(lesson.versions.daerah?.lang ?? cls?.needs.bahasa ?? "jw");
+  const [busy, setBusy] = useState<Record<VersionKey, boolean>>(NO_BUSY);
   const bodyPrint = fingerprint(lesson.body);
   const needs = cls?.needs;
+  const regional = !!needs && needs.bahasaDaerah > 0;
   const recommended: Record<VersionKey, boolean> = {
     mudah: !!needs && needs.disleksia + needs.sulitFokus + needs.bahasaDaerah > 0,
-    daerah: !!needs && needs.bahasaDaerah > 0,
     ringkasan: !!needs && needs.sulitFokus + needs.disleksia > 0,
+    // Bahasa ibu di profil kelas menentukan versi daerah yang disarankan; bila belum dipilih, keduanya.
+    jawa: regional && needs.bahasa !== "su",
+    sunda: regional && needs.bahasa !== "jw",
   };
 
   const setVersion = (key: VersionKey, version: LessonVersion | undefined) =>
@@ -77,7 +84,7 @@ export function VersiTab({
     try {
       const res = await api<{ version: LessonVersion; suggestedGlossary?: GlossaryItem[] }>("/api/ai/versi", {
         method: "POST",
-        body: { lessonId, jenis: key, bahasa: key === "daerah" ? lang : undefined, body: lesson.body },
+        body: { lessonId, jenis: key, body: lesson.body },
       });
       // Fungsi updater: dua draf yang selesai hampir bersamaan tidak saling menimpa.
       update((l) => ({
@@ -86,9 +93,7 @@ export function VersiTab({
           ? { glossary: res.suggestedGlossary }
           : {}),
       }));
-      const name =
-        key === "mudah" ? "teks mudah" : key === "ringkasan" ? "ringkasan" : LANG_LABEL[res.version.lang ?? lang];
-      toast.ok(`Draf ${name} siap. Baca dan cek dulu.`);
+      toast.ok(`Draf ${INFO[key].title} siap. Baca dan cek dulu.`);
     } catch (err) {
       toast.error((err as Error).message);
     } finally {
@@ -98,6 +103,21 @@ export function VersiTab({
 
   const tooShort = lesson.body.trim().length < 40;
   const anyBusy = VERSION_KEYS.some((k) => busy[k]);
+  // Tombol besar hanya mengisi versi yang masih kosong, supaya versi yang sudah diedit atau dicek tidak tertimpa.
+  const missing = VERSION_KEYS.filter((k) => !lesson.versions[k]?.text.trim());
+
+  /** Buat ulang satu versi; minta konfirmasi bila isinya sudah dicek atau ditulis guru. */
+  function regenerate(key: VersionKey) {
+    const v = lesson.versions[key];
+    if (
+      v?.text.trim() &&
+      (v.checked || v.origin === "guru") &&
+      !window.confirm(`Ganti isi versi ${INFO[key].title} dengan draf AI baru? Perubahan Anda di versi ini akan hilang.`)
+    ) {
+      return;
+    }
+    generate(key);
+  }
 
   return (
     <div className="space-y-6">
@@ -116,15 +136,19 @@ export function VersiTab({
       ) : (
         aiOn && (
           <div className="flex flex-wrap items-center gap-3">
-            <Button
-              variant="ai"
-              disabled={anyBusy}
-              onClick={() => VERSION_KEYS.forEach((k) => generate(k))}
-            >
+            <Button variant="ai" disabled={anyBusy || missing.length === 0} onClick={() => missing.forEach(generate)}>
               {anyBusy ? <Spinner /> : <Sparkles className="size-4" aria-hidden />}
-              {anyBusy ? "AI sedang menulis draf…" : "Buat draf semua versi dengan AI"}
+              {anyBusy
+                ? "AI sedang menulis draf…"
+                : missing.length === VERSION_KEYS.length
+                  ? "Buat draf semua versi dengan AI"
+                  : missing.length > 0
+                    ? `Buat draf ${missing.length} versi yang belum ada`
+                    : "Semua versi sudah ada"}
             </Button>
-            <span className="text-[14px] text-tinta-2">Sekitar 10–30 detik. Hasilnya draf, bukan versi final.</span>
+            <span className="text-[14px] text-tinta-2">
+              Sekitar 10–30 detik. Hasilnya draf, bukan versi final. Versi yang sudah ada tidak ditimpa.
+            </span>
           </div>
         )
       )}
@@ -145,12 +169,13 @@ export function VersiTab({
               <div className="flex flex-wrap items-start justify-between gap-2">
                 <div>
                   <h2 id={`versi-${key}`} className="font-display text-lg font-bold">
-                    {key === "daerah" ? `${INFO.daerah.title}: ${LANG_LABEL[v?.lang ?? lang]}` : INFO[key].title}
+                    {INFO[key].title}
                   </h2>
                   <p className="mt-0.5 text-[14px] text-tinta-2">{INFO[key].text}</p>
                 </div>
                 <div className="flex flex-wrap gap-1.5">
                   {recommended[key] && <Badge tone="papan">Disarankan untuk kelas ini</Badge>}
+                  {isRegionalVersion(key) && v?.text.trim() && <Badge tone="info">Perlu dicek penutur asli</Badge>}
                   {v?.text.trim() ? (
                     v.checked ? (
                       <Badge tone="ok">
@@ -158,7 +183,7 @@ export function VersiTab({
                         Sudah dicek
                       </Badge>
                     ) : (
-                      <Badge tone="ai">{v.origin === "ai" ? "Draf AI, perlu dicek" : "Perlu dicek"}</Badge>
+                      <Badge tone="ai">{v.origin === "ai" ? "Draf AI — wajib dicek guru" : "Perlu dicek"}</Badge>
                     )
                   ) : (
                     <Badge>Belum ada</Badge>
@@ -166,25 +191,12 @@ export function VersiTab({
                 </div>
               </div>
 
-              {key === "daerah" && (
-                <div className="mt-4 flex items-center gap-3">
-                  <label htmlFor="bahasa-daerah" className="text-[15px] font-bold">
-                    Bahasa
-                  </label>
-                  <Select
-                    id="bahasa-daerah"
-                    className="w-44"
-                    value={v?.lang ?? lang}
-                    onChange={(e) => {
-                      const next = e.target.value as RegionalLang;
-                      setLang(next);
-                      if (v) setVersion("daerah", { ...v, lang: next });
-                    }}
-                  >
-                    <option value="jw">Bahasa Jawa</option>
-                    <option value="su">Bahasa Sunda</option>
-                  </Select>
-                </div>
+              {isRegionalVersion(key) && v?.text.trim() && (
+                <p className="mt-4 flex gap-2 rounded-lg bg-blue-50 px-3 py-2 text-[14px] text-info">
+                  <Languages className="mt-0.5 size-4 shrink-0" aria-hidden />
+                  Terjemahan {v.origin === "ai" ? "AI" : "ini"} bisa keliru dalam ragam bahasa atau istilah. Minta penutur
+                  asli, misalnya guru bahasa daerah atau orang tua siswa, membacanya sebelum Anda menandai sudah dicek.
+                </p>
               )}
 
               {stale && (
@@ -204,7 +216,7 @@ export function VersiTab({
                     rows={14}
                     className="mt-4"
                     value={v.text}
-                    lang={key === "daerah" ? (v.lang === "su" ? "su" : "jv") : "id"}
+                    lang={VERSION_HTML_LANG[key]}
                     onChange={(e) =>
                       setVersion(key, { ...v, text: e.target.value, updatedAt: new Date().toISOString() })
                     }
@@ -212,16 +224,16 @@ export function VersiTab({
                   <p className="mt-1 text-[14px] text-tinta-2">
                     {wordCount(v.text)} kata, materi asli {wordCount(lesson.body)} kata.
                   </p>
-                  {key === "daerah" && (
+                  {isRegionalVersion(key) && (
                     <div className="mt-4">
                       <p className="mb-2 text-[15px] font-bold">Glosarium dua bahasa</p>
                       <GlossaryEditor
                         layout="stack"
-                        idPrefix="glos-daerah"
+                        idPrefix={`glos-${key}`}
                         termLabel="Istilah"
-                        meaningLabel="Arti (bahasa daerah + Indonesia)"
+                        meaningLabel={`Arti (${INFO[key].title} + Indonesia)`}
                         items={v.glossary}
-                        onChange={(glossary) => setVersion("daerah", { ...v, glossary })}
+                        onChange={(glossary) => setVersion(key, { ...v, glossary })}
                       />
                     </div>
                   )}
@@ -237,12 +249,17 @@ export function VersiTab({
                       {v.checked ? "Batalkan tanda dicek" : "Tandai sudah dicek"}
                     </Button>
                     {aiOn && (
-                      <Button variant="ai" disabled={busy[key] || tooShort} onClick={() => generate(key)}>
+                      <Button variant="ai" disabled={busy[key] || tooShort} onClick={() => regenerate(key)}>
                         {busy[key] ? <Spinner /> : <RefreshCw className="size-4" aria-hidden />}
                         Buat ulang dengan AI
                       </Button>
                     )}
-                    <Button variant="ghost" onClick={() => setVersion(key, undefined)}>
+                    <Button
+                      variant="ghost"
+                      onClick={() => {
+                        if (!v.text.trim() || window.confirm(`Hapus versi ${INFO[key].title}?`)) setVersion(key, undefined);
+                      }}
+                    >
                       <Trash2 className="size-4" aria-hidden />
                       Hapus versi
                     </Button>
@@ -264,7 +281,6 @@ export function VersiTab({
                         glossary: [],
                         origin: "guru",
                         checked: false,
-                        lang: key === "daerah" ? lang : undefined,
                         basedOn: bodyPrint,
                         updatedAt: new Date().toISOString(),
                       })

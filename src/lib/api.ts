@@ -82,15 +82,15 @@ const versionInput = z.object({
   glossary: glossaryInput,
   origin: z.enum(["ai", "guru"]),
   checked: z.boolean(),
-  lang: z.enum(["jw", "su"]).optional(),
   basedOn: z.string().max(40).optional(),
   updatedAt: z.string().max(40),
 });
 
 export const versionsInput = z.object({
   mudah: versionInput.optional(),
-  daerah: versionInput.optional(),
   ringkasan: versionInput.optional(),
+  jawa: versionInput.optional(),
+  sunda: versionInput.optional(),
 });
 
 export const quizInput = z
@@ -106,7 +106,11 @@ export const quizInput = z
   .max(30);
 
 export const prefsInput = z.object({
-  versi: z.enum(["asli", "mudah", "daerah", "ringkasan"]),
+  // "daerah" = nilai lama sebelum Jawa & Sunda dipisah; diterima supaya HP siswa yang masih
+  // menyimpan pilihan lama tidak gagal mencatat, lalu dibaca sebagai teks asli.
+  versi: z
+    .enum(["asli", "mudah", "ringkasan", "jawa", "sunda", "daerah"])
+    .transform((v) => (v === "daerah" ? "asli" : v)),
   besar: z.boolean(),
   kontras: z.boolean(),
   spasi: z.boolean(),

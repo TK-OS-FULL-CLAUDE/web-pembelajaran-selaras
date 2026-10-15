@@ -25,11 +25,15 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   DEFAULT_PREFS,
-  LANG_SHORT,
+  VERSION_HTML_LANG,
+  VERSION_KEYS,
+  VERSION_LABEL,
+  VERSION_SPEECH_LANG,
+  isRegionalVersion,
   type GlossaryItem,
   type QuizQuestion,
-  type RegionalLang,
   type StudentPrefs,
+  type VersionKey,
 } from "@/lib/types";
 import { ReaderText, useReaderStructure } from "../reader-text";
 import { ReadingRuler } from "./reading-ruler";
@@ -44,11 +48,8 @@ export type StudentLesson = {
   teacherName: string;
   body: string;
   glossary: GlossaryItem[];
-  versions: {
-    mudah?: { text: string; glossary: GlossaryItem[] };
-    daerah?: { text: string; glossary: GlossaryItem[]; lang: RegionalLang };
-    ringkasan?: { text: string; glossary: GlossaryItem[] };
-  };
+  /** Hanya versi yang sudah dicek guru. */
+  versions: Partial<Record<VersionKey, { text: string; glossary: GlossaryItem[] }>>;
   quiz: QuizQuestion[];
 };
 
@@ -112,7 +113,7 @@ export function StudentApp({ lesson }: { lesson: StudentLesson }) {
   }, [prefsKey, sessionKey, lesson]);
 
   const log = useCallback(
-    (kind: "open" | "quiz", extra: { score?: number; total?: number } = {}) => {
+    (kind: "open" | "quiz", extra: { score?: number; total?: number; durasi?: number } = {}) => {
       if (!sessionId) return;
       fetch(`/api/s/${lesson.code}/catat`, {
         method: "POST",
@@ -222,8 +223,8 @@ export function StudentApp({ lesson }: { lesson: StudentLesson }) {
         lesson={lesson}
         speech={speech}
         rate={rate}
-        onFinish={(score, total) => {
-          log("quiz", { score, total });
+        onFinish={(score, total, durasi) => {
+          log("quiz", { score, total, durasi });
         }}
         onBack={() => {
           speech.stop();
@@ -277,7 +278,6 @@ function ChooseMode({
   onChange: (p: Partial<StudentPrefs>) => void;
   onDone: () => void;
 }) {
-  const lang = lesson.versions.daerah?.lang;
   const tiles: {
     id: string;
     title: string;
@@ -305,15 +305,15 @@ function ChooseMode({
       sample: <ScrollText className="size-7" aria-hidden />,
       show: !!lesson.versions.ringkasan,
     },
-    {
-      id: "daerah",
-      title: lang ? `Pakai ${LANG_SHORT[lang]}` : "Bahasa daerah",
+    ...(["jawa", "sunda"] as const).map((key) => ({
+      id: key,
+      title: `Pakai ${VERSION_LABEL[key]}`,
       desc: "Materi dalam bahasa rumahmu.",
-      on: prefs.versi === "daerah",
-      toggle: () => onChange({ versi: prefs.versi === "daerah" ? "asli" : "daerah" }),
+      on: prefs.versi === key,
+      toggle: () => onChange({ versi: prefs.versi === key ? "asli" : key }),
       sample: <Languages className="size-7" aria-hidden />,
-      show: !!lesson.versions.daerah,
-    },
+      show: !!lesson.versions[key],
+    })),
     {
       id: "dengar",
       title: "Dibacakan",
@@ -434,10 +434,11 @@ function Reader({
   const version = prefs.versi === "asli" ? null : lesson.versions[prefs.versi];
   const text = version?.text ?? lesson.body;
   const glossary = useMemo(() => {
-    if (prefs.versi === "daerah") return lesson.versions.daerah?.glossary ?? [];
+    // Glosarium bahasa daerah berdiri sendiri; versi berbahasa Indonesia ikut memakai glosarium materi asli.
+    if (isRegionalVersion(prefs.versi)) return version?.glossary ?? [];
     return [...(version?.glossary ?? []), ...lesson.glossary];
   }, [prefs.versi, version, lesson]);
-  const speechLang = prefs.versi === "daerah" ? (lesson.versions.daerah?.lang === "su" ? "su-ID" : "jv-ID") : "id-ID";
+  const speechLang = VERSION_SPEECH_LANG[prefs.versi];
   const { sentences } = useReaderStructure(text);
   const [term, setTerm] = useState<GlossaryItem | null>(null);
   const autoStarted = useRef(false);
@@ -473,10 +474,8 @@ function Reader({
   }, [speech.current]);
 
   const versions: { key: StudentPrefs["versi"]; label: string }[] = [
-    { key: "asli", label: "Teks asli" },
-    ...(lesson.versions.mudah ? [{ key: "mudah" as const, label: "Teks mudah" }] : []),
-    ...(lesson.versions.daerah ? [{ key: "daerah" as const, label: LANG_SHORT[lesson.versions.daerah.lang] }] : []),
-    ...(lesson.versions.ringkasan ? [{ key: "ringkasan" as const, label: "Ringkasan" }] : []),
+    { key: "asli", label: VERSION_LABEL.asli },
+    ...VERSION_KEYS.filter((k) => lesson.versions[k]).map((k) => ({ key: k, label: VERSION_LABEL[k] })),
   ];
 
   const toggles = [
@@ -501,7 +500,10 @@ function Reader({
         <div className="mx-auto max-w-3xl space-y-2 px-4 py-2.5">
           {versions.length > 1 && (
             <div
-              className={cx("gap-1 rounded-xl bg-black/5 p-1", versions.length > 3 ? "grid grid-cols-2 sm:flex" : "flex")}
+              className={cx(
+                "gap-1 rounded-xl bg-black/5 p-1",
+                versions.length >= 5 ? "grid grid-cols-3 sm:flex" : versions.length === 4 ? "grid grid-cols-2 sm:flex" : "flex",
+              )}
               role="group"
               aria-label="Versi teks"
             >
@@ -604,7 +606,7 @@ function Reader({
         </p>
         <div
           className="mt-3"
-          lang={prefs.versi === "daerah" ? (lesson.versions.daerah?.lang === "su" ? "su" : "jv") : "id"}
+          lang={VERSION_HTML_LANG[prefs.versi]}
         >
           <ReaderText text={text} glossary={glossary} activeSentence={speech.current} onTerm={setTerm} />
         </div>
@@ -717,7 +719,8 @@ function Quiz({
   lesson: StudentLesson;
   speech: ReturnType<typeof useSpeech>;
   rate: SpeechRate;
-  onFinish: (score: number, total: number) => void;
+  /** durasi = lama pengerjaan dalam detik, dari soal pertama sampai "Lihat hasil". */
+  onFinish: (score: number, total: number, durasi: number) => void;
   onBack: () => void;
 }) {
   const questions = lesson.quiz;
@@ -725,6 +728,11 @@ function Quiz({
   const [answers, setAnswers] = useState<(number | null)[]>(() => questions.map(() => null));
   const [done, setDone] = useState(false);
   const headingRef = useRef<HTMLHeadingElement>(null);
+  const startedAt = useRef(0);
+
+  useEffect(() => {
+    startedAt.current = Date.now();
+  }, []);
 
   useEffect(() => {
     headingRef.current?.focus();
@@ -786,6 +794,7 @@ function Quiz({
               setAnswers(questions.map(() => null));
               setIndex(0);
               setDone(false);
+              startedAt.current = Date.now();
             }}
             className="flex h-14 items-center justify-center gap-2 rounded-xl border-2 border-[var(--reader-line)] bg-white px-5 text-[17px] font-bold text-tinta hover:border-papan"
           >
@@ -918,7 +927,8 @@ function Quiz({
             onClick={() => {
               if (last) {
                 setDone(true);
-                onFinish(answers.filter((a, i) => a === questions[i].answer).length, questions.length);
+                const durasi = Math.min(10_800, Math.round((Date.now() - startedAt.current) / 1000));
+                onFinish(answers.filter((a, i) => a === questions[i].answer).length, questions.length, durasi);
               } else {
                 setIndex(index + 1);
               }
