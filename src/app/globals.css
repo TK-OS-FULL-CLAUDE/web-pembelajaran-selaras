@@ -53,7 +53,9 @@
   --shadow-angkat: 0 2px 4px rgb(15 23 42 / 0.04), 0 14px 32px -10px rgb(15 23 42 / 0.16);
 
   --font-sans: "Atkinson Hyperlegible", ui-sans-serif, system-ui, sans-serif;
-  --font-display: "Plus Jakarta Sans Variable", "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-display:
+    "Plus Jakarta Sans Variable", "Plus Jakarta Sans", ui-sans-serif, system-ui,
+    sans-serif;
 }
 
 @layer base {
@@ -134,14 +136,18 @@
   --reader-tracking: 0;
   --reader-word: 0;
   --reader-bg: #ffffff;
-  --reader-page: #f7f9fc;
+  --reader-page: #f3f9f1;
   --reader-ink: var(--color-tinta);
   --reader-soft: var(--color-tinta-2);
   --reader-line: var(--color-garis);
   --reader-accent: var(--color-papan);
   --reader-term: var(--color-aksen);
   --reader-mark: var(--color-stabilo);
-  background: var(--reader-page);
+  background-color: var(--reader-page);
+  background-image:
+    radial-gradient(34rem 18rem at 4% 0, #ffefc2, transparent),
+    radial-gradient(40rem 20rem at 92% 0, #d4eef0, transparent);
+  background-repeat: no-repeat;
   color: var(--reader-ink);
 }
 .reader[data-besar="true"] {
@@ -162,7 +168,9 @@
   --reader-accent: #000000;
   --reader-term: #000000;
   --reader-mark: #ffd400;
+  background-image: none;
 }
+
 
 .reader-text {
   font-size: var(--reader-size);

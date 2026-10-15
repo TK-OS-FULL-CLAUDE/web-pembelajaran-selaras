@@ -15,9 +15,7 @@ import {
   Languages,
   ListChecks,
   Pause,
-  Play,
   Printer,
-  RotateCcw,
   Ruler,
   ScrollText,
   Settings2,
@@ -49,6 +47,7 @@ import { AskTutor } from "./ask-tutor";
 import { ReadingRuler } from "./reading-ruler";
 import { useSpeech, type SpeechRate } from "../use-speech";
 import { cx } from "../ui";
+import { ReaderToolbar } from "./reader-toolbar";
 
 export type StudentLesson = {
   code: string;
@@ -321,7 +320,8 @@ export function StudentApp({ lesson }: { lesson: StudentLesson }) {
 
 /** Pastikan pilihan tersimpan masih cocok dengan versi yang tersedia sekarang. */
 function sanitize(p: StudentPrefs, lesson: StudentLesson): StudentPrefs {
-  const versi = p.versi === "asli" || lesson.versions[p.versi] ? p.versi : "asli";
+  const versi =
+    p.versi === "asli" || lesson.versions[p.versi] ? p.versi : "asli";
   return { ...DEFAULT_PREFS, ...p, versi };
 }
 
@@ -655,11 +655,6 @@ function Reader({
 
   const versions = (["asli", ...VERSION_KEYS] as const).filter((k) => k === "asli" || lesson.versions[k]);
 
-  const toggles = [
-    { key: "besar" as const, label: "Huruf besar", icon: ALargeSmall },
-    { key: "kontras" as const, label: "Kontras", icon: Contrast },
-    { key: "spasi" as const, label: "Spasi lega", icon: SpaceIcon },
-  ];
 
   const play = (startAt = 0) => {
     setAnswerMode(false);
@@ -682,122 +677,37 @@ function Reader({
     speech.stop();
   };
 
-  const chip = (on: boolean, tone: (typeof TONES)[keyof typeof TONES]) =>
-    cx(
-      "inline-flex h-11 shrink-0 items-center gap-1.5 rounded-xl border-2 px-3 text-[15px] font-bold transition-colors",
-      on ? cx(tone.border, tone.solid) : "border-[var(--reader-line)] bg-white text-tinta hover:border-batas",
-    );
+  const changeRate = (r: SpeechRate) => {
+    setRate(r);
+    if (speech.speaking)
+      speech.speak(sentences, {
+        lang: speechLang,
+        rate: r,
+        startAt: Math.max(0, speech.current),
+      });
+  };
+  const selectVersion = (key: StudentPrefs["versi"]) => {
+    speech.stop();
+    onChange({ versi: key });
+  };
 
   return (
     <div>
       {ruler && <ReadingRuler />}
-      <div className="no-print sticky top-0 z-30 border-b border-[var(--reader-line)] bg-[var(--reader-bg)]/95 backdrop-blur">
-        <div className="mx-auto max-w-4xl space-y-2 px-3 py-2.5 sm:px-4">
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={onChangeMode}
-              aria-label="Ganti cara belajar"
-              className="inline-flex h-11 shrink-0 items-center gap-1.5 rounded-xl px-2.5 font-bold text-[var(--reader-ink)] hover:bg-black/5"
-            >
-              <Settings2 className="size-5" aria-hidden />
-              <span className="hidden sm:inline">Cara belajar</span>
-            </button>
-            <p className="min-w-0 flex-1 truncate font-display text-[16px] font-extrabold">{lesson.title}</p>
-            {speech.supported && (
-              <div className="flex shrink-0 items-center gap-1.5">
-                {!speech.speaking && resumeAt !== null && (
-                  <button
-                    type="button"
-                    onClick={() => play(0)}
-                    className="inline-flex h-11 items-center gap-1.5 rounded-xl border-2 border-[var(--reader-line)] bg-white px-2.5 text-[15px] font-bold text-tinta hover:border-batas"
-                    aria-label="Dengarkan dari awal"
-                  >
-                    <RotateCcw className="size-5" aria-hidden />
-                  </button>
-                )}
-                <button
-                  type="button"
-                  onClick={() => (speech.speaking ? pause() : play(resumeAt ?? 0))}
-                  className="inline-flex h-11 items-center gap-2 rounded-xl bg-jingga px-4 text-[16px] font-bold text-white shadow-kartu hover:brightness-110"
-                >
-                  {speech.speaking ? <Pause className="size-5" aria-hidden /> : <Play className="size-5" aria-hidden />}
-                  {speech.speaking ? "Jeda" : resumeAt !== null ? "Lanjutkan" : "Dengarkan"}
-                </button>
-              </div>
-            )}
-          </div>
-
-          {versions.length > 1 && (
-            <div className="-mx-1 flex gap-1.5 overflow-x-auto px-1 pb-0.5" role="group" aria-label="Versi teks">
-              {versions.map((k) => {
-                const Icon = VERSION_ICON[k];
-                return (
-                  <button
-                    key={k}
-                    type="button"
-                    aria-pressed={prefs.versi === k}
-                    onClick={() => {
-                      speech.stop();
-                      onChange({ versi: k });
-                    }}
-                    className={chip(prefs.versi === k, TONES[MODE_TONE[k]])}
-                  >
-                    <Icon className="size-4" aria-hidden />
-                    {VERSION_LABEL[k]}
-                  </button>
-                );
-              })}
-            </div>
-          )}
-
-          <div className="-mx-1 flex items-center gap-1.5 overflow-x-auto px-1 pb-0.5">
-            {toggles.map((t) => (
-              <button
-                key={t.key}
-                type="button"
-                aria-pressed={prefs[t.key]}
-                onClick={() => onChange({ [t.key]: !prefs[t.key] })}
-                className={chip(prefs[t.key], TONES[MODE_TONE[t.key]])}
-              >
-                <t.icon className="size-5" aria-hidden />
-                {t.label}
-              </button>
-            ))}
-            <button
-              type="button"
-              aria-pressed={ruler}
-              onClick={toggleRuler}
-              className={chip(ruler, TONES[MODE_TONE.garis])}
-            >
-              <Ruler className="size-5" aria-hidden />
-              Garis bantu
-            </button>
-            {speech.supported && (
-              <>
-                <label htmlFor="kecepatan" className="sr-only">
-                  Kecepatan suara
-                </label>
-                <select
-                  id="kecepatan"
-                  value={rate}
-                  onChange={(e) => {
-                    const r = Number(e.target.value) as SpeechRate;
-                    setRate(r);
-                    if (speech.speaking)
-                      speech.speak(sentences, { lang: speechLang, rate: r, startAt: Math.max(0, speech.current) });
-                  }}
-                  className="h-11 shrink-0 rounded-xl border-2 border-[var(--reader-line)] bg-white px-2 text-[15px] font-bold text-tinta"
-                >
-                  <option value={0.8}>Suara pelan</option>
-                  <option value={1}>Suara biasa</option>
-                  <option value={1.2}>Suara cepat</option>
-                </select>
-              </>
-            )}
-          </div>
-        </div>
-      </div>
+      <ReaderToolbar
+        versions={versions.map((k) => ({ key: k, label: VERSION_LABEL[k] }))}
+        prefs={prefs}
+        onChange={onChange}
+        onSelectVersion={selectVersion}
+        ruler={ruler}
+        onToggleRuler={toggleRuler}
+        speech={speech}
+        rate={rate}
+        onRateChange={changeRate}
+        resumeAt={resumeAt}
+        onPlay={play}
+        onPause={pause}
+      />
 
       <main id="isi" className="mx-auto max-w-4xl px-0 pb-40 pt-0 sm:px-4 sm:pt-6">
         <article className="bg-[var(--reader-bg)] px-5 py-6 sm:rounded-[1.75rem] sm:border sm:border-[var(--reader-line)] sm:px-10 sm:py-10 sm:shadow-kartu">
