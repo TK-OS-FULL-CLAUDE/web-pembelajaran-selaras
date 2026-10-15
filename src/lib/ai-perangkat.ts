@@ -3,6 +3,7 @@ import { z } from "zod";
 import { NEEDS } from "./accommodations";
 import { generateJson } from "./claude";
 import { cleanLines } from "./perangkat";
+import { FIGURE_LINE } from "./text";
 import { LANG_LABEL, RUBRIK_LEVELS, type ClassNeeds, type Lkpd, type ModulAjar, type Rubrik } from "./types";
 
 // Prompt Generator Perangkat Ajar (fitur tambahan Peran 2). Terpisah dari ai-tasks.ts supaya mudah ditinjau.
@@ -38,10 +39,18 @@ const tahapSchema = z.object({
   langkah: lines(12).refine((l) => l.length > 0, "langkah kosong"),
 });
 
+/** Baris penanda gambar (`![…](gambar:ID)`) tidak berguna untuk AI dan bisa ikut tersalin ke hasil. */
+function forPrompt(text: string): string {
+  return text
+    .split("\n")
+    .filter((l) => !FIGURE_LINE.test(l.trim()))
+    .join("\n");
+}
+
 function materi(input: KitInput) {
   return `Materi "${input.title}" (${input.subject || "pelajaran"}, ${input.grade || "SD"}):
 """
-${input.body}
+${forPrompt(input.body)}
 """`;
 }
 
@@ -227,7 +236,7 @@ ${DATA_RULE}
 
 Teks mudah:
 """
-${input.mudahText}
+${forPrompt(input.mudahText)}
 """`,
       },
     ],

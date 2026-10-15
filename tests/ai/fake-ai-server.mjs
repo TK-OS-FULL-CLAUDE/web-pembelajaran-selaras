@@ -26,21 +26,36 @@ function answerFor(prompt, provider, m) {
   const perangkat = perangkatAnswer(prompt, tag);
   if (perangkat) return perangkat;
   if (prompt.includes("Salin teks utama dari foto")) {
-    if (m === "unreadable") return { judul: "", teks: "", terbaca: false };
+    if (m === "unreadable") return { judul: "", teks: "", terbaca: false, gambar: [] };
     return {
       judul: "Daur Air",
-      teks: `## Daur Air\n\nAir di bumi selalu bergerak. Matahari memanaskan air laut ${tag}.\n\n[Gambar: panah dari laut ke awan]`,
+      teks: `## Daur Air\n\nAir di bumi selalu bergerak. Matahari memanaskan air laut ${tag}.\n\n[[GAMBAR 1]]\n\nUap air naik ke udara.`,
       terbaca: true,
-    };
-  }
-  if (prompt.includes("soal pilihan ganda")) {
-    return {
-      soal: [
-        { pertanyaan: "Apa yang memanaskan air laut?", pilihan: ["Matahari", "Bulan", "Angin", "Batu"], jawaban: 0, pembahasan: `Matahari ${tag}.` },
-        { pertanyaan: "Uap air yang mendingin membentuk…", pilihan: ["Tanah", "Awan", "Pasir", "Api"], jawaban: 1, pembahasan: "Awan." },
-        { pertanyaan: "Air yang jatuh dari awan disebut…", pilihan: ["Embun", "Kabut", "Hujan", "Salju"], jawaban: 2, pembahasan: "Hujan." },
+      gambar: [
+        { nomor: 1, keterangan: "Daur air", deskripsi: "Panah dari laut ke awan, lalu hujan turun ke gunung.", kotak: [300, 100, 700, 900] },
       ],
     };
+  }
+  if (prompt.includes("Tulis deskripsi untuk gambar")) {
+    return { deskripsi: `Diagram daun dengan panah cahaya, air, dan udara ${tag}.`, keterangan: "Diagram daun" };
+  }
+  if (prompt.includes("Jenis soal yang dipakai")) {
+    const all = [
+      { jenis: "pg", pertanyaan: "Apa yang memanaskan air laut?", pilihan: ["Matahari", "Bulan", "Angin", "Batu"], jawaban: [0], isian: [], pasangan: [], pembahasan: `Matahari ${tag}.` },
+      { jenis: "bs", pertanyaan: "Uap air yang mendingin membentuk awan.", pilihan: [], jawaban: [0], isian: [], pasangan: [], pembahasan: "Benar." },
+      { jenis: "pgk", pertanyaan: "Pilih semua peristiwa dalam daur air.", pilihan: ["Penguapan", "Pembakaran", "Pengembunan", "Hujan"], jawaban: [0, 2, 3], isian: [], pasangan: [], pembahasan: "Pembakaran bukan bagian daur air." },
+      { jenis: "isian", pertanyaan: "Air yang jatuh dari awan disebut …", pilihan: [], jawaban: [], isian: ["hujan"], pasangan: [], pembahasan: "Hujan." },
+      { jenis: "jodoh", pertanyaan: "Pasangkan peristiwa dengan artinya.", pilihan: [], jawaban: [], isian: [], pasangan: [
+        { kiri: "Penguapan", kanan: "Air menjadi uap" },
+        { kiri: "Pengembunan", kanan: "Uap menjadi titik air" },
+        { kiri: "Hujan", kanan: "Air jatuh dari awan" },
+      ], pembahasan: "Sesuai urutan daur air." },
+      // Soal rusak: pilihan ganda tanpa pilihan → harus dibuang.
+      { jenis: "pg", pertanyaan: "Soal rusak tanpa pilihan?", pilihan: [], jawaban: [0], isian: [], pasangan: [], pembahasan: "" },
+    ];
+    // Hanya jenis yang diminta (lihat daftar di prompt).
+    const wanted = all.filter((q) => q.jenis === "pg" ? prompt.includes('\\"pg\\" = pilihan ganda') : prompt.includes(`\\"${q.jenis}\\" =`));
+    return { soal: wanted.length ? wanted : all };
   }
   if (prompt.includes("Buat ringkasan materi")) {
     return { teks: `1. Air di bumi selalu bergerak ${tag}.\n2) Matahari memanaskan air.\n* Uap air membentuk awan.\n- Hujan jatuh ke bumi.` };

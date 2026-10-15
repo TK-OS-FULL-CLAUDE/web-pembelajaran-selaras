@@ -10,6 +10,10 @@ const schema = z.object({
   lessonId: z.string().uuid(),
   body: z.string().max(30_000).optional(),
   count: z.number().int().min(1).max(10).default(5),
+  types: z
+    .array(z.enum(["pg", "pgk", "bs", "isian", "jodoh"]))
+    .max(5)
+    .optional(),
 });
 
 /** Draf soal dari AI. Tidak langsung disimpan: guru meninjau di tab Kuis lalu tersimpan otomatis. */
@@ -22,7 +26,12 @@ export async function POST(req: Request) {
     if (body.length < 40) return fail("Materi asli terlalu pendek untuk dibuatkan kuis.", 422);
     const cls = lesson.class_id ? await getClass(teacher.id, lesson.class_id) : null;
     await consumeAiQuota(teacher.id, "kuis");
-    const result = await makeQuizDraft({ body, grade: cls?.grade || "siswa SD", count: input.count });
+    const result = await makeQuizDraft({
+      body,
+      grade: cls?.grade || "siswa SD",
+      count: input.count,
+      types: input.types,
+    });
     return ok({ questions: result.questions });
   });
 }
