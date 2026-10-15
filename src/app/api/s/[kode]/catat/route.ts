@@ -13,7 +13,8 @@ const schema = z
       .min(8)
       .max(64)
       .regex(/^[A-Za-z0-9-]+$/),
-    kind: z.enum(["open", "quiz"]),
+    kind: z.enum(["open", "quiz", "confused"]),
+    feedback: z.object({ section: z.string().trim().min(1).max(200), revision: z.number().int().positive() }).optional(),
     alias: z.string().trim().max(40).nullable(),
     prefs: prefsInput,
     score: z.number().int().min(0).max(100).optional(),
@@ -44,8 +45,11 @@ export async function POST(req: Request, { params }: Ctx) {
     const input = await readJson(req, schema);
     const lesson = await getPublishedLesson(kode);
     if (!lesson) return fail("Materi tidak ditemukan.", 404);
+    if (input.kind === "confused" && !input.feedback) return fail("Pilih bagian yang belum dipahami.", 422);
     await recordStudentEvent({
       lessonId: lesson.id,
+      audienceId: lesson.audience_id,
+      feedback: input.kind === "confused" ? input.feedback : undefined,
       eventId: input.eventId,
       occurredAt: input.occurredAt,
       sessionId: input.sessionId,

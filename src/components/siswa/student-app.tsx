@@ -49,8 +49,10 @@ import { ReadingRuler } from "./reading-ruler";
 import { useSpeech, type SpeechRate } from "../use-speech";
 import { cx } from "../ui";
 import { ReaderToolbar } from "./reader-toolbar";
+import { ConfusionFeedback } from "./confusion-feedback";
 
 export type StudentLesson = {
+  revision?: number;
   code: string;
   title: string;
   subject: string;
@@ -128,6 +130,7 @@ export function StudentApp({ lesson }: { lesson: StudentLesson }) {
   const [device, setDevice] = useState<"personal" | "shared">("shared");
   const [delivery, setDelivery] = useState({ pending: 0, volatile: false });
   const [switchError, setSwitchError] = useState("");
+  const [feedbackSent, setFeedbackSent] = useState<Record<string, string[]>>({});
   const speech = useSpeech();
   const lastLogged = useRef<string>("");
 
@@ -165,8 +168,8 @@ export function StudentApp({ lesson }: { lesson: StudentLesson }) {
 
   const log = useCallback(
     (
-      kind: "open" | "quiz",
-      extra: { score?: number; total?: number; durasi?: number; detail?: QuestionResultPayload[] } = {},
+      kind: "open" | "quiz" | "confused",
+      extra: { score?: number; total?: number; durasi?: number; detail?: QuestionResultPayload[]; feedback?: { section: string; revision: number } } = {},
     ) => {
       if (!sessionId) return;
       enqueueEvent({ eventId: newSessionId(), occurredAt: new Date().toISOString(), code: lesson.code,
@@ -217,6 +220,7 @@ export function StudentApp({ lesson }: { lesson: StudentLesson }) {
     speech.stop();
     try { clearLearnerPreferences(localStorage); } catch { /* Preferensi di memori tetap direset. */ }
     setAlias(""); setPrefs(DEFAULT_PREFS); setRate(1); setSessionId("");
+    setFeedbackSent({});
     lastLogged.current = ""; setSwitchError(""); setStep("mulai");
     window.scrollTo({ top: 0 });
   };
@@ -313,6 +317,11 @@ export function StudentApp({ lesson }: { lesson: StudentLesson }) {
 
   return shell(
     <Reader
+      feedbackSent={feedbackSent[prefs.versi] ?? []}
+      onConfused={(section) => {
+        log("confused", { feedback: { section, revision: lesson.revision ?? 1 } });
+        setFeedbackSent((s) => ({ ...s, [prefs.versi]: [...(s[prefs.versi] ?? []), section] }));
+      }}
       lesson={lesson}
       prefs={prefs}
       onChange={updatePrefs}
@@ -597,6 +606,7 @@ function ChooseMode({
 // ---------------------------------------------------------------------------
 
 function Reader({
+  feedbackSent, onConfused,
   lesson,
   prefs,
   onChange,
@@ -606,6 +616,8 @@ function Reader({
   onChangeMode,
   onQuiz,
 }: {
+  feedbackSent: string[];
+  onConfused: (section: string) => void;
   lesson: StudentLesson;
   prefs: StudentPrefs;
   onChange: (p: Partial<StudentPrefs>) => void;
@@ -751,6 +763,7 @@ function Reader({
             </p>
           )}
           {glossary.length > 0 && <GlossaryList items={glossary} />}
+          <ConfusionFeedback text={text} sent={feedbackSent} onSend={onConfused} />
         </article>
 
         <div className="mx-5 sm:mx-0">
