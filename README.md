@@ -33,7 +33,7 @@ Bedanya dengan alat yang sudah ada: Microsoft Immersive Reader hanya melayani si
 ## Fitur
 
 **Ruang guru** (`/guru`, perlu masuk)
-- Daftar dan masuk dengan email dan kata sandi. Percobaan masuk yang gagal dibatasi.
+- Daftar dan masuk dengan email dan kata sandi, atau dengan **akun Google** (bila `GOOGLE_CLIENT_ID` dan `GOOGLE_CLIENT_SECRET` diisi). Akun yang dibuat dengan Google bisa membuat kata sandi di **Profil** supaya bisa masuk juga dengan email dan kata sandi seperti biasa. Percobaan masuk yang gagal dibatasi. Di **Profil** (klik nama di kanan atas) guru juga bisa mengubah nama, sekolah, dan kata sandi; profil akun demo bersama dikunci.
 - Kelas dengan profil kebutuhan: low vision, tuli, disleksia, sulit fokus, **diskalkulia (kesulitan berhitung)**, dan bahasa ibu daerah (Jawa atau Sunda).
 - Panduan akomodasi per kebutuhan, lengkap dengan dasar rujukannya (lihat [Rujukan](#rujukan)). Centang tersimpan di browser guru.
 - Editor materi dengan enam tab dan simpan otomatis. Kalau materi diubah dari dua tab sekaligus, simpanan yang bertabrakan terdeteksi.
@@ -43,6 +43,7 @@ Bedanya dengan alat yang sudah ada: Microsoft Immersive Reader hanya melayani si
   - **Perangkat Ajar:** dari materi yang sama, AI menyiapkan draf **modul ajar ringkas** (identitas, tujuan pembelajaran, kegiatan pendahuluan–inti–penutup, asesmen, dan akomodasi sesuai profil kelas), **LKPD** (aktivitas + pertanyaan dengan ruang jawab), **LKPD versi sederhana** (disusun dari versi teks mudah, huruf lebih besar), **rubrik** (kriteria × 4 tingkat), dan **tugas berjenjang (TaRL)**: tugas penguatan, inti, dan tantangan untuk pembelajaran berdiferensiasi. Identitas modul (penyusun, sekolah, kelas, fase, alokasi waktu) diisi otomatis dari data guru dan kelas. Pola review sama dengan tab Versi: berlabel **Draf AI — wajib dicek guru**, bisa diedit, dibuat ulang, atau diisi sendiri tanpa AI. Cetak atau simpan PDF satu per satu atau sekaligus lewat dialog cetak browser. Perangkat ajar hanya untuk guru, kecuali tugas berjenjang yang sudah dicek: siswa melihatnya di layar hasil kuis sesuai skornya.
   - **Kuis:** lima jenis soal — pilihan ganda, pilihan ganda kompleks, benar/salah, isian singkat, dan menjodohkan — ditulis manual atau didraf AI (guru memilih jenis dan jumlahnya). Soal yang belum lengkap ditandai dan tidak ditampilkan ke siswa. Setiap soal punya **konsep yang dinilai** dan **petunjuk bertahap** (sampai 3, dibuka siswa satu per satu). **Latihan adaptif:** bank soal latihan per konsep (draf AI, dipakai setelah guru menandai sudah dicek) untuk siswa yang salah pada konsep itu.
   - **Bagikan:** daftar cek sebelum terbit, kode 6 karakter, link, QR (bisa diunduh), dan tombol tarik dari siswa. Server menolak terbit selama masih ada versi atau deskripsi gambar yang belum dicek.
+  - **Mode proyektor** (tombol di kepala editor dan di tab Bagikan): untuk kelas yang siswanya tidak memakai HP. Materi tampil ke seluruh kelas lewat proyektor/TV, satu bagian per layar (dipotong otomatis di setiap judul, gambar mendapat layar sendiri), huruf sangat besar, bisa dibacakan dengan sorotan kalimat, kata sulit bisa diketuk, pilih versi teks yang sudah dicek, kontras, dan layar penuh. Setelah materi, kuis tampil satu soal per layar dan guru membuka jawabannya. Bisa dipakai dengan clicker presentasi (panah / PageUp / PageDown). Tidak tercatat di rekap siswa dan bisa dipakai walau materi belum terbit.
   - **Rekap:** cara belajar yang dipilih siswa, skor dan lama pengerjaan kuis per versi teks, **persentase benar per soal** beserta jawaban salah yang paling sering dipilih dan berapa sesi membuka petunjuk, **kelompok kesiapan (TaRL)** dari skor kuis, dan pengerjaan terbaru. **Analisis kelas dengan AI** menduga miskonsepsi dari data itu, memberi saran tindak lanjut, menyiapkan penjelasan ulang untuk siswa, dan membuat draf latihan untuk konsep yang lemah. Angka buktinya dihitung aplikasi, bukan AI.
   - **Matematika:** pecahan (`3/4`) tampil bersusun dan pangkat (`s^2`) tampil sebagai superskrip; jawaban angka diperiksa nilainya (minus, koma/titik desimal, satuan opsional); AI memakai aturan khusus Matematika (angka, lambang, dan langkah hitung disalin persis; soal latihan boleh memakai angka baru) dan mengirim ekspresi hitungan yang **dihitung ulang aplikasi** — kunci yang tidak cocok ditandai **Periksa hitungan**.
 - Salin materi ke kelas lain.
@@ -91,7 +92,7 @@ flowchart LR
 |---|---|
 | Frontend & backend | Next.js 16 (App Router), React 19, TypeScript, Tailwind CSS 4 |
 | Database | PostgreSQL lewat `postgres` (postgres.js); bisa Supabase, Neon, atau Postgres lokal |
-| Login guru | Email + kata sandi (scrypt bawaan Node.js), cookie sesi bertanda tangan HMAC |
+| Login guru | Email + kata sandi (scrypt bawaan Node.js) atau Google (OAuth 2.0 + OpenID Connect dengan PKCE, tanpa library), cookie sesi bertanda tangan HMAC |
 | AI | Claude API (Anthropic) dan Gemini API (Google), lewat REST tanpa SDK |
 | Text-to-speech | Web Speech API (bawaan browser) |
 | Impor dokumen | `pdfjs-dist` (PDF: teks + letak gambar, di browser) dan `mammoth` (Word .docx → HTML), keduanya dimuat hanya saat dipakai |
@@ -108,13 +109,16 @@ src/
 │   ├── guru/
 │   │   ├── page.tsx                 # beranda guru: kelas dan materi
 │   │   ├── kelas/baru/, kelas/[id]/ # kelas, profil kebutuhan, panduan akomodasi
-│   │   └── materi/baru/, materi/[id]/  # editor materi (6 tab)
+│   │   ├── materi/baru/, materi/[id]/  # editor materi (6 tab)
+│   │   └── profil/                  # nama dan sekolah guru
+│   ├── proyektor/[id]/              # mode proyektor (khusus guru, tidak tercatat di rekap)
 │   ├── s/[kode]/                    # ruang siswa
 │   └── api/
 │       ├── ai/foto|versi|kuis|alt|perangkat/  # foto → teks, draf versi, draf kuis, deskripsi gambar, draf perangkat ajar
 │       ├── ai/latihan|analisis|periksa/       # bank latihan adaptif, analisis kelas, pemeriksa kesetiaan
 │       ├── gambar/, gambar/[id]/    # unggah & tampilkan gambar materi
-│       ├── auth/masuk|daftar|keluar|demo/
+│       ├── auth/masuk|daftar|keluar|demo|profil|kata-sandi/
+│       ├── auth/google/, auth/google/callback/  # masuk dengan Google
 │       ├── kelas/, materi/          # termasuk materi/[id]/terbit dan /salin
 │       ├── s/[kode]/catat/          # catat sesi & skor siswa (anonim)
 │       ├── demo/reset/
@@ -153,7 +157,7 @@ Tabel dibuat otomatis saat app pertama kali terhubung ke database. Salinannya ad
 
 | Tabel | Isi |
 |---|---|
-| `teachers` | id, email, name, school, password_hash, is_demo |
+| `teachers` | id, email, name, school, password_hash (kosong untuk akun Google), google_sub, is_demo |
 | `classes` | id, teacher_id, name, grade, needs (JSON: jumlah siswa per kebutuhan + bahasa daerah) |
 | `lessons` | id, teacher_id, class_id, title, subject, body, glossary, versions, quiz, practice (bank latihan adaptif), figures (deskripsi gambar), teaching_kit, status (`draft`/`published`), share_code, revision |
 | `lesson_images` | gambar materi (dikecilkan di browser, disimpan sebagai bytea): id, teacher_id, mime, data, width, height |
@@ -189,6 +193,8 @@ Isi `.env.local` (penjelasan lengkap ada di [`.env.example`](.env.example)):
 | `GEMINI_API_KEY` | Opsional | Kunci Gemini. Isi salah satu atau keduanya untuk fitur AI. |
 | `ANTHROPIC_MODEL`, `GEMINI_MODEL` | Opsional | Memaksa satu model dicoba lebih dulu. |
 | `AI_LIMIT_PER_HOUR` | Opsional | Batas permintaan AI per akun per jam (default 100). |
+| `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | Opsional | Mengaktifkan **Masuk dengan Google**. Buat di Google Cloud Console → Credentials → OAuth client ID (Web application), dengan redirect URI `<alamat-app>/api/auth/google/callback`. Langkah lengkap di `.env.example`. |
+| `APP_URL` | Opsional | Alamat app tanpa `/` di akhir, supaya redirect URI Google selalu sama walau app dibuka dari domain preview. |
 
 Saat pertama kali terhubung, app membuat tabel dan mengisi data demo sendiri: 1 guru demo, 2 kelas (4B berbahasa ibu Jawa, 6A berbahasa ibu Sunda) dengan profil kebutuhan, 3 materi terbit (`DEMO01` Fotosintesis, `DEMO02` Bagian Tumbuhan, `DEMO03` Teks Prosedur), masing-masing dengan 4 versi yang sudah dicek dan kuis 5 soal (dua materi IPAS memakai diagram, tabel, kotak catatan, dan lima jenis soal), materi Matematika `DEMO04` "Pecahan Senilai" (teks mudah, ringkasan, kuis dengan hitungan pemeriksa), materi "Daur Air" yang masih draf untuk mendemokan AI, dan hasil kuis siswa contoh untuk rekap. Soal demo sudah punya konsep dan petunjuk bertahap; jawaban salah contoh memakai pengecoh yang khas supaya analisis AI punya bahan; Fotosintesis dan Pecahan Senilai punya bank latihan adaptif yang sudah dicek, dan Fotosintesis punya tugas berjenjang. Database yang sudah berisi data demo lama perlu menekan **Reset data demo** di halaman guru. Tidak perlu menjalankan SQL manual. Tanpa kunci AI, semua fitur tetap jalan kecuali tombol AI.
 
@@ -201,12 +207,13 @@ npm run typecheck                        # pemeriksaan TypeScript
 npm run test:format                      # uji format materi, pemecah kalimat, dan pemeriksaan lima jenis soal
 npm run test:mtk                         # uji Matematika: angka, hitungan ulang, notasi, pembaca simbol
 npm run test:ai                          # 37 uji mesin AI, perangkat ajar, dan fitur adaptif dengan server palsu (tanpa kunci, tanpa biaya)
-npm test                                 # format + Matematika + AI + fitur (lihat juga "Pengujian tambahan" di bawah)
+npm run test:google                      # uji masuk dengan Google: PKCE, URL Google, dan pemeriksaan ID token
+npm test                                 # format + Matematika + AI + fitur + Google (lihat juga "Pengujian tambahan" di bawah)
 npm run cek -- https://alamat-app        # uji cepat versi ter-deploy: database, login demo, kelas, materi, simpan, gambar, perangkat ajar, salin, siswa
 npm run cek -- https://alamat-app --ai   # ditambah uji draf kuis, ringkasan, rubrik, dan pemeriksa kesetiaan dengan kunci AI asli
 ```
 
-Setelah deploy, buka `/api/status` untuk melihat apakah database dan AI sudah aktif.
+Setelah deploy, buka `/api/status` untuk melihat apakah database, AI, dan masuk dengan Google sudah aktif.
 
 ## Penggunaan AI (Transparansi)
 

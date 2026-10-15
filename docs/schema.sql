@@ -174,3 +174,10 @@ drop trigger if exists selaras_revision_history on lessons;
 create trigger selaras_revision_history before update on lessons for each row execute function selaras_keep_revision();
 
 alter table lesson_revisions enable row level security;
+
+-- Masuk dengan Google: akun guru dari Google tidak punya kata sandi Selaras.
+alter table teachers add column if not exists google_sub text;
+
+create unique index if not exists teachers_google_sub_idx on teachers(google_sub);
+
+alter table teachers alter column password_hash drop not null;
