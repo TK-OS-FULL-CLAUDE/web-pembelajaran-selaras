@@ -8,7 +8,7 @@
     "build": "next build",
     "start": "next start",
     "typecheck": "tsc --noEmit",
-    "test:ai": "npx --yes tsx@4.23.15 --conditions=react-server tests/ai/ai.test.mts",
+    "test:ai": "npx --yes tsx@4.23.15 --conditions=react-server tests/ai/ai.test.mts && npx --yes tsx@4.23.15 --conditions=react-server tests/ai/perangkat.test.mts",
     "cek": "node scripts/cek-deploy.mjs"
   },
   "engines": {

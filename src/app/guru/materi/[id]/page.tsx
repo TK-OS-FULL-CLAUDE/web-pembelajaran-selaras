@@ -7,7 +7,7 @@ import { aiEnabled } from "@/lib/claude";
 
 export const metadata: Metadata = { title: "Materi" };
 
-const TAB_KEYS: TabKey[] = ["materi", "versi", "kuis", "bagikan", "rekap"];
+const TAB_KEYS: TabKey[] = ["materi", "versi", "perangkat", "kuis", "bagikan", "rekap"];
 
 export default async function LessonPage({
   params,
@@ -38,12 +38,14 @@ export default async function LessonPage({
         glossary: lesson.glossary,
         versions: lesson.versions,
         quiz: lesson.quiz,
+        teachingKit: lesson.teaching_kit ?? {},
       }}
       revision={lesson.revision}
       status={lesson.status}
       shareCode={lesson.share_code}
       cls={cls ? { id: cls.id, name: cls.name, grade: cls.grade, needs: cls.needs } : null}
       classes={classes.map((c) => ({ id: c.id, name: c.name }))}
+      teacher={{ name: teacher.name, school: teacher.school }}
       aiOn={aiEnabled()}
       stats={stats}
       initialTab={initialTab}

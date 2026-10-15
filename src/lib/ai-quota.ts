@@ -16,7 +16,7 @@ export function aiLimitPerHour(): number {
  * Catat satu permintaan AI untuk guru ini, atau tolak (HTTP 429) bila batas per jam sudah tercapai.
  * Panggil tepat sebelum memanggil AI, setelah input lolos validasi.
  */
-export async function consumeAiQuota(teacherId: string, kind: "foto" | "versi" | "kuis"): Promise<void> {
+export async function consumeAiQuota(teacherId: string, kind: "foto" | "versi" | "kuis" | "perangkat"): Promise<void> {
   const sql = await getDb();
   const limit = aiLimitPerHour();
   const [row] = await sql<{ used: number; oldest: Date | null }[]>`

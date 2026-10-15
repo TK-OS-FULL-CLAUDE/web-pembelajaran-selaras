@@ -81,6 +81,76 @@ export type QuizQuestion = {
   origin?: "ai" | "guru";
 };
 
+// ---------- Perangkat ajar (modul ajar, LKPD, rubrik) ----------
+// Hanya untuk guru: disimpan di lessons.teaching_kit dan tidak pernah dikirim ke halaman siswa.
+
+export type KitKey = "modul" | "lkpd" | "lkpdMudah" | "rubrik";
+
+/** Urutan tampil dan urutan cetak "Cetak semua". */
+export const KIT_KEYS: KitKey[] = ["modul", "lkpd", "lkpdMudah", "rubrik"];
+
+export const KIT_LABEL: Record<KitKey, string> = {
+  modul: "Modul ajar",
+  lkpd: "LKPD",
+  lkpdMudah: "LKPD versi sederhana",
+  rubrik: "Rubrik penilaian",
+};
+
+export type KegiatanTahap = { menit: number; langkah: string[] };
+
+export type ModulAjar = {
+  identitas: {
+    penyusun: string;
+    sekolah: string;
+    mapel: string;
+    kelas: string;
+    fase: string;
+    topik: string;
+    alokasi: string;
+  };
+  tujuan: string[];
+  /** Media, alat, dan bahan */
+  sarana: string[];
+  pendahuluan: KegiatanTahap;
+  inti: KegiatanTahap;
+  penutup: KegiatanTahap;
+  asesmen: string[];
+  /** Akomodasi sesuai profil kebutuhan kelas */
+  akomodasi: string[];
+};
+
+export type LkpdAktivitas = { judul: string; langkah: string[]; pertanyaan: string[] };
+
+/** Lembar Kerja Peserta Didik. Dipakai juga untuk LKPD versi sederhana. */
+export type Lkpd = {
+  judul: string;
+  tujuan: string;
+  petunjuk: string[];
+  aktivitas: LkpdAktivitas[];
+};
+
+/** Empat tingkat capaian, dari skor 1 sampai 4. */
+export const RUBRIK_LEVELS = ["Perlu bimbingan", "Cukup", "Baik", "Sangat baik"] as const;
+
+export type RubrikKriteria = { nama: string; level: string[] };
+
+export type Rubrik = { judul: string; kriteria: RubrikKriteria[] };
+
+export type KitData = { modul: ModulAjar; lkpd: Lkpd; lkpdMudah: Lkpd; rubrik: Rubrik };
+
+export type KitItem<T> = {
+  data: T;
+  /** "ai" = draf dari AI, "guru" = diisi guru sendiri */
+  origin: "ai" | "guru";
+  /** Guru sudah membaca dan menyetujui perangkat ini */
+  checked: boolean;
+  /** Sidik teks sumber saat dibuat (materi asli; untuk LKPD sederhana: versi teks mudah) */
+  basedOn?: string;
+  updatedAt: string;
+};
+
+export type TeachingKit = { [K in KitKey]?: KitItem<KitData[K]> };
+
 export type ClassRow = {
   id: string;
   teacher_id: string;
@@ -100,6 +170,7 @@ export type LessonRow = {
   glossary: GlossaryItem[];
   versions: LessonVersions;
   quiz: QuizQuestion[];
+  teaching_kit: TeachingKit;
   status: "draft" | "published";
   share_code: string | null;
   /** Bertambah setiap kali isi materi disimpan; dipakai untuk mendeteksi simpan yang bertabrakan. */

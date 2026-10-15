@@ -23,6 +23,8 @@ function modeFor(provider, model) {
 /** Jawaban palsu yang masuk akal, ditebak dari isi prompt. */
 function answerFor(prompt, provider, m) {
   const tag = `(${provider})`;
+  const perangkat = perangkatAnswer(prompt, tag);
+  if (perangkat) return perangkat;
   if (prompt.includes("Salin teks utama dari foto")) {
     if (m === "unreadable") return { judul: "", teks: "", terbaca: false };
     return {
@@ -66,6 +68,54 @@ function answerFor(prompt, provider, m) {
       { kata: "fotosintesis", arti: "tidak ada di teks sumber" },
     ],
   };
+}
+
+/** Jawaban palsu Generator Perangkat Ajar (src/lib/ai-perangkat.ts). Sengaja diberi nomor/butir untuk diuji dirapikan. */
+function perangkatAnswer(prompt, tag) {
+  if (prompt.includes("Susun draf modul ajar")) {
+    return {
+      tujuan: [`1. Peserta didik dapat menjelaskan penguapan ${tag}.`, "- Peserta didik dapat menyebutkan urutan daur air."],
+      sarana: ["Gelas berisi air", "Materi Selaras (link dari guru)"],
+      pendahuluan: { menit: 10, langkah: ["Salam dan doa.", "Pertanyaan pemantik: ke mana air hujan pergi?"] },
+      inti: { menit: 50, langkah: ["Siswa membaca materi.", "Siswa mengamati air yang dipanaskan.", "Siswa mengerjakan LKPD."] },
+      penutup: { menit: 10, langkah: ["Siswa menyimpulkan.", "Refleksi singkat."] },
+      asesmen: ["Formatif: LKPD dengan rubrik.", "Sumatif: kuis singkat di Selaras."],
+      akomodasi: ["Siswa disleksia memakai versi teks mudah dan dibacakan."],
+    };
+  }
+  if (prompt.includes("Susun draf LKPD versi sederhana")) {
+    return {
+      judul: "Air Bergerak",
+      tujuan: "Hari ini kamu belajar tentang air.",
+      petunjuk: ["Baca teks pendek.", "Jawab soal."],
+      aktivitas: [
+        { judul: "Baca", langkah: ["Baca teks mudah."], pertanyaan: [`Apa yang memanaskan air? (lingkari) ${tag}`, "Gambar awan. (gambar)"] },
+        { judul: "", langkah: [], pertanyaan: ["Air jadi apa? (satu kata)"] },
+      ],
+    };
+  }
+  if (prompt.includes("Susun draf rubrik penilaian")) {
+    return {
+      judul: "Rubrik LKPD Daur Air",
+      kriteria: [
+        { nama: "Pemahaman konsep", level: ["Perlu bantuan menyebut penguapan.", "Menyebut penguapan.", "Menjelaskan penguapan.", `Menjelaskan dan memberi contoh ${tag}.`] },
+        { nama: "Ketepatan jawaban", level: ["1 jawaban tepat.", "2 jawaban tepat.", "3 jawaban tepat.", "Semua jawaban tepat."] },
+        { nama: "Kerja sama", level: ["Perlu diajak.", "Kadang ikut.", "Ikut aktif.", "Memimpin diskusi."] },
+      ],
+    };
+  }
+  if (prompt.includes("Susun draf LKPD")) {
+    return {
+      judul: "LKPD Daur Air",
+      tujuan: "Setelah mengerjakan LKPD ini, kamu dapat menjelaskan daur air.",
+      petunjuk: ["Tulis nama dan kelasmu.", "Kerjakan bersama kelompok."],
+      aktivitas: [
+        { judul: "", langkah: ["Amati air yang dipanaskan."], pertanyaan: [`1) Apa yang terjadi pada air? ${tag}`, "Mengapa air berubah?"] },
+        { judul: "Urutan daur air", langkah: [], pertanyaan: ["Tulis urutan daur air."] },
+      ],
+    };
+  }
+  return null;
 }
 
 const server = http.createServer(async (req, res) => {

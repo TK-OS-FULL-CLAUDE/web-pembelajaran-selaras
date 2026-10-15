@@ -10,6 +10,7 @@ import {
   type LessonVersions,
   type QuizQuestion,
   type StudentPrefs,
+  type TeachingKit,
   type VersionKey,
 } from "./types";
 
@@ -120,6 +121,7 @@ export type LessonPatch = Partial<{
   glossary: GlossaryItem[];
   versions: LessonVersions;
   quiz: QuizQuestion[];
+  teachingKit: TeachingKit;
 }>;
 
 export type UpdateResult =
@@ -151,6 +153,7 @@ export async function updateLesson(
       glossary = coalesce(${json(patch.glossary)}::jsonb, glossary),
       versions = coalesce(${json(patch.versions)}::jsonb, versions),
       quiz = coalesce(${json(patch.quiz)}::jsonb, quiz),
+      teaching_kit = coalesce(${json(patch.teachingKit)}::jsonb, teaching_kit),
       revision = revision + 1,
       updated_at = now()
     where id = ${lessonId} and teacher_id = ${teacherId}
@@ -166,8 +169,8 @@ export async function duplicateLesson(teacherId: string, lessonId: string, class
   if (!isUuid(lessonId)) return null;
   const sql = await getDb();
   const rows = await sql<LessonRow[]>`
-    insert into lessons (teacher_id, class_id, title, subject, body, glossary, versions, quiz, status)
-    select teacher_id, ${classId}, title || ' (salinan)', subject, body, glossary, versions, quiz, 'draft'
+    insert into lessons (teacher_id, class_id, title, subject, body, glossary, versions, quiz, teaching_kit, status)
+    select teacher_id, ${classId}, title || ' (salinan)', subject, body, glossary, versions, quiz, teaching_kit, 'draft'
     from lessons where id = ${lessonId} and teacher_id = ${teacherId}
     returning *`;
   return rows[0] ?? null;
