@@ -1,13 +1,16 @@
 "use client";
 
-// Peran 4: rekap per materi — cara belajar yang dipilih siswa dan skor kuis per versi teks.
+// Peran 4: rekap per materi — cara belajar yang dipilih siswa, skor kuis per versi teks,
+// dan soal mana yang paling sulit.
 
-import { RefreshCw } from "lucide-react";
+import { Clock, ListChecks, RefreshCw, Sparkles, Target, Users } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useTransition } from "react";
 import type { LessonStats } from "@/lib/data";
-import { VERSION_LABEL, isRegionalVersion, type VersionKey } from "@/lib/types";
-import { Button, Card, EmptyState, Spinner } from "../../ui";
+import { MODE_TONE, QUIZ_TONE, TONES, type ModeKey } from "@/lib/modes";
+import { questionKey, quizType } from "@/lib/quiz";
+import { QUIZ_TYPE_LABEL, VERSION_LABEL, isRegionalVersion, type QuizQuestion, type VersionKey } from "@/lib/types";
+import { Badge, Button, Card, EmptyState, Spinner, StatCard, cx } from "../../ui";
 
 const MODE_LABEL: Record<keyof LessonStats["prefCounts"], string> = {
   mudah: VERSION_LABEL.mudah,
@@ -39,33 +42,41 @@ function describePrefs(p: LessonStats["recent"][number]["prefs"]) {
   return parts.join(", ");
 }
 
-/** Satu baris batang horizontal: label, batang tipis, angka. Satu warna (papan); teks tetap warna tinta. */
+/** Satu baris batang horizontal: label, batang tipis berwarna kategori, angka. */
 function BarRow({
   label,
   value,
   max,
   display,
   title,
+  tone,
 }: {
   label: string;
   value: number;
   max: number;
   display: string;
   title: string;
+  tone: ModeKey;
 }) {
   const pct = max > 0 ? Math.max(value > 0 ? 2 : 0, (value / max) * 100) : 0;
   return (
-    <li className="grid grid-cols-[8.5rem_1fr_4.5rem] items-center gap-3 py-1.5" title={title}>
-      <span className="text-[15px]">{label}</span>
+    <li
+      className="grid grid-cols-[7.5rem_1fr_4.5rem] items-center gap-3 py-1.5 sm:grid-cols-[8.5rem_1fr_4.5rem]"
+      title={title}
+    >
+      <span className="flex items-center gap-2 text-[15px]">
+        <span className={cx("size-2.5 shrink-0 rounded-full", TONES[MODE_TONE[tone]].bar)} aria-hidden />
+        {label}
+      </span>
       <span className="h-3 rounded-full bg-slate-100" aria-hidden>
-        <span className="block h-3 rounded-full bg-papan" style={{ width: `${pct}%` }} />
+        <span className={cx("block h-3 rounded-full", TONES[MODE_TONE[tone]].bar)} style={{ width: `${pct}%` }} />
       </span>
       <span className="text-right text-[15px] font-bold tabular-nums">{display}</span>
     </li>
   );
 }
 
-export function RekapTab({ stats, published }: { stats: LessonStats; published: boolean }) {
+export function RekapTab({ lessonId, stats, published, quiz }: { lessonId: string; stats: LessonStats; published: boolean; quiz: QuizQuestion[] }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
 
@@ -78,7 +89,7 @@ export function RekapTab({ stats, published }: { stats: LessonStats; published: 
 
   if (stats.sessions === 0) {
     return (
-      <EmptyState title="Belum ada siswa yang membuka materi ini" action={refresh}>
+      <EmptyState title="Belum ada sesi belajar pada materi ini" icon={Users} action={refresh}>
         {published
           ? "Bagikan link atau QR dari tab Bagikan. Rekap muncul di sini begitu siswa membukanya."
           : "Terbitkan materi dulu dari tab Bagikan."}
@@ -94,35 +105,69 @@ export function RekapTab({ stats, published }: { stats: LessonStats; published: 
     .map((k) => ({ key: k, label: MODE_LABEL[k], value: stats.prefCounts[k] }))
     .sort((a, b) => b.value - a.value);
 
+  // Soal mana yang paling sulit: dicocokkan lewat kunci soal, jadi tetap benar walau urutan soal diubah.
+  const questions = quiz
+    .map((q, i) => {
+      const s = stats.byQuestion[questionKey(q)];
+      return {
+        q,
+        i,
+        attempts: s?.attempts ?? 0,
+        pct: s && s.attempts ? Math.round((s.correct / s.attempts) * 100) : null,
+      };
+    })
+    .filter((x) => x.q.q.trim());
+  const withData = questions.filter((x) => x.pct !== null);
+
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <p className="max-w-2xl text-[17px]">
-          <strong>{stats.sessions} siswa</strong> membuka materi ini;{" "}
-          <strong>
-            {stats.adaptiveSessions} ({adaptivePct}%)
-          </strong>{" "}
-          memakai minimal satu cara belajar selain teks asli.
-          {stats.avgScorePct !== null && (
-            <>
-              {" "}
-              Rata-rata skor kuis <strong>{stats.avgScorePct}</strong> dari 100 ({stats.quizAttempts} siswa)
-              {stats.avgDurationSec !== null && (
-                <>
-                  , rata-rata waktu mengerjakan <strong>{formatDuration(stats.avgDurationSec)}</strong>
-                </>
-              )}
-              .
-            </>
-          )}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="max-w-2xl text-[16px] text-tinta-2">
+          Rekap berdasarkan sesi belajar, bukan jumlah siswa terverifikasi. Percobaan ulang dalam sesi yang sama memakai hasil terakhir. Gunakan Ganti siswa pada perangkat bersama.
         </p>
-        {refresh}
+        <div className="flex items-center gap-3">{refresh}<a href={`/api/materi/${lessonId}/laporan`} className="rounded-xl border border-papan px-4 py-3 font-bold text-papan">Unduh laporan CSV</a></div>
       </div>
+
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <StatCard icon={Users} tone="papan" label="Sesi belajar" value={stats.sessions} />
+        <StatCard
+          icon={Sparkles}
+          tone="ungu"
+          label="Memakai cara belajar lain"
+          value={`${adaptivePct}%`}
+          hint={`${stats.adaptiveSessions} sesi`}
+        />
+        <StatCard
+          icon={Target}
+          tone="hijau"
+          label="Rata-rata skor kuis"
+          value={stats.avgScorePct ?? "—"}
+          hint={stats.quizAttempts ? `dari 100 · ${stats.quizAttempts} sesi kuis` : "belum ada"}
+        />
+        <StatCard
+          icon={Clock}
+          tone="jingga"
+          label="Rata-rata waktu kuis"
+          value={formatDuration(stats.avgDurationSec)}
+        />
+      </div>
+
+      <Card className="p-5">
+        <h2 className="text-lg font-bold">Konsep yang perlu dibahas ulang</h2>
+        <p className="mt-1 text-sm text-tinta-2">{stats.quizAttempts} sesi menyelesaikan kuis · {stats.totalQuizAttempts} percobaan seluruhnya. Persentase dihitung dari jawaban pada hasil terakhir setiap sesi, bukan persentase anak yang menguasai konsep.</p>
+        <p className="mt-2 text-sm text-tinta-2">Atur konsep setiap soal di tab Kuis. Setelah perubahan tersimpan, tekan Perbarui untuk memuat pengelompokan terbaru.</p>
+        <ul className="mt-4 space-y-3">{stats.byConcept.map((c) => <li key={c.concept} className="rounded-xl border border-garis p-4">
+          <div className="flex flex-wrap justify-between gap-2"><strong>{c.concept}</strong><span className="font-bold">{c.pct === null ? "Belum ada hasil" : `${c.pct}% benar`}</span></div>
+          <p className="mt-1 text-sm">{c.questions} soal · {c.sessions} sesi menjawab · {c.correct}/{c.answers} jawaban benar</p>
+          {c.pct !== null && <p className="mt-2 text-sm font-bold text-papan">{c.pct < 50 ? "Bahas ulang dengan contoh konkret dan cek pemahaman." : c.pct < 75 ? "Berikan latihan penguatan pada konsep ini." : "Lanjutkan materi; tetap cek siswa yang membutuhkan bantuan."}</p>}
+        </li>)}</ul>
+        {!stats.byConcept.length && <p className="mt-3">Tambahkan soal dan konsep untuk melihat ringkasan.</p>}
+      </Card>
 
       <div className="grid gap-6 lg:grid-cols-2">
         <Card className="p-5">
           <h2 className="font-display text-lg font-bold">Cara belajar yang dipilih</h2>
-          <p className="mt-0.5 text-[14px] text-tinta-2">Jumlah siswa; satu siswa bisa memilih beberapa cara.</p>
+          <p className="mt-0.5 text-[14px] text-tinta-2">Jumlah sesi; satu sesi bisa memakai beberapa cara belajar.</p>
           <ul className="mt-3">
             {modes.map((m) => (
               <BarRow
@@ -130,8 +175,9 @@ export function RekapTab({ stats, published }: { stats: LessonStats; published: 
                 label={m.label}
                 value={m.value}
                 max={stats.sessions}
-                display={`${m.value} siswa`}
-                title={`${m.label}: ${m.value} dari ${stats.sessions} siswa`}
+                display={`${m.value} sesi`}
+                title={`${m.label}: ${m.value} dari ${stats.sessions} sesi`}
+                tone={m.key}
               />
             ))}
           </ul>
@@ -140,7 +186,7 @@ export function RekapTab({ stats, published }: { stats: LessonStats; published: 
         <Card className="p-5">
           <h2 className="font-display text-lg font-bold">Skor kuis per versi teks</h2>
           <p className="mt-0.5 text-[14px] text-tinta-2">
-            Rata-rata dari 100. Jumlah siswa di setiap versi masih kecil; baca sebagai petunjuk awal.
+            Rata-rata dari 100. Perhatikan jumlah sesi di setiap versi; perbedaan skor tidak membuktikan satu mode lebih efektif.
           </p>
           <ul className="mt-3">
             {stats.byVersion.map((v) => (
@@ -150,7 +196,8 @@ export function RekapTab({ stats, published }: { stats: LessonStats; published: 
                 value={v.avgPct ?? 0}
                 max={100}
                 display={v.avgPct === null ? "—" : String(v.avgPct)}
-                title={`${VERSI_LABEL[v.versi]}: ${v.avgPct ?? "belum ada"} (${v.attempts} siswa)`}
+                title={`${VERSI_LABEL[v.versi]}: ${v.avgPct ?? "belum ada"} (${v.attempts} sesi)`}
+                tone={v.versi}
               />
             ))}
           </ul>
@@ -158,7 +205,7 @@ export function RekapTab({ stats, published }: { stats: LessonStats; published: 
             {stats.byVersion
               .map(
                 (v) =>
-                  `${VERSI_LABEL[v.versi]}: ${v.attempts} siswa` +
+                  `${VERSI_LABEL[v.versi]}: ${v.attempts} sesi` +
                   (v.avgDurationSec ? `, rata-rata ${formatDuration(v.avgDurationSec)}` : ""),
               )
               .join("; ")}
@@ -166,6 +213,66 @@ export function RekapTab({ stats, published }: { stats: LessonStats; published: 
           </p>
         </Card>
       </div>
+
+      {questions.length > 0 && (
+        <Card className="p-5">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h2 className="flex items-center gap-2 font-display text-lg font-bold">
+              <ListChecks className="size-5 text-papan" aria-hidden />
+              Hasil per soal
+            </h2>
+            {withData.length > 0 && (
+              <p className="text-[14px] text-tinta-2">Di bawah 50% benar: pertimbangkan pembahasan ulang.</p>
+            )}
+          </div>
+          {withData.length === 0 ? (
+            <p className="mt-2 text-[14px] text-tinta-2">
+              Persentase benar per soal muncul setelah siswa mengerjakan kuis (dicatat sejak pembaruan ini).
+            </p>
+          ) : (
+            <ol className="mt-3 divide-y divide-garis">
+              {questions.map(({ q, i, attempts, pct }) => (
+                <li key={i} className="grid gap-2 py-3 sm:grid-cols-[1fr_14rem] sm:items-center">
+                  <div className="min-w-0">
+                    <p className="font-bold">
+                      {i + 1}. {q.q}
+                    </p>
+                    <Badge tone={QUIZ_TONE[quizType(q)]} className="mt-1">
+                      {QUIZ_TYPE_LABEL[quizType(q)]}
+                    </Badge>
+                  </div>
+                  {pct === null ? (
+                    <p className="text-[14px] text-tinta-2">Belum ada jawaban</p>
+                  ) : (
+                    <div title={`${pct}% benar dari ${attempts} sesi`}>
+                      <div className="flex items-center justify-between text-[14px]">
+                        <span
+                          className={cx(
+                            "font-bold",
+                            pct < 50 ? "text-galat" : pct < 75 ? "text-aksen" : "text-berhasil",
+                          )}
+                        >
+                          {pct}% benar
+                        </span>
+                        <span className="text-tinta-2">{attempts} sesi</span>
+                      </div>
+                      <div className="mt-1 h-2.5 rounded-full bg-slate-100" aria-hidden>
+                        <div
+                          className={cx(
+                            "h-2.5 rounded-full",
+                            pct < 50 ? "bg-galat" : pct < 75 ? "bg-aksen" : "bg-berhasil",
+                          )}
+                          style={{ width: `${Math.max(2, pct)}%` }}
+                        />
+                      </div>
+                    </div>
+                  )}
+                </li>
+              ))}
+            </ol>
+          )}
+        </Card>
+      )}
 
       {stats.recent.length > 0 && (
         <Card className="overflow-hidden">
@@ -194,13 +301,15 @@ export function RekapTab({ stats, published }: { stats: LessonStats; published: 
               </thead>
               <tbody className="divide-y divide-garis">
                 {stats.recent.map((r, i) => (
-                  <tr key={i}>
+                  <tr key={i} className="hover:bg-kertas">
                     <td className="px-5 py-2.5 font-bold">{r.alias || "Tanpa nama"}</td>
                     <td className="px-5 py-2.5">{describePrefs(r.prefs)}</td>
                     <td className="px-5 py-2.5 text-right tabular-nums">
                       {r.score}/{r.total}
                     </td>
-                    <td className="px-5 py-2.5 text-right tabular-nums text-tinta-2">{formatDuration(r.durationSec)}</td>
+                    <td className="px-5 py-2.5 text-right tabular-nums text-tinta-2">
+                      {formatDuration(r.durationSec)}
+                    </td>
                     <td className="px-5 py-2.5 text-right text-tinta-2">
                       {new Intl.DateTimeFormat("id-ID", {
                         hour: "2-digit",

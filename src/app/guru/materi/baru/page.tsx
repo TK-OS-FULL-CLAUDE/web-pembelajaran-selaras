@@ -14,8 +14,8 @@ export default async function NewLessonPage({ searchParams }: { searchParams: Pr
   if (classes.length === 0) redirect("/guru/kelas/baru");
   const defaultClassId = classes.find((c) => c.id === kelas)?.id ?? null;
   return (
-    <div className="max-w-3xl">
-      <h1 className="mb-6 font-display text-3xl font-extrabold text-papan">Materi baru</h1>
+    <div className="max-w-4xl">
+      <h1 className="mb-6 font-display text-[2rem] font-extrabold leading-tight">Materi baru</h1>
       <NewLessonForm
         classes={classes.map((c) => ({ id: c.id, name: c.name }))}
         defaultClassId={defaultClassId}

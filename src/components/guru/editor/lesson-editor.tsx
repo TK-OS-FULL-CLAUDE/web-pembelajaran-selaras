@@ -7,12 +7,29 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, CheckCircle2, CircleAlert, Copy, ExternalLink, Settings2, Trash2 } from "lucide-react";
+import {
+  ArrowLeft,
+  BarChart3,
+  CheckCircle2,
+  CircleAlert,
+  ClipboardList,
+  Copy,
+  ExternalLink,
+  FileText,
+  Layers,
+  ListChecks,
+  Send,
+  Settings2,
+  Trash2,
+  type LucideIcon,
+} from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { LessonStats } from "@/lib/data";
 import { api, ApiError } from "@/lib/client";
-import type { ClassNeeds, GlossaryItem, LessonVersions, QuizQuestion, TeachingKit } from "@/lib/types";
-import { Badge, Button, Notice, Select, Spinner, cx } from "../../ui";
+import { questionProblem } from "@/lib/quiz";
+import { figureIds } from "@/lib/text";
+import type { ClassNeeds, GlossaryItem, LessonFigures, LessonVersions, QuizQuestion, TeachingKit } from "@/lib/types";
+import { Badge, Button, Notice, Select, Spinner, buttonClass, cx } from "../../ui";
 import { useToast } from "../../toast";
 import { BagikanTab } from "./bagikan-tab";
 import { KuisTab } from "./kuis-tab";
@@ -20,14 +37,19 @@ import { MateriTab } from "./materi-tab";
 import { PerangkatTab } from "./perangkat-tab";
 import { RekapTab } from "./rekap-tab";
 import { VersiTab } from "./versi-tab";
+import { HistoryPanel } from "./history-panel";
 
 export type EditableLesson = {
+  topic?: string;
+  target_grade?: string;
+  is_template?: boolean;
   title: string;
   subject: string;
   body: string;
   glossary: GlossaryItem[];
   versions: LessonVersions;
   quiz: QuizQuestion[];
+  figures: LessonFigures;
   teachingKit: TeachingKit;
 };
 
@@ -51,14 +73,14 @@ export type EditorProps = {
   initialTab: TabKey;
 };
 
-const TABS = [
-  { key: "materi", label: "Materi" },
-  { key: "versi", label: "Versi" },
-  { key: "perangkat", label: "Perangkat Ajar" },
-  { key: "kuis", label: "Kuis" },
-  { key: "bagikan", label: "Bagikan" },
-  { key: "rekap", label: "Rekap" },
-] as const;
+const TABS: { key: "materi" | "versi" | "perangkat" | "kuis" | "bagikan" | "rekap"; label: string; icon: LucideIcon }[] = [
+  { key: "materi", label: "Materi", icon: FileText },
+  { key: "versi", label: "Versi", icon: Layers },
+  { key: "perangkat", label: "Perangkat Ajar", icon: ClipboardList },
+  { key: "kuis", label: "Kuis", icon: ListChecks },
+  { key: "bagikan", label: "Bagikan", icon: Send },
+  { key: "rekap", label: "Rekap", icon: BarChart3 },
+];
 export type TabKey = (typeof TABS)[number]["key"];
 
 type SaveState = "saved" | "dirty" | "saving" | "error" | "conflict";
@@ -158,8 +180,45 @@ export function LessonEditor(props: EditorProps) {
     window.location.reload();
   };
 
+  const flushOrThrow = async () => {
+    await save();
+    if (savedChangeCount.current !== changeCount.current) throw new Error("Perubahan belum tersimpan. Selesaikan konflik atau coba simpan lagi.");
+    return serverRevision.current;
+  };
+
   const uncheckedVersions = Object.values(lesson.versions).filter((v) => v && v.text.trim() && !v.checked).length;
-  const uncheckedKit = Object.values(lesson.teachingKit).filter((k) => k && !k.checked).length;
+  const uncheckedFigures = figureIds(lesson.body).filter(
+    (id) => !lesson.figures[id]?.alt?.trim() || !lesson.figures[id]?.altChecked,
+  ).length;
+  const incompleteQuestions = lesson.quiz.filter((q) => questionProblem(q) !== null).length;
+  const uncheckedKit = Object.values(lesson.teachingKit ?? {}).filter((k) => k && !k.checked).length;
+  const badges: Partial<Record<TabKey, { n: number; label: string }>> = {
+    materi: uncheckedFigures ? { n: uncheckedFigures, label: `${uncheckedFigures} gambar perlu deskripsi` } : undefined,
+    versi: uncheckedVersions ? { n: uncheckedVersions, label: `${uncheckedVersions} versi perlu dicek` } : undefined,
+    perangkat: uncheckedKit ? { n: uncheckedKit, label: `${uncheckedKit} perangkat ajar perlu dicek` } : undefined,
+    kuis: incompleteQuestions
+      ? { n: incompleteQuestions, label: `${incompleteQuestions} soal belum lengkap` }
+      : undefined,
+  };
+
+  /** Pindah tab dengan panah kiri/kanan (pola tab WAI-ARIA). */
+  const onTabKey = (e: React.KeyboardEvent, i: number) => {
+    const next =
+      e.key === "ArrowRight"
+        ? i + 1
+        : e.key === "ArrowLeft"
+          ? i - 1
+          : e.key === "Home"
+            ? 0
+            : e.key === "End"
+              ? TABS.length - 1
+              : null;
+    if (next === null) return;
+    e.preventDefault();
+    const t = TABS[(next + TABS.length) % TABS.length];
+    selectTab(t.key);
+    document.getElementById(`tab-${t.key}`)?.focus();
+  };
 
   return (
     <div>
@@ -175,10 +234,13 @@ export function LessonEditor(props: EditorProps) {
 
       <div className="mt-3 flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-0">
-          <h1 className="font-display text-3xl font-extrabold text-papan">{lesson.title || "Tanpa judul"}</h1>
+          <h1 className="font-display text-[1.9rem] font-extrabold leading-tight text-tinta">
+            {lesson.title || "Tanpa judul"}
+          </h1>
           <div className="mt-2 flex flex-wrap items-center gap-2 text-[14px]">
             {status === "published" ? <Badge tone="ok">Terbit</Badge> : <Badge>Draf</Badge>}
-            {lesson.subject && <span className="text-tinta-2">{lesson.subject}</span>}
+            {lesson.subject && <Badge tone="papan">{lesson.subject}</Badge>}
+            {props.cls && <span className="text-tinta-2">{props.cls.name}</span>}
             <SaveIndicator state={saveState} error={saveError} onRetry={() => save()} />
           </div>
         </div>
@@ -188,12 +250,7 @@ export function LessonEditor(props: EditorProps) {
             Kelola materi
           </Button>
           {status === "published" && shareCode && (
-            <a
-              href={`/s/${shareCode}`}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex h-11 items-center gap-2 rounded-lg border border-batas bg-white px-4 font-bold hover:bg-papan-50"
-            >
+            <a href={`/s/${shareCode}`} target="_blank" rel="noreferrer" className={buttonClass("secondary")}>
               <ExternalLink className="size-4" aria-hidden />
               Lihat sebagai siswa
             </a>
@@ -207,11 +264,30 @@ export function LessonEditor(props: EditorProps) {
           title={lesson.title}
           currentClassId={props.cls?.id ?? null}
           classes={props.classes}
-          flush={() => save()}
+          flush={async () => { await flushOrThrow(); }}
           onClose={() => setManageOpen(false)}
           onDeleted={() => (skipUnloadWarning.current = true)}
         />
       )}
+
+      {manageOpen && <section className="mt-4 rounded-2xl border border-garis bg-white p-5">
+        <h2 className="font-bold">Kategori dan templat</h2>
+        <div className="mt-3 grid gap-4 sm:grid-cols-2">
+          <label className="text-sm font-bold">Topik
+            <input className="mt-1 h-11 w-full rounded-xl border border-batas px-3 font-normal" maxLength={120}
+              value={lesson.topic ?? ""} onChange={(e) => update({ topic: e.target.value })} placeholder="Contoh: Pecahan" />
+          </label>
+          <label className="text-sm font-bold">Jenjang / kelas sasaran
+            <input className="mt-1 h-11 w-full rounded-xl border border-batas px-3 font-normal" maxLength={80}
+              value={lesson.target_grade ?? ""} onChange={(e) => update({ target_grade: e.target.value })} placeholder={props.cls?.grade || "Contoh: SD kelas 6"} />
+          </label>
+        </div>
+        <label className="mt-4 flex min-h-11 items-center gap-2"><input type="checkbox" checked={!!lesson.is_template}
+          onChange={(e) => update({ is_template: e.target.checked })} />Simpan juga sebagai templat di perpustakaan</label>
+        <Link href="/guru/pustaka" className="mt-2 inline-block font-bold text-papan underline">Buka perpustakaan materi</Link>
+      </section>}
+
+      {manageOpen && <HistoryPanel lessonId={props.lessonId} prepare={flushOrThrow} restored={reloadLatest} />}
 
       {saveState === "conflict" && (
         <Notice tone="warn" className="no-print mt-4" title="Materi ini baru saja diubah di tab atau perangkat lain">
@@ -227,47 +303,59 @@ export function LessonEditor(props: EditorProps) {
         </Notice>
       )}
 
-      <div
-        role="tablist"
-        aria-label="Bagian materi"
-        className="no-print sticky top-0 z-20 -mx-4 mt-6 flex gap-1 overflow-x-auto border-b border-garis bg-kertas/95 px-4 backdrop-blur sm:mx-0 sm:px-0"
-      >
-        {TABS.map((t) => (
-          <button
-            key={t.key}
-            role="tab"
-            id={`tab-${t.key}`}
-            aria-selected={tab === t.key}
-            aria-controls={`panel-${t.key}`}
-            onClick={() => selectTab(t.key)}
-            className={cx(
-              "relative -mb-px flex h-12 shrink-0 items-center gap-2 border-b-[3px] px-4 font-bold transition-colors",
-              tab === t.key ? "border-papan text-papan" : "border-transparent text-tinta-2 hover:text-tinta",
-            )}
-          >
-            {t.label}
-            {t.key === "versi" && uncheckedVersions > 0 && (
-              <span
-                className="rounded-full bg-aksen px-1.5 text-[12px] text-white"
-                aria-label={`${uncheckedVersions} perlu dicek`}
+      <div className="no-print sticky top-0 z-20 -mx-4 mt-6 bg-kertas/95 px-4 py-2 backdrop-blur sm:mx-0 sm:px-0">
+        <div
+          role="tablist"
+          aria-label="Bagian materi"
+          className="flex gap-1 overflow-x-auto rounded-2xl border border-garis bg-white p-1.5 shadow-kartu"
+        >
+          {TABS.map((t, i) => {
+            const active = tab === t.key;
+            const badge = badges[t.key];
+            return (
+              <button
+                key={t.key}
+                role="tab"
+                id={`tab-${t.key}`}
+                aria-selected={active}
+                aria-controls={`panel-${t.key}`}
+                tabIndex={active ? 0 : -1}
+                onClick={() => selectTab(t.key)}
+                onKeyDown={(e) => onTabKey(e, i)}
+                className={cx(
+                  "relative flex h-11 shrink-0 items-center gap-2 rounded-xl px-4 font-bold transition-colors sm:flex-1 sm:justify-center",
+                  active ? "bg-papan text-white shadow-kartu" : "text-tinta-2 hover:bg-papan-50 hover:text-papan",
+                )}
               >
-                {uncheckedVersions}
-              </span>
-            )}
-            {t.key === "perangkat" && uncheckedKit > 0 && (
-              <span className="rounded-full bg-aksen px-1.5 text-[12px] text-white" aria-label={`${uncheckedKit} perlu dicek`}>
-                {uncheckedKit}
-              </span>
-            )}
-            {t.key === "kuis" && lesson.quiz.length > 0 && (
-              <span className="text-[13px] font-normal text-tinta-2">{lesson.quiz.length}</span>
-            )}
-          </button>
-        ))}
+                <t.icon className="size-4" aria-hidden />
+                {t.label}
+                {badge && (
+                  <span
+                    className={cx(
+                      "min-w-5 rounded-full px-1.5 text-[12px] leading-5",
+                      active ? "bg-white text-aksen" : "bg-aksen text-white",
+                    )}
+                    aria-label={badge.label}
+                    title={badge.label}
+                  >
+                    {badge.n}
+                  </span>
+                )}
+                {t.key === "kuis" && !badge && lesson.quiz.length > 0 && (
+                  <span className={cx("text-[13px] font-normal", active ? "text-white/85" : "text-tinta-2")}>
+                    {lesson.quiz.length}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
-      <div role="tabpanel" id={`panel-${tab}`} aria-labelledby={`tab-${tab}`} className="pt-6">
-        {tab === "materi" && <MateriTab lesson={lesson} update={update} aiOn={props.aiOn} cls={props.cls} />}
+      <div role="tabpanel" id={`panel-${tab}`} aria-labelledby={`tab-${tab}`} className="pt-5">
+        {tab === "materi" && (
+          <MateriTab lessonId={props.lessonId} lesson={lesson} update={update} aiOn={props.aiOn} cls={props.cls} />
+        )}
         {tab === "versi" && (
           <VersiTab
             lessonId={props.lessonId}
@@ -296,7 +384,7 @@ export function LessonEditor(props: EditorProps) {
             lesson={lesson}
             status={status}
             shareCode={shareCode}
-            flush={() => save()}
+            flush={async () => { await flushOrThrow(); }}
             onPublished={(code) => {
               setStatus("published");
               setShareCode(code);
@@ -305,7 +393,7 @@ export function LessonEditor(props: EditorProps) {
             goTo={selectTab}
           />
         )}
-        {tab === "rekap" && <RekapTab stats={props.stats} published={status === "published"} />}
+        {tab === "rekap" && <RekapTab lessonId={props.lessonId} stats={props.stats} published={status === "published"} quiz={lesson.quiz} />}
       </div>
     </div>
   );
@@ -368,7 +456,7 @@ function ManagePanel({
   return (
     <section
       aria-label="Kelola materi"
-      className="no-print mt-4 grid gap-4 rounded-2xl border border-garis bg-white p-5 md:grid-cols-2"
+      className="muncul no-print mt-4 grid gap-4 rounded-2xl border border-garis bg-white p-5 shadow-kartu md:grid-cols-2"
     >
       <div>
         <h2 className="font-bold">Salin materi</h2>

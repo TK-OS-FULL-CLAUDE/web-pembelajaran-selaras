@@ -38,6 +38,10 @@ export default async function LessonPage({
         glossary: lesson.glossary,
         versions: lesson.versions,
         quiz: lesson.quiz,
+        figures: lesson.figures ?? {},
+        topic: lesson.topic ?? "",
+        target_grade: lesson.target_grade ?? "",
+        is_template: lesson.is_template ?? false,
         teachingKit: lesson.teaching_kit ?? {},
       }}
       revision={lesson.revision}
