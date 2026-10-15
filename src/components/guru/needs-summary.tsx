@@ -1,5 +1,14 @@
 import { NEEDS } from "@/lib/accommodations";
-import { LANG_LABEL, type ClassNeeds } from "@/lib/types";
+import { TONES, type ToneKey } from "@/lib/modes";
+import { LANG_LABEL, type ClassNeeds, type NeedKey } from "@/lib/types";
+
+const NEED_TONE: Record<NeedKey, ToneKey> = {
+  lowVision: "nila",
+  tuli: "sian",
+  disleksia: "ungu",
+  sulitFokus: "jingga",
+  bahasaDaerah: "mawar",
+};
 
 /** Ringkasan profil kebutuhan kelas dalam satu baris chip. */
 export function NeedsSummary({ needs, compact = false }: { needs: ClassNeeds; compact?: boolean }) {
@@ -19,7 +28,7 @@ export function NeedsSummary({ needs, compact = false }: { needs: ClassNeeds; co
       {items.map((item) => (
         <li
           key={item.key}
-          className={`inline-flex items-center gap-1.5 rounded-full bg-papan-50 text-papan ${compact ? "px-2.5 py-0.5 text-[13px]" : "px-3 py-1 text-[14px]"}`}
+          className={`inline-flex items-center gap-1.5 rounded-full ${TONES[NEED_TONE[item.key]].chip} ${compact ? "px-2.5 py-0.5 text-[13px]" : "px-3 py-1 text-[14px]"}`}
         >
           <span className="font-bold">{item.count}</span>
           <span>{item.label}</span>

@@ -5,7 +5,7 @@ import { ArrowLeft, Pencil, Plus } from "lucide-react";
 import { AccommodationGuide } from "@/components/guru/accommodation-guide";
 import { LessonList } from "@/components/guru/lesson-list";
 import { NeedsSummary } from "@/components/guru/needs-summary";
-import { ButtonLink, EmptyState } from "@/components/ui";
+import { ButtonLink, EmptyState, SectionTitle } from "@/components/ui";
 import { requireTeacher } from "@/lib/auth";
 import { PERMEN_AYL } from "@/lib/accommodations";
 import { getClass, listLessons } from "@/lib/data";
@@ -33,7 +33,7 @@ export default async function ClassPage({ params }: { params: Promise<{ id: stri
         </Link>
         <div className="mt-3 flex flex-wrap items-end justify-between gap-4">
           <div>
-            <h1 className="font-display text-3xl font-extrabold text-papan">{cls.name}</h1>
+            <h1 className="font-display text-[2rem] font-extrabold leading-tight">{cls.name}</h1>
             <p className="mt-1 text-tinta-2">
               {[cls.grade, cls.needs.totalSiswa ? `${cls.needs.totalSiswa} siswa` : null].filter(Boolean).join(", ")}
               {special > 0 && `; ${special} kebutuhan tercatat (satu siswa bisa punya lebih dari satu)`}
@@ -56,10 +56,8 @@ export default async function ClassPage({ params }: { params: Promise<{ id: stri
       </div>
 
       <section aria-labelledby="judul-akomodasi">
-        <h2 id="judul-akomodasi" className="font-display text-xl font-extrabold">
-          Panduan akomodasi untuk kelas ini
-        </h2>
-        <p className="mb-4 mt-1 max-w-3xl text-tinta-2">
+        <SectionTitle id="judul-akomodasi">Panduan akomodasi untuk kelas ini</SectionTitle>
+        <p className="-mt-2 mb-4 max-w-3xl text-tinta-2">
           Langkah praktis di kelas, sesuai profil di atas. Disusun dari praktik umum pendidikan inklusif dan, untuk low
           vision dan tuli, sejalan dengan bentuk akomodasi di{" "}
           <a href={PERMEN_AYL.url} target="_blank" rel="noreferrer" className="font-bold text-papan underline">
@@ -72,9 +70,7 @@ export default async function ClassPage({ params }: { params: Promise<{ id: stri
       </section>
 
       <section aria-labelledby="judul-materi-kelas">
-        <h2 id="judul-materi-kelas" className="mb-3 font-display text-xl font-extrabold">
-          Materi {cls.name}
-        </h2>
+        <SectionTitle id="judul-materi-kelas">Materi {cls.name}</SectionTitle>
         {lessons.length === 0 ? (
           <EmptyState
             title="Belum ada materi"
