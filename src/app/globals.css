@@ -1,22 +1,56 @@
 @import "tailwindcss";
 
-/* Design system Selaras — rasio kontras dihitung, lolos WCAG AA (lihat PRD bagian Desain). */
+/*
+ * Design system Selaras (versi 2): bersih, profesional, sedikit berwarna.
+ * - Warna utama teal; tiap cara belajar punya satu warna kategori (lihat src/lib/modes.ts).
+ * - Semua pasangan teks/latar dihitung dan lolos WCAG AA (≥ 4,5:1 teks, ≥ 3:1 garis kontrol).
+ * - Huruf isi Atkinson Hyperlegible (dirancang untuk pembaca low vision), judul Plus Jakarta Sans.
+ */
 @theme {
-  --color-papan: #0b5c5c; /* 7,78:1 di putih */
-  --color-papan-600: #0e7c7b; /* 5,01:1 */
-  --color-papan-50: #e6f4f3;
-  --color-papan-100: #cce7e5;
-  --color-tinta: #1f2937; /* 14,68:1 */
-  --color-tinta-2: #4b5563; /* 7,56:1 */
-  --color-batas: #64748b; /* garis input, 4,76:1 */
-  --color-garis: #d5dde6; /* garis dekoratif */
-  --color-kertas: #f8fafc;
-  --color-aksen: #b45309; /* 5,02:1 — draf AI & cincin fokus */
-  --color-aksen-50: #fff7ed;
+  --color-papan: #0f766e; /* teal-700 · 5,47:1 di putih */
+  --color-papan-600: #115e59; /* hover/teks tautan · 7,58:1 */
+  --color-papan-700: #134e4a;
+  --color-papan-50: #f0fdfa;
+  --color-papan-100: #ccfbf1;
+  --color-papan-200: #99f6e4;
+  --color-tinta: #0f172a; /* 17,85:1 */
+  --color-tinta-2: #475569; /* 7,58:1 */
+  --color-batas: #7c8aa0; /* garis input · 3,5:1 */
+  --color-garis: #e2e8f0; /* garis dekoratif */
+  --color-kertas: #f7f9fc;
+  --color-aksen: #b45309; /* draf AI & cincin fokus · 5,02:1 */
+  --color-aksen-50: #fffbeb;
+  --color-aksen-100: #fef3c7;
   --color-stabilo: #fde68a;
   --color-berhasil: #15803d;
   --color-galat: #b91c1c;
   --color-info: #1d4ed8;
+
+  /* Warna kategori (teks di atas -50/-100 ≥ 4,5:1; putih di atas warna utama ≥ 5:1) */
+  --color-biru: #1d4ed8;
+  --color-biru-50: #eff6ff;
+  --color-biru-100: #dbeafe;
+  --color-ungu: #6d28d9;
+  --color-ungu-50: #f5f3ff;
+  --color-ungu-100: #ede9fe;
+  --color-mawar: #be123c;
+  --color-mawar-50: #fff1f2;
+  --color-mawar-100: #ffe4e6;
+  --color-jingga: #c2410c;
+  --color-jingga-50: #fff7ed;
+  --color-jingga-100: #ffedd5;
+  --color-nila: #4338ca;
+  --color-nila-50: #eef2ff;
+  --color-nila-100: #e0e7ff;
+  --color-sian: #0e7490;
+  --color-sian-50: #ecfeff;
+  --color-sian-100: #cffafe;
+  --color-hijau: #15803d;
+  --color-hijau-50: #f0fdf4;
+  --color-hijau-100: #dcfce7;
+
+  --shadow-kartu: 0 1px 2px rgb(15 23 42 / 0.04), 0 2px 10px -2px rgb(15 23 42 / 0.06);
+  --shadow-angkat: 0 2px 4px rgb(15 23 42 / 0.04), 0 14px 32px -10px rgb(15 23 42 / 0.16);
 
   --font-sans: "Atkinson Hyperlegible", ui-sans-serif, system-ui, sans-serif;
   --font-display: "Plus Jakarta Sans Variable", "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
@@ -37,19 +71,44 @@
   h2,
   h3 {
     font-family: var(--font-display);
-    letter-spacing: -0.01em;
+    letter-spacing: -0.015em;
     line-height: 1.2;
     text-wrap: balance;
   }
   :focus-visible {
     outline: 3px solid var(--color-aksen);
     outline-offset: 2px;
-    border-radius: 6px;
+    border-radius: 8px;
   }
   ::selection {
     background: var(--color-stabilo);
     color: var(--color-tinta);
   }
+  code {
+    font-size: 0.92em;
+    background: #eef2f7;
+    border-radius: 6px;
+    padding: 0.05em 0.35em;
+  }
+}
+
+/* Garis warna khas Selaras (lima warna cara belajar) */
+.pita-warna {
+  height: 4px;
+  background: linear-gradient(
+    90deg,
+    var(--color-papan) 0 20%,
+    var(--color-biru) 20% 40%,
+    var(--color-ungu) 40% 60%,
+    var(--color-mawar) 60% 80%,
+    var(--color-aksen) 80% 100%
+  );
+}
+
+/* Latar halus bertitik untuk area hero/kosong */
+.latar-titik {
+  background-image: radial-gradient(rgb(15 118 110 / 0.09) 1px, transparent 1px);
+  background-size: 18px 18px;
 }
 
 /* Tautan lewati navigasi untuk pengguna keyboard dan pembaca layar */
@@ -61,7 +120,7 @@
   background: var(--color-papan);
   color: white;
   padding: 0.6rem 1rem;
-  border-radius: 0.5rem;
+  border-radius: 0.6rem;
 }
 .skip-link:focus {
   top: 1rem;
@@ -71,16 +130,18 @@
 
 .reader {
   --reader-size: 19px;
-  --reader-leading: 1.7;
+  --reader-leading: 1.72;
   --reader-tracking: 0;
   --reader-word: 0;
   --reader-bg: #ffffff;
+  --reader-page: #f7f9fc;
   --reader-ink: var(--color-tinta);
   --reader-soft: var(--color-tinta-2);
   --reader-line: var(--color-garis);
+  --reader-accent: var(--color-papan);
   --reader-term: var(--color-aksen);
   --reader-mark: var(--color-stabilo);
-  background: var(--reader-bg);
+  background: var(--reader-page);
   color: var(--reader-ink);
 }
 .reader[data-besar="true"] {
@@ -94,35 +155,221 @@
 }
 .reader[data-kontras="true"] {
   --reader-bg: #fffbe6;
+  --reader-page: #fffbe6;
   --reader-ink: #000000;
   --reader-soft: #1a1a1a;
   --reader-line: #000000;
+  --reader-accent: #000000;
   --reader-term: #000000;
   --reader-mark: #ffd400;
 }
+
 .reader-text {
   font-size: var(--reader-size);
   line-height: var(--reader-leading);
   letter-spacing: var(--reader-tracking);
   word-spacing: var(--reader-word);
-  max-width: 38rem;
+  max-width: 40rem;
+  overflow-wrap: break-word;
+}
+.reader-text > * + * {
+  margin-top: 0.95em;
 }
 .reader-text h2 {
-  font-size: 1.3em;
+  font-size: 1.32em;
   font-weight: 800;
-  margin: 0 0 0.6em;
+  color: var(--reader-ink);
+  margin-top: 1.6em;
+  padding-bottom: 0.3em;
+  border-bottom: 3px solid color-mix(in srgb, var(--reader-accent) 22%, transparent);
 }
-.reader-text p,
-.reader-text ul {
-  margin: 0 0 1em;
+.reader-text h3 {
+  font-size: 1.12em;
+  font-weight: 800;
+  color: var(--reader-accent);
+  margin-top: 1.3em;
 }
-.reader-text ul {
-  padding-left: 1.2em;
-  list-style: disc;
+.reader-text > h2:first-child,
+.reader-text > h3:first-child {
+  margin-top: 0;
 }
-.reader[data-kontras="true"] .reader-text h2 {
-  color: #000;
+.reader-text h2 + *,
+.reader-text h3 + * {
+  margin-top: 0.55em;
 }
+.reader-text strong {
+  font-weight: 700;
+  color: var(--reader-ink);
+}
+.reader-text mark {
+  background: color-mix(in srgb, var(--reader-mark) 75%, transparent);
+  color: inherit;
+  border-radius: 3px;
+  padding: 0 0.12em;
+}
+.reader-text ul,
+.reader-text ol {
+  padding-left: 1.35em;
+}
+.reader-text li + li {
+  margin-top: 0.35em;
+}
+.reader-text ul > li {
+  list-style: none;
+  position: relative;
+}
+.reader-text ul > li::before {
+  content: "";
+  position: absolute;
+  left: -0.95em;
+  top: calc(var(--reader-leading) * 0.5em - 0.2em);
+  width: 0.42em;
+  height: 0.42em;
+  border-radius: 999px;
+  background: var(--reader-accent);
+}
+.reader-text ol {
+  list-style: none;
+  counter-reset: langkah var(--start, 0);
+  padding-left: 2.1em;
+}
+.reader-text ol > li {
+  position: relative;
+  counter-increment: langkah;
+}
+.reader-text ol > li::before {
+  content: counter(langkah);
+  position: absolute;
+  left: -2.1em;
+  top: calc(var(--reader-leading) * 0.5em - 0.78em);
+  width: 1.56em;
+  height: 1.56em;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--reader-accent) 13%, var(--reader-bg));
+  color: var(--reader-accent);
+  font-size: 0.82em;
+  font-weight: 700;
+  display: grid;
+  place-items: center;
+  letter-spacing: 0;
+}
+.reader-text hr {
+  border: 0;
+  border-top: 2px dashed var(--reader-line);
+  margin: 1.6em 0;
+}
+
+/* Kotak catatan */
+.callout {
+  --c: var(--color-papan);
+  --c-bg: var(--color-papan-50);
+  border: 1px solid color-mix(in srgb, var(--c) 25%, transparent);
+  border-left: 5px solid var(--c);
+  background: var(--c-bg);
+  border-radius: 14px;
+  padding: 0.8em 1em;
+}
+.callout[data-kind="penting"] {
+  --c: var(--color-aksen);
+  --c-bg: var(--color-aksen-50);
+}
+.callout[data-kind="ingat"] {
+  --c: var(--color-biru);
+  --c-bg: var(--color-biru-50);
+}
+.callout[data-kind="contoh"] {
+  --c: var(--color-hijau);
+  --c-bg: var(--color-hijau-50);
+}
+.callout[data-kind="tahukah"] {
+  --c: var(--color-ungu);
+  --c-bg: var(--color-ungu-50);
+}
+.callout-title {
+  display: flex;
+  align-items: center;
+  gap: 0.4em;
+  color: var(--c);
+  font-weight: 800;
+  font-family: var(--font-display);
+  font-size: 0.92em;
+  letter-spacing: 0.01em;
+  margin-bottom: 0.25em;
+}
+.callout p + p,
+.callout ul {
+  margin-top: 0.4em;
+}
+.reader[data-kontras="true"] .callout {
+  --c: #000;
+  --c-bg: #fffbe6;
+  border-color: #000;
+}
+
+/* Tabel */
+.tabel-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--reader-line);
+  border-radius: 14px;
+  background: var(--reader-bg);
+}
+.reader-text table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.92em;
+}
+.reader-text th,
+.reader-text td {
+  text-align: left;
+  vertical-align: top;
+  padding: 0.55em 0.8em;
+  border-bottom: 1px solid var(--reader-line);
+}
+.reader-text thead th {
+  background: color-mix(in srgb, var(--reader-accent) 10%, var(--reader-bg));
+  color: var(--reader-ink);
+  font-weight: 700;
+}
+.reader-text tbody tr:nth-child(even) td {
+  background: color-mix(in srgb, var(--reader-line) 30%, transparent);
+}
+.reader-text tbody tr:last-child td {
+  border-bottom: 0;
+}
+.reader[data-kontras="true"] .reader-text thead th {
+  background: #fff;
+  border-bottom: 2px solid #000;
+}
+.reader[data-kontras="true"] .reader-text tbody tr:nth-child(even) td {
+  background: transparent;
+}
+
+/* Gambar */
+.figur {
+  border: 1px solid var(--reader-line);
+  border-radius: 16px;
+  background: var(--reader-bg);
+  padding: 0.6em;
+}
+.figur img {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 70vh;
+  object-fit: contain;
+  border-radius: 10px;
+  background: #fff;
+}
+.figur figcaption {
+  font-size: 0.86em;
+  color: var(--reader-soft);
+  padding: 0.5em 0.2em 0.1em;
+}
+.figur[data-active="true"] {
+  outline: 4px solid var(--reader-mark);
+  outline-offset: 2px;
+}
+
 .term {
   color: inherit;
   text-decoration: underline;
@@ -140,6 +387,21 @@
   background: var(--reader-mark);
   box-shadow: 0 0 0 3px var(--reader-mark);
   border-radius: 3px;
+}
+
+/* Masuk halus untuk kartu (dimatikan bila pengguna memilih kurangi gerak) */
+@keyframes muncul {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.muncul {
+  animation: muncul 0.28s ease-out both;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -335,5 +597,8 @@
   }
   body {
     background: #fff;
+  }
+  .figur {
+    break-inside: avoid;
   }
 }
