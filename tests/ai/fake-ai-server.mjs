@@ -52,6 +52,11 @@ function answerFor(prompt, provider, m) {
       ],
     };
   }
+  if (prompt.includes("Jawab pertanyaan siswa berikut")) {
+    // Pertanyaan yang memuat "bitcoin" dianggap di luar materi (prompt sudah di-JSON.stringify, cukup dicari katanya).
+    if (/bitcoin/i.test(prompt)) return { ditemukan: false, jawaban: "" };
+    return { ditemukan: true, jawaban: `Klorofil membuat daun berwarna hijau ${tag}.` };
+  }
   // Teks mudah
   return {
     teks: `Air di bumi selalu bergerak. Matahari memanaskan air ${tag}.\n\nAir berubah jadi uap. Ini disebut penguapan.`,
