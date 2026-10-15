@@ -4,6 +4,7 @@ import { z } from "zod";
 import { getCurrentTeacher } from "./auth";
 import { MissingDatabaseError } from "./db";
 import { AiError } from "./claude";
+import { ImageQuotaError } from "./data";
 import type { TeacherRow } from "./types";
 
 export function ok<T>(data: T, status = 200) {
@@ -41,6 +42,7 @@ export async function handle(fn: () => Promise<Response>): Promise<Response> {
     if (err instanceof BadRequest) return fail(err.message, 400);
     if (err instanceof AiError) return fail(err.message, err.status);
     if (err instanceof MissingDatabaseError) return fail(err.message, 503);
+    if (err instanceof ImageQuotaError) return fail(err.message, 413);
     console.error(err);
     return fail("Terjadi kesalahan di server. Coba lagi.", 500);
   }
@@ -96,14 +98,35 @@ export const versionsInput = z.object({
 export const quizInput = z
   .array(
     z.object({
-      q: z.string().max(500),
-      options: z.array(z.string().max(300)).min(2).max(6),
+      type: z.enum(["pg", "pgk", "bs", "isian", "jodoh"]).optional(),
+      concept: z.string().trim().max(100).optional(),
+      q: z.string().max(600),
+      options: z.array(z.string().max(300)).max(6),
       answer: z.number().int().min(0).max(5),
+      answers: z.array(z.number().int().min(0).max(5)).max(6).optional(),
+      accepted: z.array(z.string().max(120)).max(8).optional(),
+      pairs: z
+        .array(z.object({ kiri: z.string().max(200), kanan: z.string().max(200) }))
+        .max(8)
+        .optional(),
       explain: z.string().max(800),
       origin: z.enum(["ai", "guru"]).optional(),
     }),
   )
-  .max(30);
+  .max(40);
+
+export const figuresInput = z
+  .record(
+    z.string().regex(/^[A-Za-z0-9-]{8,64}$/),
+    z.object({
+      alt: z.string().max(1200),
+      altOrigin: z.enum(["ai", "guru"]),
+      altChecked: z.boolean(),
+      width: z.number().int().min(1).max(20_000).optional(),
+      height: z.number().int().min(1).max(20_000).optional(),
+    }),
+  )
+  .refine((r) => Object.keys(r).length <= 120, "Terlalu banyak gambar dalam satu materi.");
 
 // Perangkat ajar. Batas jumlah baris dibuat longgar karena baris kosong ikut tersimpan saat guru mengetik.
 const kitText = (max: number) => z.string().max(max);
