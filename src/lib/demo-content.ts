@@ -2,7 +2,11 @@
 // Teks ditulis sendiri oleh tim (bukan salinan buku). Versi Basa Jawa dan Basa Sunda adalah DRAF:
 // minta penutur asli mengeceknya sebelum lomba.
 
+import { DEMO_FIG_FOTOSINTESIS, DEMO_FIG_TUMBUHAN } from "./demo-images";
 import type { ClassNeeds, GlossaryItem, QuizQuestion } from "./types";
+
+const FIG_FOTOSINTESIS = `![Diagram fotosintesis pada daun](gambar:${DEMO_FIG_FOTOSINTESIS})`;
+const FIG_TUMBUHAN = `![Bagian-bagian tumbuhan](gambar:${DEMO_FIG_TUMBUHAN})`;
 
 export const DEMO_EMAIL = "guru@selaras.id";
 export const DEMO_PASSWORD = "selaras-demo";
@@ -42,13 +46,29 @@ export const DEMO_CLASS_6 = {
 
 export const FOTOSINTESIS_BODY = `## Fotosintesis: Cara Tumbuhan Membuat Makanan
 
-Manusia dan hewan mendapat makanan dengan cara makan. Tumbuhan berbeda. Tumbuhan hijau dapat membuat makanannya sendiri melalui proses yang disebut fotosintesis.
+Manusia dan hewan mendapat makanan dengan cara makan. Tumbuhan berbeda. Tumbuhan hijau dapat membuat makanannya sendiri melalui proses yang disebut **fotosintesis**.
 
-Fotosintesis terjadi terutama di daun. Daun berwarna hijau karena mengandung klorofil, yaitu zat hijau daun. Klorofil menangkap energi dari cahaya matahari.
+### Di mana fotosintesis terjadi?
+
+Fotosintesis terjadi terutama di daun. Daun berwarna hijau karena mengandung **klorofil**, yaitu zat hijau daun. Klorofil menangkap energi dari cahaya matahari.
+
+### Bahan-bahan fotosintesis
 
 Untuk berfotosintesis, tumbuhan memerlukan air, karbon dioksida, dan cahaya matahari. Air diserap oleh akar dari dalam tanah, lalu diangkut melalui batang menuju daun. Karbon dioksida adalah gas dari udara yang masuk ke daun melalui lubang-lubang kecil bernama stomata.
 
-Dengan bantuan energi cahaya matahari, air dan karbon dioksida diubah menjadi gula dan oksigen. Gula menjadi makanan bagi tumbuhan dan disimpan di bagian tubuhnya, misalnya di umbi, buah, atau biji. Oksigen dilepaskan ke udara.
+| Bahan | Asalnya | Cara sampai ke daun |
+|---|---|---|
+| Air | Tanah | Diserap akar, lalu diangkut lewat batang |
+| Karbon dioksida | Udara | Masuk lewat stomata |
+| Cahaya matahari | Matahari | Ditangkap klorofil |
+
+${FIG_FOTOSINTESIS}
+
+### Hasil fotosintesis
+
+Dengan bantuan energi cahaya matahari, air dan karbon dioksida diubah menjadi **gula** dan **oksigen**. Gula menjadi makanan bagi tumbuhan dan disimpan di bagian tubuhnya, misalnya di umbi, buah, atau biji. Oksigen dilepaskan ke udara.
+
+> Ingat: Bahan fotosintesis adalah air, karbon dioksida, dan cahaya matahari. Hasilnya gula dan oksigen.
 
 Oksigen hasil fotosintesis kita hirup setiap hari untuk bernapas. Karena itu, menanam dan merawat tumbuhan berarti ikut menjaga udara yang kita butuhkan.`;
 
@@ -63,7 +83,7 @@ export const FOTOSINTESIS_GLOSSARY: GlossaryItem[] = [
 
 export const FOTOSINTESIS_MUDAH = `## Fotosintesis
 
-Kita makan untuk mendapat makanan. Tumbuhan tidak makan seperti kita. Tumbuhan hijau membuat makanannya sendiri. Cara ini disebut fotosintesis.
+Kita makan untuk mendapat makanan. Tumbuhan tidak makan seperti kita. Tumbuhan hijau membuat makanannya sendiri. Cara ini disebut **fotosintesis**.
 
 Fotosintesis terjadi di daun. Daun berwarna hijau. Warna hijau itu berasal dari klorofil. Klorofil menangkap cahaya matahari.
 
@@ -74,7 +94,11 @@ Tumbuhan butuh tiga hal:
 
 Akar mengambil air dari tanah. Air naik lewat batang ke daun. Karbon dioksida masuk ke daun lewat lubang kecil. Lubang kecil itu bernama stomata.
 
+${FIG_FOTOSINTESIS}
+
 Cahaya matahari memberi tenaga. Air dan karbon dioksida berubah menjadi gula dan oksigen. Gula adalah makanan tumbuhan. Gula disimpan di umbi, buah, atau biji.
+
+> Ingat: Daun membuat gula dan oksigen.
 
 Oksigen keluar ke udara. Kita menghirup oksigen untuk bernapas. Jadi, merawat tumbuhan berarti menjaga udara kita.`;
 
@@ -93,6 +117,8 @@ Manungsa lan kewan oleh panganan kanthi cara mangan. Tetuwuhan ora kaya ngono. T
 Fotosintesis kedadeyan utamane ing godhong. Godhong werna ijo amarga ana klorofil, yaiku zat ijo godhong. Klorofil nangkep tenaga saka sorot srengenge.
 
 Supaya bisa fotosintesis, tetuwuhan butuh banyu, karbon dioksida, lan sorot srengenge. Banyu disedhot oyot saka jero lemah, banjur digawa liwat batang menyang godhong. Karbon dioksida yaiku gas saka hawa sing mlebu ing godhong liwat bolongan-bolongan cilik sing jenenge stomata.
+
+${FIG_FOTOSINTESIS}
 
 Kanthi tenaga saka sorot srengenge, banyu lan karbon dioksida diowahi dadi gula lan oksigen. Gula dadi panganane tetuwuhan lan disimpen ing perangan awake, kayata ing umbi, woh, utawa wiji. Oksigen diculake menyang hawa.
 
@@ -117,6 +143,8 @@ Fotosintesis lumangsung utamana di daun. Daun warnana héjo lantaran ngandung kl
 
 Pikeun fotosintesis, tutuwuhan butuh cai, karbon dioksida, jeung cahaya panonpoé. Cai diserep ku akar tina jero taneuh, tuluy dibawa ngaliwatan tangkal ka daun. Karbon dioksida nya éta gas tina hawa anu asup ka daun ngaliwatan liang-liang leutik anu disebut stomata.
 
+${FIG_FOTOSINTESIS}
+
 Ku bantuan tanaga cahaya panonpoé, cai jeung karbon dioksida dirobah jadi gula jeung oksigen. Gula jadi kadaharan pikeun tutuwuhan sarta disimpen dina bagian awakna, saperti dina beuti, buah, atawa siki. Oksigen dileupaskeun ka hawa.
 
 Oksigen hasil fotosintesis téh ku urang diseuseup unggal poé pikeun ngarénghap. Ku sabab éta, melak jeung ngarawat tutuwuhan hartina milu ngajaga hawa anu urang butuhkeun.`;
@@ -134,6 +162,7 @@ export const FOTOSINTESIS_SUNDA_GLOSSARY: GlossaryItem[] = [
 
 export const FOTOSINTESIS_QUIZ: QuizQuestion[] = [
   {
+    type: "pg",
     q: "Di bagian mana fotosintesis terutama terjadi?",
     options: ["Akar", "Batang", "Daun", "Bunga"],
     answer: 2,
@@ -141,32 +170,43 @@ export const FOTOSINTESIS_QUIZ: QuizQuestion[] = [
     origin: "guru",
   },
   {
-    q: "Zat hijau daun yang menangkap cahaya matahari disebut…",
-    options: ["Oksigen", "Klorofil", "Stomata", "Gula"],
-    answer: 1,
-    explain: "Klorofil adalah zat hijau daun. Klorofil menangkap energi dari cahaya matahari.",
-    origin: "guru",
-  },
-  {
-    q: "Mana yang TIDAK diperlukan tumbuhan untuk berfotosintesis?",
-    options: ["Air", "Cahaya matahari", "Karbon dioksida", "Oksigen"],
-    answer: 3,
-    explain:
-      "Oksigen justru dihasilkan oleh fotosintesis. Bahan yang diperlukan adalah air, karbon dioksida, dan cahaya matahari.",
-    origin: "guru",
-  },
-  {
-    q: "Lewat apa karbon dioksida masuk ke daun?",
-    options: ["Stomata", "Akar", "Klorofil", "Biji"],
+    type: "bs",
+    q: "Klorofil adalah zat hijau daun yang menangkap energi dari cahaya matahari.",
+    options: ["Benar", "Salah"],
     answer: 0,
+    explain: "Benar. Klorofil membuat daun berwarna hijau dan menangkap energi cahaya matahari.",
+    origin: "guru",
+  },
+  {
+    type: "pgk",
+    q: "Pilih semua bahan yang diperlukan tumbuhan untuk berfotosintesis.",
+    options: ["Air", "Oksigen", "Karbon dioksida", "Cahaya matahari", "Gula"],
+    answer: 0,
+    answers: [0, 2, 3],
+    explain: "Bahannya air, karbon dioksida, dan cahaya matahari. Oksigen dan gula justru hasil fotosintesis.",
+    origin: "guru",
+  },
+  {
+    type: "isian",
+    q: "Lubang kecil di daun, tempat karbon dioksida masuk, disebut …",
+    options: [],
+    answer: 0,
+    accepted: ["stomata", "stoma"],
     explain: "Karbon dioksida masuk ke daun melalui stomata, yaitu lubang-lubang kecil di daun.",
     origin: "guru",
   },
   {
-    q: "Apa hasil dari fotosintesis?",
-    options: ["Gula dan oksigen", "Air dan tanah", "Karbon dioksida dan air", "Cahaya dan panas"],
+    type: "jodoh",
+    q: "Pasangkan setiap zat dengan keterangannya.",
+    options: [],
     answer: 0,
-    explain: "Fotosintesis mengubah air dan karbon dioksida menjadi gula (makanan tumbuhan) dan oksigen.",
+    pairs: [
+      { kiri: "Air", kanan: "Diserap akar dari tanah" },
+      { kiri: "Karbon dioksida", kanan: "Masuk lewat stomata" },
+      { kiri: "Gula", kanan: "Makanan bagi tumbuhan" },
+      { kiri: "Oksigen", kanan: "Dilepaskan ke udara" },
+    ],
+    explain: "Air dan karbon dioksida adalah bahan; gula dan oksigen adalah hasil fotosintesis.",
     origin: "guru",
   },
 ];
@@ -177,13 +217,25 @@ export const TUMBUHAN_BODY = `## Bagian Tumbuhan dan Fungsinya
 
 Tumbuhan memiliki beberapa bagian utama, yaitu akar, batang, daun, bunga, buah, dan biji. Setiap bagian mempunyai tugas masing-masing.
 
+${FIG_TUMBUHAN}
+
+### Akar
+
 Akar berada di dalam tanah. Akar menyerap air dan zat hara dari tanah. Akar juga mencengkeram tanah sehingga tumbuhan dapat berdiri tegak dan tidak mudah roboh.
+
+### Batang
 
 Batang menopang tumbuhan agar tetap tegak. Di dalam batang terdapat saluran yang mengangkut air dari akar ke daun, serta mengangkut makanan dari daun ke seluruh bagian tumbuhan.
 
+### Daun
+
 Daun adalah tempat tumbuhan membuat makanan melalui fotosintesis. Di permukaan daun terdapat stomata, yaitu lubang kecil tempat keluar masuknya udara.
 
-Bunga adalah alat perkembangbiakan. Dari bunga yang mengalami penyerbukan, terbentuklah buah. Di dalam buah terdapat biji. Biji yang ditanam dapat tumbuh menjadi tumbuhan baru.`;
+### Bunga, buah, dan biji
+
+Bunga adalah alat perkembangbiakan. Dari bunga yang mengalami penyerbukan, terbentuklah buah. Di dalam buah terdapat biji. Biji yang ditanam dapat tumbuh menjadi tumbuhan baru.
+
+> Contoh: Biji mangga yang ditanam di tanah yang lembap dapat tumbuh menjadi pohon mangga baru.`;
 
 export const TUMBUHAN_GLOSSARY: GlossaryItem[] = [
   { kata: "zat hara", arti: "Zat makanan dari tanah yang dibutuhkan tumbuhan untuk tumbuh." },
@@ -196,6 +248,8 @@ export const TUMBUHAN_GLOSSARY: GlossaryItem[] = [
 export const TUMBUHAN_MUDAH = `## Bagian Tumbuhan
 
 Tumbuhan punya beberapa bagian. Ada akar, batang, daun, bunga, buah, dan biji. Setiap bagian punya tugas.
+
+${FIG_TUMBUHAN}
 
 Akar ada di dalam tanah. Akar mengambil air dari tanah. Akar juga mengambil zat hara. Zat hara adalah makanan dari tanah. Akar memegang tanah dengan kuat. Jadi, tumbuhan tidak mudah roboh.
 
@@ -217,6 +271,8 @@ export const TUMBUHAN_JAWA = `## Perangan Tetuwuhan lan Gunane
 
 Tetuwuhan nduweni sawetara perangan utama, yaiku oyot, batang, godhong, kembang, woh, lan wiji. Saben perangan nduweni tugas dhewe-dhewe.
 
+${FIG_TUMBUHAN}
+
 Oyot ana ing jero lemah. Oyot nyedhot banyu lan zat hara saka lemah. Oyot uga nyengkeram lemah, saengga tetuwuhan bisa ngadeg jejeg lan ora gampang rubuh.
 
 Batang nyangga tetuwuhan supaya tetep jejeg. Ing jero batang ana saluran sing nggawa banyu saka oyot menyang godhong, lan nggawa panganan saka godhong menyang kabeh perangan tetuwuhan.
@@ -236,6 +292,8 @@ export const TUMBUHAN_SUNDA = `## Bagian Tutuwuhan jeung Gunana
 
 Tutuwuhan boga sababaraha bagian utama, nya éta akar, tangkal, daun, kembang, buah, jeung siki. Unggal bagian boga tugas séwang-séwangan.
 
+${FIG_TUMBUHAN}
+
 Akar aya di jero taneuh. Akar nyerep cai jeung zat hara tina taneuh. Akar ogé nyengkram taneuh, ku kituna tutuwuhan bisa nangtung ajeg sarta henteu gampang rubuh.
 
 Tangkal nahan tutuwuhan sangkan tetep nangtung. Di jero tangkal aya saluran anu mawa cai ti akar ka daun, sarta mawa kadaharan ti daun ka sakumna bagian tutuwuhan.
@@ -253,6 +311,7 @@ export const TUMBUHAN_SUNDA_GLOSSARY: GlossaryItem[] = [
 
 export const TUMBUHAN_QUIZ: QuizQuestion[] = [
   {
+    type: "pg",
     q: "Bagian tumbuhan yang menyerap air dari tanah adalah…",
     options: ["Daun", "Akar", "Bunga", "Buah"],
     answer: 1,
@@ -260,18 +319,29 @@ export const TUMBUHAN_QUIZ: QuizQuestion[] = [
     origin: "guru",
   },
   {
-    q: "Apa fungsi batang?",
-    options: [
-      "Menopang tumbuhan dan mengangkut air serta makanan",
-      "Membuat makanan dengan cahaya matahari",
-      "Menghasilkan biji",
-      "Tempat keluar masuknya udara",
-    ],
+    type: "jodoh",
+    q: "Pasangkan bagian tumbuhan dengan fungsinya.",
+    options: [],
     answer: 0,
-    explain: "Batang menopang tumbuhan dan di dalamnya ada saluran pengangkut air dan makanan.",
+    pairs: [
+      { kiri: "Akar", kanan: "Menyerap air dan zat hara" },
+      { kiri: "Batang", kanan: "Menopang dan mengangkut air" },
+      { kiri: "Daun", kanan: "Tempat membuat makanan" },
+      { kiri: "Bunga", kanan: "Alat perkembangbiakan" },
+    ],
+    explain: "Setiap bagian tumbuhan punya tugas masing-masing, seperti dijelaskan di materi.",
     origin: "guru",
   },
   {
+    type: "bs",
+    q: "Stomata terdapat di akar tumbuhan.",
+    options: ["Benar", "Salah"],
+    answer: 1,
+    explain: "Salah. Stomata terdapat di permukaan daun, tempat keluar masuknya udara.",
+    origin: "guru",
+  },
+  {
+    type: "pg",
     q: "Tumbuhan membuat makanan di bagian…",
     options: ["Akar", "Batang", "Daun", "Biji"],
     answer: 2,
@@ -279,16 +349,11 @@ export const TUMBUHAN_QUIZ: QuizQuestion[] = [
     origin: "guru",
   },
   {
-    q: "Lubang kecil di permukaan daun disebut…",
-    options: ["Stomata", "Putik", "Akar", "Zat hara"],
+    type: "isian",
+    q: "Buah terbentuk dari bunga yang mengalami …",
+    options: [],
     answer: 0,
-    explain: "Stomata adalah lubang kecil di daun, tempat udara keluar dan masuk.",
-    origin: "guru",
-  },
-  {
-    q: "Buah terbentuk dari bunga yang mengalami…",
-    options: ["Penguapan", "Penyerbukan", "Pengembunan", "Pembusukan"],
-    answer: 1,
+    accepted: ["penyerbukan"],
     explain: "Bunga yang mengalami penyerbukan akan membentuk buah.",
     origin: "guru",
   },

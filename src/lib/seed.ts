@@ -38,9 +38,11 @@ import {
   TUMBUHAN_SUNDA,
   TUMBUHAN_SUNDA_GLOSSARY,
 } from "./demo-content";
+import { DEMO_IMAGES } from "./demo-images";
 import { hashPassword } from "./password";
-import { fingerprint } from "./text";
-import type { GlossaryItem, LessonVersions, QuizQuestion, StudentPrefs } from "./types";
+import { questionKey } from "./quiz";
+import { figureIds, fingerprint } from "./text";
+import type { GlossaryItem, LessonFigures, LessonVersions, QuizQuestion, StudentPrefs } from "./types";
 
 // Data demo sesuai rencana build: 1 guru, 2 kelas, 3 materi terbit (masing-masing 4 versi yang sudah
 // dicek + kuis 5 soal), 1 draf untuk mendemokan AI, dan ±60 hasil kuis di semua cara belajar.
@@ -125,7 +127,17 @@ function rng(seed: number) {
   };
 }
 
-type DemoSession = { alias: string; prefs: StudentPrefs; score: number | null; seconds: number; minutesAgo: number };
+type DemoSession = {
+  alias: string;
+  prefs: StudentPrefs;
+  score: number | null;
+  detail: { k: string; b: boolean }[] | null;
+  seconds: number;
+  minutesAgo: number;
+};
+
+/** Peluang menjawab benar per soal: soal ke-3 dan ke-5 sengaja lebih sulit supaya rekap per soal menarik. */
+const DIFFICULTY = [0.88, 0.8, 0.52, 0.72, 0.46];
 
 function demoSessions(lesson: DemoLesson, seed: number): DemoSession[] {
   const rand = rng(seed);
@@ -139,7 +151,6 @@ function demoSessions(lesson: DemoLesson, seed: number): DemoSession[] {
     if (r < 0.93) return lesson.homeLang;
     return other;
   };
-  const total = lesson.quiz.length;
   return Array.from({ length: lesson.sessions }, (_, i) => {
     const versi = pickVersi();
     const prefs: StudentPrefs = {
@@ -150,11 +161,17 @@ function demoSessions(lesson: DemoLesson, seed: number): DemoSession[] {
       dengar: rand() < 0.28,
     };
     const finished = rand() < 0.88;
-    const score = finished ? Math.min(total, 2 + Math.floor(rand() * (total - 1))) : null;
+    // Siswa yang memakai versi teks lain sedikit lebih sering benar (sesuai tujuan Selaras; data fiktif).
+    const boost = versi === "asli" ? 0 : 0.06;
+    const detail = finished
+      ? lesson.quiz.map((q, qi) => ({ k: questionKey(q), b: rand() < DIFFICULTY[qi % DIFFICULTY.length] + boost }))
+      : null;
+    const score = detail ? detail.filter((d) => d.b).length : null;
     return {
       alias: ALIASES[(i + seed) % ALIASES.length],
       prefs,
       score,
+      detail,
       seconds: 80 + Math.floor(rand() * 260),
       minutesAgo: Math.max(5, lesson.hoursAgo * 60 - 20 - i * 6),
     };
@@ -181,7 +198,23 @@ export async function seedDemo(sql: Sql, { reset }: { reset: boolean }) {
     teacherId = existing[0].id;
     await sql`delete from lessons where teacher_id = ${teacherId}`;
     await sql`delete from classes where teacher_id = ${teacherId}`;
+    // Gambar yang diunggah pengunjung akun demo ikut dibersihkan (diagram demo diisi ulang di bawah).
+    await sql`delete from lesson_images where teacher_id = ${teacherId} and id <> all(${DEMO_IMAGES.map((i) => i.id)}::uuid[])`;
   }
+
+  // Diagram demo (SVG buatan tim) dengan ID tetap, supaya teks materi demo bisa merujuknya.
+  for (const img of DEMO_IMAGES) {
+    const data = Buffer.from(img.svg, "utf8");
+    await sql`
+      insert into lesson_images (id, teacher_id, lesson_id, mime, data, width, height, bytes)
+      values (${img.id}, ${teacherId}, null, 'image/svg+xml', ${data}, ${img.figure.width ?? null},
+        ${img.figure.height ?? null}, ${data.length})
+      on conflict (id) do update set data = excluded.data, teacher_id = excluded.teacher_id, bytes = excluded.bytes`;
+  }
+  const demoFigures = (text: string): LessonFigures =>
+    Object.fromEntries(
+      DEMO_IMAGES.filter((img) => figureIds(text).includes(img.id)).map((img) => [img.id, img.figure]),
+    );
 
   const classIds: Record<DemoLesson["classKey"], string> = { "4B": "", "6A": "" };
   for (const [key, cls] of [
@@ -214,10 +247,11 @@ export async function seedDemo(sql: Sql, { reset }: { reset: boolean }) {
     };
 
     const [lesson] = await sql<{ id: string }[]>`
-      insert into lessons (teacher_id, class_id, title, subject, body, glossary, versions, quiz, status, share_code, published_at, created_at, updated_at)
+      insert into lessons (teacher_id, class_id, title, subject, body, glossary, versions, quiz, figures, status, share_code, published_at, created_at, updated_at)
       values (
         ${teacherId}, ${classIds[demo.classKey]}, ${demo.title}, ${demo.subject}, ${demo.body},
         ${sql.json(demo.glossary)}, ${sql.json(versions as never)}, ${sql.json(demo.quiz as never)},
+        ${sql.json(demoFigures([demo.body, ...Object.values(demo.texts)].join("\n")) as never)},
         'published', ${demo.shareCode}, ${at}, ${at}, ${at}
       )
       returning id`;
@@ -226,7 +260,16 @@ export async function seedDemo(sql: Sql, { reset }: { reset: boolean }) {
     for (const [i, s] of demoSessions(demo, 7 + n * 31).entries()) {
       const openedAt = new Date(Date.now() - s.minutesAgo * 60_000);
       const base = { lesson_id: lesson.id, session_id: `demo-${n + 1}-${i + 1}`, student_alias: s.alias };
-      events.push({ ...base, kind: "open", prefs: s.prefs, score: null, total: null, duration_sec: null, created_at: openedAt });
+      events.push({
+        ...base,
+        kind: "open",
+        prefs: s.prefs,
+        score: null,
+        total: null,
+        duration_sec: null,
+        detail: null,
+        created_at: openedAt,
+      });
       if (s.score !== null) {
         events.push({
           ...base,
@@ -235,13 +278,18 @@ export async function seedDemo(sql: Sql, { reset }: { reset: boolean }) {
           score: s.score,
           total: demo.quiz.length,
           duration_sec: s.seconds,
+          detail: s.detail,
           created_at: new Date(openedAt.getTime() + (4 * 60 + s.seconds) * 1000),
         });
       }
     }
     await sql`
       insert into student_events ${sql(
-        events.map((e) => ({ ...e, prefs: sql.json(e.prefs as StudentPrefs) })) as never,
+        events.map((e) => ({
+          ...e,
+          prefs: sql.json(e.prefs as StudentPrefs),
+          detail: e.detail ? sql.json(e.detail as never) : null,
+        })) as never,
         "lesson_id",
         "session_id",
         "kind",
@@ -250,6 +298,7 @@ export async function seedDemo(sql: Sql, { reset }: { reset: boolean }) {
         "score",
         "total",
         "duration_sec",
+        "detail",
         "created_at",
       )}`;
   }
