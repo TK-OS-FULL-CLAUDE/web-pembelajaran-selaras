@@ -60,6 +60,20 @@ create table if not exists student_events (
 
 create index if not exists student_events_lesson_idx on student_events(lesson_id);
 
+alter table student_events add column if not exists duration_sec integer;
+
+update student_events e
+  set prefs = jsonb_set(e.prefs, '{versi}',
+    to_jsonb(case when l.versions->'daerah'->>'lang' = 'su' then 'sunda' else 'jawa' end))
+  from lessons l
+  where l.id = e.lesson_id and e.prefs->>'versi' = 'daerah';
+
+update lessons
+  set versions = (versions - 'daerah') || jsonb_build_object(
+    case when versions->'daerah'->>'lang' = 'su' then 'sunda' else 'jawa' end,
+    (versions->'daerah') - 'lang')
+  where versions ? 'daerah';
+
 create table if not exists auth_attempts (
   id bigserial primary key,
   email text not null,
@@ -68,6 +82,15 @@ create table if not exists auth_attempts (
 );
 
 create index if not exists auth_attempts_email_idx on auth_attempts(email, created_at);
+
+create table if not exists ai_usage (
+  id bigserial primary key,
+  teacher_id uuid not null references teachers(id) on delete cascade,
+  kind text not null,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists ai_usage_teacher_idx on ai_usage(teacher_id, created_at);
 
 alter table teachers enable row level security;
 
@@ -78,3 +101,5 @@ alter table lessons enable row level security;
 alter table student_events enable row level security;
 
 alter table auth_attempts enable row level security;
+
+alter table ai_usage enable row level security;

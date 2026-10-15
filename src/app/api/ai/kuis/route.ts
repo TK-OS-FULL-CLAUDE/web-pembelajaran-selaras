@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { fail, ok, readJson, withTeacher } from "@/lib/api";
 import { makeQuizDraft } from "@/lib/ai-tasks";
+import { consumeAiQuota } from "@/lib/ai-quota";
 import { getClass, getLesson } from "@/lib/data";
 
 export const maxDuration = 60;
@@ -20,6 +21,7 @@ export async function POST(req: Request) {
     const body = (input.body ?? lesson.body).trim();
     if (body.length < 40) return fail("Materi asli terlalu pendek untuk dibuatkan kuis.", 422);
     const cls = lesson.class_id ? await getClass(teacher.id, lesson.class_id) : null;
+    await consumeAiQuota(teacher.id, "kuis");
     const result = await makeQuizDraft({ body, grade: cls?.grade || "siswa SD", count: input.count });
     return ok({ questions: result.questions });
   });

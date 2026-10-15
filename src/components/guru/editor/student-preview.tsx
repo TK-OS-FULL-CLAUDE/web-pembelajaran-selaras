@@ -3,7 +3,17 @@
 // Pratinjau langsung: materi seperti yang akan dilihat siswa di HP, ikut berubah saat guru mengetik.
 
 import { useMemo, useState } from "react";
-import { LANG_SHORT, type GlossaryItem, type LessonVersions, type StudentPrefs } from "@/lib/types";
+import {
+  VERSION_HTML_LANG,
+  VERSION_KEYS,
+  isRegionalVersion,
+  type GlossaryItem,
+  type LessonVersions,
+  type StudentPrefs,
+  type VersionKey,
+} from "@/lib/types";
+
+const SHORT_LABEL: Record<VersionKey, string> = { mudah: "Mudah", ringkasan: "Ringkas", jawa: "Jawa", sunda: "Sunda" };
 import { ReaderText } from "../../reader-text";
 import { cx } from "../../ui";
 
@@ -26,16 +36,12 @@ export function StudentPreview({
 
   const options: { key: StudentPrefs["versi"]; label: string }[] = [
     { key: "asli", label: "Asli" },
-    ...(versions.mudah?.text.trim() ? [{ key: "mudah" as const, label: "Mudah" }] : []),
-    ...(versions.daerah?.text.trim()
-      ? [{ key: "daerah" as const, label: LANG_SHORT[versions.daerah.lang ?? "jw"].replace("Basa ", "") }]
-      : []),
-    ...(versions.ringkasan?.text.trim() ? [{ key: "ringkasan" as const, label: "Ringkas" }] : []),
+    ...VERSION_KEYS.filter((k) => versions[k]?.text.trim()).map((k) => ({ key: k, label: SHORT_LABEL[k] })),
   ];
   const current = versi === "asli" ? null : versions[versi];
   const text = current?.text ?? body;
   const terms = useMemo(
-    () => (versi === "daerah" ? (versions.daerah?.glossary ?? []) : [...(current?.glossary ?? []), ...glossary]),
+    () => (isRegionalVersion(versi) ? (current?.glossary ?? []) : [...(current?.glossary ?? []), ...glossary]),
     [versi, versions, current, glossary],
   );
   const draft = current && !current.checked;
@@ -87,7 +93,7 @@ export function StudentPreview({
           data-besar={besar}
           data-kontras={kontras}
           data-spasi={spasi}
-          lang={versi === "daerah" ? (versions.daerah?.lang === "su" ? "su" : "jv") : "id"}
+          lang={VERSION_HTML_LANG[versi]}
           aria-label="Pratinjau layar siswa"
         >
           {draft && (

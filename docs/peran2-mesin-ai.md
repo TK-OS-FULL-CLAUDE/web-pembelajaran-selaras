@@ -4,9 +4,9 @@ Pemilik: Michael Evan. Dokumen ini menjelaskan bagian AI di atas fondasi Faza (P
 
 ## Ringkasnya
 
-- AI hanya membuat **draf**. Setiap versi berlabel "Draf AI, perlu dicek" dan baru tampil untuk siswa setelah guru menekan **Tandai sudah dicek**. Materi tidak bisa terbit selama masih ada versi yang belum dicek.
+- AI hanya membuat **draf**. Setiap versi berlabel "Draf AI — wajib dicek guru" dan baru tampil untuk siswa setelah guru menekan **Tandai sudah dicek**. Materi tidak bisa terbit selama masih ada versi yang belum dicek.
 - Ada dua penyedia AI, keduanya lewat REST tanpa SDK. Bila keduanya diisi, yang satu menjadi cadangan saat yang lain gagal.
-- Ada tiga versi teks: **Teks mudah**, **Bahasa daerah** (Jawa atau Sunda, sesuai profil kelas), dan **Ringkasan** (3–7 poin utama).
+- Ada empat versi teks, sesuai rencana build: **Teks mudah**, **Ringkasan** (3–7 poin utama), **Basa Jawa**, dan **Basa Sunda**. Bahasa ibu di profil kelas menentukan versi daerah yang diberi label "Disarankan untuk kelas ini".
 
 ## Penyedia dan cadangan
 
@@ -15,7 +15,8 @@ Pemilik: Michael Evan. Dokumen ini menjelaskan bagian AI di atas fondasi Faza (P
 | Foto halaman buku → teks | `photoToText` | `POST /api/ai/foto` | Gemini | Claude |
 | Teks mudah | `makeSimpleVersion` | `POST /api/ai/versi` (`jenis: "mudah"`) | Claude | Gemini |
 | Ringkasan | `makeSummaryVersion` | `POST /api/ai/versi` (`jenis: "ringkasan"`) | Claude | Gemini |
-| Bahasa daerah | `makeRegionalVersion` | `POST /api/ai/versi` (`jenis: "daerah"`) | Claude | Gemini |
+| Basa Jawa | `makeRegionalVersion` | `POST /api/ai/versi` (`jenis: "jawa"`) | Claude | Gemini |
+| Basa Sunda | `makeRegionalVersion` | `POST /api/ai/versi` (`jenis: "sunda"`) | Claude | Gemini |
 | Draf kuis | `makeQuizDraft` | `POST /api/ai/kuis` | Gemini | Claude |
 
 Urutan percobaan di dalam satu penyedia:
@@ -28,11 +29,16 @@ Penyedia cadangan dipakai bila penyedia utama gagal karena kunci ditolak, kredit
 
 File terkait: `src/lib/claude.ts` (klien Claude + pengatur cadangan), `src/lib/gemini.ts` (klien Gemini), `src/lib/ai-common.ts` (tipe dan galat bersama).
 
+## Batas pemakaian
+
+Setiap akun guru dibatasi `AI_LIMIT_PER_HOUR` permintaan AI per jam (default 100). Satu klik "Buat draf semua versi" memakai 4 permintaan. Tombol itu hanya mengisi versi yang masih kosong, jadi versi yang sudah diedit atau dicek tidak tertimpa; "Buat ulang dengan AI" pada versi yang sudah dicek meminta konfirmasi dulu. Bila batas tercapai, route AI menjawab HTTP 429 dengan pesan berapa menit lagi bisa dicoba. Catatannya disimpan di tabel `ai_usage` (`src/lib/ai-quota.ts`). Tujuannya supaya kredit tidak habis bila akun demo dipakai bersama saat penjurian.
+
 ## Pengaman di prompt
 
 - Model hanya boleh memakai fakta dari teks guru.
 - Teks materi diperlakukan sebagai data, jadi kalimat yang tampak seperti perintah di dalam materi diabaikan.
 - Saat membaca foto, gambar atau diagram penting ditulis sebagai `[Gambar: ...]` supaya bisa dibacakan untuk siswa low vision, dan kata yang tidak terbaca ditulis `[tidak terbaca]`.
+- Versi bahasa daerah berlabel **Perlu dicek penutur asli**, disertai catatan agar guru meminta penutur asli membacanya sebelum menandai sudah dicek.
 - Glosarium dari AI disaring: hanya kata yang benar-benar muncul di teksnya yang disimpan, supaya semuanya bisa diketuk siswa.
 - Ringkasan selalu dirapikan menjadi daftar butir `- `.
 
@@ -67,6 +73,7 @@ Setelah deploy, `npm run cek -- https://alamat-app --ai` ikut menguji draf kuis 
 
 ## Catatan untuk tim
 
-- **Data demo:** materi Fotosintesis sekarang punya versi Ringkasan, dan ada dua sesi siswa demo yang memakai ringkasan. Database yang sudah terisi sebelumnya perlu **Reset data demo** (tombol di halaman guru) supaya ikut berubah.
-- **Sabri (ruang siswa):** pilihan "Poin penting saja" muncul di layar pilih cara belajar, dan tombol "Ringkasan" muncul di bilah versi. Di HP, empat tombol versi otomatis disusun 2×2.
-- **Aufa (rekap):** `prefCounts.ringkasan` dan baris "Ringkasan" sudah ada di rekap per versi.
+- **Migrasi data:** materi lama dengan satu versi `daerah` otomatis dipindah ke `jawa` atau `sunda` (sesuai `lang`-nya) saat app terhubung ke database, begitu juga pilihan siswa lama di `student_events`. Tidak perlu SQL manual.
+- **Data demo:** 2 kelas, 3 materi terbit (`DEMO01`–`DEMO03`) dengan 4 versi + kuis 5 soal, 1 draf "Daur Air", dan sekitar 60 hasil kuis. Database yang sudah terisi sebelumnya perlu **Reset data demo** (tombol di halaman guru) supaya ikut berubah. Teks Basa Jawa dan Basa Sunda demo tetap perlu dibaca penutur asli.
+- **Sabri (ruang siswa):** pilihan "Pakai Basa Jawa" dan "Pakai Basa Sunda" muncul terpisah di layar pilih cara belajar. Di HP, bilah versi otomatis disusun 2 atau 3 kolom.
+- **Aufa (kuis & rekap):** lama pengerjaan kuis kini dicatat (`student_events.duration_sec`) dan tampil di rekap: rata-rata keseluruhan, per versi teks, dan per siswa. Versi yang tidak ada di materi tidak ditampilkan di rekap.

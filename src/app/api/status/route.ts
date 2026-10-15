@@ -1,6 +1,7 @@
 import { ok } from "@/lib/api";
 import { databaseUrl, getDb } from "@/lib/db";
 import { aiProviders } from "@/lib/claude";
+import { aiLimitPerHour } from "@/lib/ai-quota";
 
 export const dynamic = "force-dynamic";
 
@@ -25,6 +26,7 @@ export async function GET() {
     ai: aiProviders().length
       ? `aktif: ${aiProviders().join(" + ")}`
       : "nonaktif (ANTHROPIC_API_KEY dan GEMINI_API_KEY kosong)",
+    aiBatasPerJam: aiLimitPerHour(),
     sessionSecret: process.env.SESSION_SECRET ? "diisi" : "memakai cadangan dari DATABASE_URL",
   });
 }

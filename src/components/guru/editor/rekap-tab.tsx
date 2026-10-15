@@ -6,27 +6,32 @@ import { RefreshCw } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useTransition } from "react";
 import type { LessonStats } from "@/lib/data";
+import { VERSION_LABEL, isRegionalVersion, type VersionKey } from "@/lib/types";
 import { Button, Card, EmptyState, Spinner } from "../../ui";
 
 const MODE_LABEL: Record<keyof LessonStats["prefCounts"], string> = {
-  mudah: "Teks mudah",
-  daerah: "Bahasa daerah",
-  ringkasan: "Ringkasan",
+  mudah: VERSION_LABEL.mudah,
+  ringkasan: VERSION_LABEL.ringkasan,
+  jawa: VERSION_LABEL.jawa,
+  sunda: VERSION_LABEL.sunda,
   dengar: "Dibacakan",
   besar: "Huruf besar",
   kontras: "Kontras tinggi",
   spasi: "Spasi lega",
 };
 
-const VERSI_LABEL = {
-  asli: "Teks asli",
-  mudah: "Teks mudah",
-  daerah: "Bahasa daerah",
-  ringkasan: "Ringkasan",
-} as const;
+const VERSI_LABEL = VERSION_LABEL;
+
+/** 75 → "1 mnt 15 dtk" */
+function formatDuration(sec: number | null | undefined): string {
+  if (!sec || sec <= 0) return "—";
+  const m = Math.floor(sec / 60);
+  const s = sec % 60;
+  return m > 0 ? `${m} mnt${s ? ` ${s} dtk` : ""}` : `${s} dtk`;
+}
 
 function describePrefs(p: LessonStats["recent"][number]["prefs"]) {
-  const parts: string[] = [VERSI_LABEL[p?.versi ?? "asli"]];
+  const parts: string[] = [VERSI_LABEL[p?.versi ?? "asli"] ?? VERSI_LABEL.asli];
   if (p?.dengar) parts.push("dibacakan");
   if (p?.besar) parts.push("huruf besar");
   if (p?.kontras) parts.push("kontras");
@@ -82,7 +87,10 @@ export function RekapTab({ stats, published }: { stats: LessonStats; published: 
   }
 
   const adaptivePct = Math.round((stats.adaptiveSessions / stats.sessions) * 100);
+  // Versi teks yang tidak ada di materi ini (dan tidak pernah dipilih) tidak perlu ditampilkan.
+  const isVersion = (k: string): k is VersionKey => k === "mudah" || k === "ringkasan" || isRegionalVersion(k);
   const modes = (Object.keys(MODE_LABEL) as (keyof LessonStats["prefCounts"])[])
+    .filter((k) => !isVersion(k) || stats.availableVersions.includes(k) || stats.prefCounts[k] > 0)
     .map((k) => ({ key: k, label: MODE_LABEL[k], value: stats.prefCounts[k] }))
     .sort((a, b) => b.value - a.value);
 
@@ -98,7 +106,13 @@ export function RekapTab({ stats, published }: { stats: LessonStats; published: 
           {stats.avgScorePct !== null && (
             <>
               {" "}
-              Rata-rata skor kuis <strong>{stats.avgScorePct}</strong> dari 100 ({stats.quizAttempts} siswa).
+              Rata-rata skor kuis <strong>{stats.avgScorePct}</strong> dari 100 ({stats.quizAttempts} siswa)
+              {stats.avgDurationSec !== null && (
+                <>
+                  , rata-rata waktu mengerjakan <strong>{formatDuration(stats.avgDurationSec)}</strong>
+                </>
+              )}
+              .
             </>
           )}
         </p>
@@ -141,7 +155,14 @@ export function RekapTab({ stats, published }: { stats: LessonStats; published: 
             ))}
           </ul>
           <p className="mt-2 text-[14px] text-tinta-2">
-            {stats.byVersion.map((v) => `${VERSI_LABEL[v.versi]}: ${v.attempts} siswa`).join("; ")}.
+            {stats.byVersion
+              .map(
+                (v) =>
+                  `${VERSI_LABEL[v.versi]}: ${v.attempts} siswa` +
+                  (v.avgDurationSec ? `, rata-rata ${formatDuration(v.avgDurationSec)}` : ""),
+              )
+              .join("; ")}
+            .
           </p>
         </Card>
       </div>
@@ -149,7 +170,8 @@ export function RekapTab({ stats, published }: { stats: LessonStats; published: 
       {stats.recent.length > 0 && (
         <Card className="overflow-hidden">
           <h2 className="px-5 pt-5 font-display text-lg font-bold">Hasil kuis terbaru</h2>
-          <div className="mt-3 overflow-x-auto">
+          {/* tabIndex: wilayah yang bisa digulir harus bisa dijangkau keyboard (WCAG 2.1.1) */}
+          <div className="mt-3 overflow-x-auto" tabIndex={0} role="region" aria-label="Tabel hasil kuis terbaru">
             <table className="w-full min-w-[32rem] text-left text-[15px]">
               <thead className="border-y border-garis bg-kertas text-[14px] text-tinta-2">
                 <tr>
@@ -161,6 +183,9 @@ export function RekapTab({ stats, published }: { stats: LessonStats; published: 
                   </th>
                   <th scope="col" className="px-5 py-2 text-right font-bold">
                     Skor
+                  </th>
+                  <th scope="col" className="px-5 py-2 text-right font-bold">
+                    Lama
                   </th>
                   <th scope="col" className="px-5 py-2 text-right font-bold">
                     Waktu (WIB)
@@ -175,6 +200,7 @@ export function RekapTab({ stats, published }: { stats: LessonStats; published: 
                     <td className="px-5 py-2.5 text-right tabular-nums">
                       {r.score}/{r.total}
                     </td>
+                    <td className="px-5 py-2.5 text-right tabular-nums text-tinta-2">{formatDuration(r.durationSec)}</td>
                     <td className="px-5 py-2.5 text-right text-tinta-2">
                       {new Intl.DateTimeFormat("id-ID", {
                         hour: "2-digit",

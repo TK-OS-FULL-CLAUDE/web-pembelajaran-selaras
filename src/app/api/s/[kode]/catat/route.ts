@@ -15,6 +15,8 @@ const schema = z.object({
   prefs: prefsInput,
   score: z.number().int().min(0).max(100).optional(),
   total: z.number().int().min(1).max(100).optional(),
+  /** Lama pengerjaan kuis dalam detik (maks. 3 jam). */
+  durasi: z.number().int().min(0).max(10_800).optional(),
 });
 
 /** Mencatat sesi siswa (cara belajar yang dipilih, skor kuis) untuk tab Rekap guru. Tanpa login. */
@@ -32,6 +34,7 @@ export async function POST(req: Request, { params }: Ctx) {
       prefs: input.prefs,
       score: input.kind === "quiz" ? input.score : undefined,
       total: input.kind === "quiz" ? input.total : undefined,
+      durationSec: input.kind === "quiz" ? input.durasi : undefined,
     });
     return ok({ ok: true });
   });

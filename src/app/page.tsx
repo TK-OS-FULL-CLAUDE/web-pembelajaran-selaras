@@ -15,7 +15,7 @@ const STEPS = [
   {
     icon: ClipboardCheck,
     title: "Cek versi untuk kelas Anda",
-    text: "AI menyiapkan draf teks mudah dan bahasa daerah sesuai profil kelas. Anda membaca dan menyetujuinya.",
+    text: "AI menyiapkan draf teks mudah, ringkasan, Basa Jawa, dan Basa Sunda. Anda membaca dan menyetujuinya.",
   },
   {
     icon: QrCode,

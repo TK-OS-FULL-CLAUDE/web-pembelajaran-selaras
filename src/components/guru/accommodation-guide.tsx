@@ -80,6 +80,7 @@ export function AccommodationGuide({ classId, needs }: { classId: string; needs:
                 );
               })}
             </ul>
+            <p className="mt-3 border-t border-garis pt-2 text-[13px] text-tinta-2">Dasar: {n.rujukan}</p>
           </section>
         );
       })}

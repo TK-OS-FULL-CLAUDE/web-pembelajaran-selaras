@@ -7,6 +7,7 @@ import { LessonList } from "@/components/guru/lesson-list";
 import { NeedsSummary } from "@/components/guru/needs-summary";
 import { ButtonLink, EmptyState } from "@/components/ui";
 import { requireTeacher } from "@/lib/auth";
+import { PERMEN_AYL } from "@/lib/accommodations";
 import { getClass, listLessons } from "@/lib/data";
 
 export const metadata: Metadata = { title: "Kelas" };
@@ -59,8 +60,13 @@ export default async function ClassPage({ params }: { params: Promise<{ id: stri
           Panduan akomodasi untuk kelas ini
         </h2>
         <p className="mb-4 mt-1 max-w-3xl text-tinta-2">
-          Langkah praktis di kelas, sesuai profil di atas. Disusun dari praktik umum pendidikan inklusif; bukan
-          pengganti asesmen tenaga profesional atau Guru Pembimbing Khusus.
+          Langkah praktis di kelas, sesuai profil di atas. Disusun dari praktik umum pendidikan inklusif dan, untuk low
+          vision dan tuli, sejalan dengan bentuk akomodasi di{" "}
+          <a href={PERMEN_AYL.url} target="_blank" rel="noreferrer" className="font-bold text-papan underline">
+            {PERMEN_AYL.label}
+          </a>
+          . Akomodasi resmi tetap ditetapkan sekolah lewat asesmen fungsional bersama Unit Layanan Disabilitas; panduan
+          ini bukan pengganti asesmen tenaga profesional atau Guru Pembimbing Khusus.
         </p>
         <AccommodationGuide classId={cls.id} needs={cls.needs} />
       </section>
