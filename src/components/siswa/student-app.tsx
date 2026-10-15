@@ -40,6 +40,7 @@ import { AskTutor } from "./ask-tutor";
 import { ReadingRuler } from "./reading-ruler";
 import { useSpeech, type SpeechRate } from "../use-speech";
 import { cx } from "../ui";
+import { ReaderToolbar } from "./reader-toolbar";
 
 export type StudentLesson = {
   code: string;
@@ -50,7 +51,9 @@ export type StudentLesson = {
   body: string;
   glossary: GlossaryItem[];
   /** Hanya versi yang sudah dicek guru. */
-  versions: Partial<Record<VersionKey, { text: string; glossary: GlossaryItem[] }>>;
+  versions: Partial<
+    Record<VersionKey, { text: string; glossary: GlossaryItem[] }>
+  >;
   quiz: QuizQuestion[];
 };
 
@@ -97,7 +100,9 @@ export function StudentApp({ lesson }: { lesson: StudentLesson }) {
 
   // Muat pilihan tersimpan (siswa yang kembali langsung ke bacaan).
   useEffect(() => {
-    const saved = readStorage<StudentPrefs>(prefsKey) ?? readStorage<StudentPrefs>(GLOBAL_PREFS_KEY);
+    const saved =
+      readStorage<StudentPrefs>(prefsKey) ??
+      readStorage<StudentPrefs>(GLOBAL_PREFS_KEY);
     const savedAlias = readStorage<string>("selaras:nama");
     let sid = readStorage<string>(sessionKey);
     if (!sid) {
@@ -114,12 +119,21 @@ export function StudentApp({ lesson }: { lesson: StudentLesson }) {
   }, [prefsKey, sessionKey, lesson]);
 
   const log = useCallback(
-    (kind: "open" | "quiz", extra: { score?: number; total?: number; durasi?: number } = {}) => {
+    (
+      kind: "open" | "quiz",
+      extra: { score?: number; total?: number; durasi?: number } = {},
+    ) => {
       if (!sessionId) return;
       fetch(`/api/s/${lesson.code}/catat`, {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ sessionId, kind, alias: alias.trim() || null, prefs, ...extra }),
+        body: JSON.stringify({
+          sessionId,
+          kind,
+          alias: alias.trim() || null,
+          prefs,
+          ...extra,
+        }),
         keepalive: true,
       }).catch(() => {});
     },
@@ -152,7 +166,12 @@ export function StudentApp({ lesson }: { lesson: StudentLesson }) {
   };
 
   const shell = (children: React.ReactNode) => (
-    <div className="reader min-h-dvh" data-besar={prefs.besar} data-kontras={prefs.kontras} data-spasi={prefs.spasi}>
+    <div
+      className="reader min-h-dvh"
+      data-besar={prefs.besar}
+      data-kontras={prefs.kontras}
+      data-spasi={prefs.spasi}
+    >
       {children}
     </div>
   );
@@ -161,42 +180,51 @@ export function StudentApp({ lesson }: { lesson: StudentLesson }) {
 
   if (step === "mulai") {
     return shell(
-      <main id="isi" className="mx-auto flex min-h-dvh max-w-xl flex-col justify-center px-5 py-10">
-        <p className="text-[16px] text-[var(--reader-soft)]">
-          {[lesson.subject, lesson.className, lesson.teacherName].filter(Boolean).join(", ")}
-        </p>
-        <h1 className="mt-2 font-display text-[2.2rem] font-extrabold leading-tight">{lesson.title}</h1>
-        <form
-          className="mt-8 space-y-4"
-          onSubmit={(e) => {
-            e.preventDefault();
-            writeStorage("selaras:nama", alias.trim());
-            setStep("pilih");
-            window.scrollTo({ top: 0 });
-          }}
-        >
-          <label htmlFor="nama" className="block text-[18px] font-bold">
-            Nama panggilanmu
-          </label>
-          <input
-            id="nama"
-            value={alias}
-            onChange={(e) => setAlias(e.target.value.slice(0, 40))}
-            autoComplete="nickname"
-            placeholder="Contoh: Dimas"
-            className="h-14 w-full rounded-xl border-2 border-batas bg-white px-4 text-[19px] text-tinta"
-          />
-          <p className="text-[15px] text-[var(--reader-soft)]">
-            Boleh dikosongkan. Cukup nama panggilan, bukan nama lengkap.
+      <main
+        id="isi"
+        className="mx-auto flex min-h-dvh max-w-xl flex-col justify-center px-5 py-10"
+      >
+        <div className="reader-card">
+          <p className="text-[16px] text-[var(--reader-soft)]">
+            {[lesson.subject, lesson.className, lesson.teacherName]
+              .filter(Boolean)
+              .join(", ")}
           </p>
-          <button
-            type="submit"
-            className="flex h-14 w-full items-center justify-center gap-2 rounded-xl bg-papan text-[19px] font-bold text-white hover:bg-papan-600"
+          <h1 className="mt-2 font-display text-[2.2rem] font-extrabold leading-tight">
+            {lesson.title}
+          </h1>
+          <form
+            className="mt-8 space-y-4"
+            onSubmit={(e) => {
+              e.preventDefault();
+              writeStorage("selaras:nama", alias.trim());
+              setStep("pilih");
+              window.scrollTo({ top: 0 });
+            }}
           >
-            Mulai belajar
-            <ChevronRight className="size-5" aria-hidden />
-          </button>
-        </form>
+            <label htmlFor="nama" className="block text-[18px] font-bold">
+              Nama panggilanmu
+            </label>
+            <input
+              id="nama"
+              value={alias}
+              onChange={(e) => setAlias(e.target.value.slice(0, 40))}
+              autoComplete="nickname"
+              placeholder="Contoh: Dimas"
+              className="h-14 w-full rounded-xl border-2 border-batas bg-white px-4 text-[19px] text-tinta"
+            />
+            <p className="text-[15px] text-[var(--reader-soft)]">
+              Boleh dikosongkan. Cukup nama panggilan, bukan nama lengkap.
+            </p>
+            <button
+              type="submit"
+              className="flex h-14 w-full items-center justify-center gap-2 rounded-xl bg-papan text-[19px] font-bold text-white hover:bg-papan-600"
+            >
+              Mulai belajar
+              <ChevronRight className="size-5" aria-hidden />
+            </button>
+          </form>
+        </div>
       </main>,
     );
   }
@@ -260,7 +288,8 @@ export function StudentApp({ lesson }: { lesson: StudentLesson }) {
 
 /** Pastikan pilihan tersimpan masih cocok dengan versi yang tersedia sekarang. */
 function sanitize(p: StudentPrefs, lesson: StudentLesson): StudentPrefs {
-  const versi = p.versi === "asli" || lesson.versions[p.versi] ? p.versi : "asli";
+  const versi =
+    p.versi === "asli" || lesson.versions[p.versi] ? p.versi : "asli";
   return { ...DEFAULT_PREFS, ...p, versi };
 }
 
@@ -293,7 +322,8 @@ function ChooseMode({
       title: "Kalimat lebih mudah",
       desc: "Kalimat pendek dan kata sehari-hari.",
       on: prefs.versi === "mudah",
-      toggle: () => onChange({ versi: prefs.versi === "mudah" ? "asli" : "mudah" }),
+      toggle: () =>
+        onChange({ versi: prefs.versi === "mudah" ? "asli" : "mudah" }),
       sample: <BookOpen className="size-7" aria-hidden />,
       show: !!lesson.versions.mudah,
     },
@@ -302,7 +332,8 @@ function ChooseMode({
       title: "Poin penting saja",
       desc: "Ringkasan singkat isi materi.",
       on: prefs.versi === "ringkasan",
-      toggle: () => onChange({ versi: prefs.versi === "ringkasan" ? "asli" : "ringkasan" }),
+      toggle: () =>
+        onChange({ versi: prefs.versi === "ringkasan" ? "asli" : "ringkasan" }),
       sample: <ScrollText className="size-7" aria-hidden />,
       show: !!lesson.versions.ringkasan,
     },
@@ -318,7 +349,9 @@ function ChooseMode({
     {
       id: "dengar",
       title: "Dibacakan",
-      desc: speechSupported ? "Materi dibacakan suara, kalimatnya disorot." : "Browser ini belum bisa membacakan teks.",
+      desc: speechSupported
+        ? "Materi dibacakan suara, kalimatnya disorot."
+        : "Browser ini belum bisa membacakan teks.",
       on: prefs.dengar,
       toggle: () => onChange({ dengar: !prefs.dengar }),
       sample: <Volume2 className="size-7" aria-hidden />,
@@ -330,7 +363,11 @@ function ChooseMode({
       desc: "Tulisan lebih besar dan jelas.",
       on: prefs.besar,
       toggle: () => onChange({ besar: !prefs.besar }),
-      sample: <span className="font-display text-[30px] font-extrabold leading-none">Aa</span>,
+      sample: (
+        <span className="font-display text-[30px] font-extrabold leading-none">
+          Aa
+        </span>
+      ),
       show: true,
     },
     {
@@ -340,7 +377,9 @@ function ChooseMode({
       on: prefs.kontras,
       toggle: () => onChange({ kontras: !prefs.kontras }),
       sample: (
-        <span className="rounded bg-[#fffbe6] px-2 py-0.5 text-[20px] font-bold text-black ring-2 ring-black">Aa</span>
+        <span className="rounded bg-[#fffbe6] px-2 py-0.5 text-[20px] font-bold text-black ring-2 ring-black">
+          Aa
+        </span>
       ),
       show: true,
     },
@@ -350,14 +389,20 @@ function ChooseMode({
       desc: "Jarak huruf dan baris lebih lebar.",
       on: prefs.spasi,
       toggle: () => onChange({ spasi: !prefs.spasi }),
-      sample: <span className="whitespace-nowrap text-[17px] font-bold tracking-[0.18em]">abc</span>,
+      sample: (
+        <span className="whitespace-nowrap text-[17px] font-bold tracking-[0.18em]">
+          abc
+        </span>
+      ),
       show: true,
     },
   ];
 
   return (
     <main id="isi" className="mx-auto max-w-2xl px-5 py-10">
-      <h1 className="font-display text-[1.9rem] font-extrabold leading-tight">Bagaimana kamu paling nyaman belajar?</h1>
+      <h1 className="font-display text-[1.9rem] font-extrabold leading-tight">
+        Bagaimana kamu paling nyaman belajar?
+      </h1>
       <p className="mt-2 text-[17px] text-[var(--reader-soft)]">
         Pilih satu atau beberapa. Kamu bisa menggantinya kapan saja.
       </p>
@@ -382,7 +427,9 @@ function ChooseMode({
                 </span>
                 <span className="min-w-0 flex-1">
                   <span className="block text-[18px] font-bold">{t.title}</span>
-                  <span className="block text-[15px] text-tinta-2">{t.desc}</span>
+                  <span className="block text-[15px] text-tinta-2">
+                    {t.desc}
+                  </span>
                 </span>
                 <span
                   className={cx(
@@ -402,7 +449,11 @@ function ChooseMode({
         onClick={onDone}
         className="mt-8 flex h-14 w-full items-center justify-center gap-2 rounded-xl bg-papan text-[19px] font-bold text-white hover:bg-papan-600"
       >
-        {prefs.versi === "asli" && !prefs.besar && !prefs.kontras && !prefs.spasi && !prefs.dengar
+        {prefs.versi === "asli" &&
+        !prefs.besar &&
+        !prefs.kontras &&
+        !prefs.spasi &&
+        !prefs.dengar
           ? "Pakai tampilan biasa"
           : "Lanjut membaca"}
         <ChevronRight className="size-5" aria-hidden />
@@ -478,13 +529,10 @@ function Reader({
 
   const versions: { key: StudentPrefs["versi"]; label: string }[] = [
     { key: "asli", label: VERSION_LABEL.asli },
-    ...VERSION_KEYS.filter((k) => lesson.versions[k]).map((k) => ({ key: k, label: VERSION_LABEL[k] })),
-  ];
-
-  const toggles = [
-    { key: "besar" as const, label: "Huruf besar", icon: ALargeSmall },
-    { key: "kontras" as const, label: "Kontras", icon: Contrast },
-    { key: "spasi" as const, label: "Spasi lega", icon: SpaceIcon },
+    ...VERSION_KEYS.filter((k) => lesson.versions[k]).map((k) => ({
+      key: k,
+      label: VERSION_LABEL[k],
+    })),
   ];
 
   const play = (startAt = 0) => {
@@ -502,122 +550,49 @@ function Reader({
     speech.stop();
   };
 
+  const changeRate = (r: SpeechRate) => {
+    setRate(r);
+    if (speech.speaking)
+      speech.speak(sentences, {
+        lang: speechLang,
+        rate: r,
+        startAt: Math.max(0, speech.current),
+      });
+  };
+  const selectVersion = (key: StudentPrefs["versi"]) => {
+    speech.stop();
+    onChange({ versi: key });
+  };
+
   return (
     <div>
       {ruler && <ReadingRuler />}
-      <div className="no-print border-b border-[var(--reader-line)] bg-[var(--reader-bg)]">
-        <div className="mx-auto max-w-3xl space-y-2 px-4 py-2.5">
-          {versions.length > 1 && (
-            <div
-              className={cx(
-                "gap-1 rounded-xl bg-black/5 p-1",
-                versions.length >= 5 ? "grid grid-cols-3 sm:flex" : versions.length === 4 ? "grid grid-cols-2 sm:flex" : "flex",
-              )}
-              role="group"
-              aria-label="Versi teks"
-            >
-              {versions.map((v) => (
-                <button
-                  key={v.key}
-                  type="button"
-                  aria-pressed={prefs.versi === v.key}
-                  onClick={() => {
-                    speech.stop();
-                    onChange({ versi: v.key });
-                  }}
-                  className={cx(
-                    "h-11 flex-1 rounded-lg px-2 text-[16px] font-bold",
-                    prefs.versi === v.key ? "bg-papan text-white" : "text-[var(--reader-ink)] hover:bg-black/5",
-                  )}
-                >
-                  {v.label}
-                </button>
-              ))}
-            </div>
-          )}
-          <div className="flex flex-wrap items-center gap-1.5">
-            {toggles.map((t) => (
-              <button
-                key={t.key}
-                type="button"
-                aria-pressed={prefs[t.key]}
-                onClick={() => onChange({ [t.key]: !prefs[t.key] })}
-                className={cx(
-                  "inline-flex h-11 items-center gap-1.5 rounded-lg border-2 px-3 text-[15px] font-bold",
-                  prefs[t.key]
-                    ? "border-papan bg-papan text-white"
-                    : "border-[var(--reader-line)] bg-white text-tinta hover:border-papan",
-                )}
-              >
-                <t.icon className="size-5" aria-hidden />
-                {t.label}
-              </button>
-            ))}
-            <button
-              type="button"
-              aria-pressed={ruler}
-              onClick={toggleRuler}
-              className={cx(
-                "inline-flex h-11 items-center gap-1.5 rounded-lg border-2 px-3 text-[15px] font-bold",
-                ruler ? "border-papan bg-papan text-white" : "border-[var(--reader-line)] bg-white text-tinta hover:border-papan",
-              )}
-            >
-              <Ruler className="size-5" aria-hidden />
-              Garis bantu
-            </button>
-            {speech.supported && (
-              <div className="ml-auto flex items-center gap-1.5">
-                <label htmlFor="kecepatan" className="sr-only">
-                  Kecepatan suara
-                </label>
-                <select
-                  id="kecepatan"
-                  value={rate}
-                  onChange={(e) => {
-                    const r = Number(e.target.value) as SpeechRate;
-                    setRate(r);
-                    if (speech.speaking)
-                      speech.speak(sentences, { lang: speechLang, rate: r, startAt: Math.max(0, speech.current) });
-                  }}
-                  className="h-11 rounded-lg border-2 border-[var(--reader-line)] bg-white px-2 text-[15px] font-bold text-tinta"
-                >
-                  <option value={0.8}>Pelan</option>
-                  <option value={1}>Biasa</option>
-                  <option value={1.2}>Cepat</option>
-                </select>
-                {!speech.speaking && resumeAt !== null && (
-                  <button
-                    type="button"
-                    onClick={() => play(0)}
-                    className="inline-flex h-11 items-center gap-1.5 rounded-lg border-2 border-[var(--reader-line)] bg-white px-3 text-[15px] font-bold text-tinta hover:border-papan"
-                  >
-                    <RotateCcw className="size-5" aria-hidden />
-                    Dari awal
-                  </button>
-                )}
-                <button
-                  type="button"
-                  onClick={() => (speech.speaking ? pause() : play(resumeAt ?? 0))}
-                  className="inline-flex h-11 items-center gap-2 rounded-lg bg-aksen px-4 text-[16px] font-bold text-white hover:brightness-110"
-                >
-                  {speech.speaking ? <Pause className="size-5" aria-hidden /> : <Play className="size-5" aria-hidden />}
-                  {speech.speaking ? "Jeda" : resumeAt !== null ? "Lanjutkan" : "Dengarkan"}
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
+      <ReaderToolbar
+        versions={versions}
+        prefs={prefs}
+        onChange={onChange}
+        onSelectVersion={selectVersion}
+        ruler={ruler}
+        onToggleRuler={toggleRuler}
+        speech={speech}
+        rate={rate}
+        onRateChange={changeRate}
+        resumeAt={resumeAt}
+        onPlay={play}
+        onPause={pause}
+      />
 
       <main id="isi" className="mx-auto max-w-3xl px-5 pb-40 pt-6">
         <p className="text-[15px] text-[var(--reader-soft)]">
           {[lesson.subject, lesson.className].filter(Boolean).join(", ")}
         </p>
-        <div
-          className="mt-3"
-          lang={VERSION_HTML_LANG[prefs.versi]}
-        >
-          <ReaderText text={text} glossary={glossary} activeSentence={answerMode ? -1 : speech.current} onTerm={setTerm} />
+        <div className="mt-3" lang={VERSION_HTML_LANG[prefs.versi]}>
+          <ReaderText
+            text={text}
+            glossary={glossary}
+            activeSentence={answerMode ? -1 : speech.current}
+            onTerm={setTerm}
+          />
         </div>
         {glossary.length > 0 && (
           <p className="no-print mt-2 text-[15px] text-[var(--reader-soft)]">
@@ -667,7 +642,10 @@ function Reader({
       {speech.speaking && !term && (
         <div className="no-print fixed inset-x-0 bottom-0 z-40 p-3">
           <div className="mx-auto flex max-w-2xl items-center justify-between gap-3 rounded-2xl bg-tinta px-4 py-3 text-white shadow-2xl">
-            <span className="flex items-center gap-2 text-[16px] font-bold" role="status">
+            <span
+              className="flex items-center gap-2 text-[16px] font-bold"
+              role="status"
+            >
               <Volume2 className="size-5" aria-hidden />
               Sedang membacakan
             </span>
@@ -692,7 +670,10 @@ function Reader({
         >
           <div className="mx-auto max-w-2xl rounded-2xl border-2 border-papan bg-white p-5 text-tinta shadow-2xl">
             <div className="flex items-start justify-between gap-3">
-              <p id="arti-judul" className="font-display text-[22px] font-extrabold text-papan">
+              <p
+                id="arti-judul"
+                className="font-display text-[22px] font-extrabold text-papan"
+              >
                 {term.kata}
               </p>
               <button
@@ -709,7 +690,12 @@ function Reader({
             {speech.supported && (
               <button
                 type="button"
-                onClick={() => speech.speak([`${term.kata}.`, term.arti], { lang: speechLang, rate })}
+                onClick={() =>
+                  speech.speak([`${term.kata}.`, term.arti], {
+                    lang: speechLang,
+                    rate,
+                  })
+                }
                 className="mt-3 inline-flex h-11 items-center gap-2 rounded-lg px-3 font-bold text-papan hover:bg-papan-50"
               >
                 <Volume2 className="size-5" aria-hidden />
@@ -743,7 +729,9 @@ function Quiz({
 }) {
   const questions = lesson.quiz;
   const [index, setIndex] = useState(0);
-  const [answers, setAnswers] = useState<(number | null)[]>(() => questions.map(() => null));
+  const [answers, setAnswers] = useState<(number | null)[]>(() =>
+    questions.map(() => null),
+  );
   const [done, setDone] = useState(false);
   const headingRef = useRef<HTMLHeadingElement>(null);
   const startedAt = useRef(0);
@@ -779,13 +767,27 @@ function Quiz({
           {questions.map((q, i) => {
             const right = answers[i] === q.answer;
             return (
-              <li key={i} className="rounded-2xl border-2 border-[var(--reader-line)] bg-white p-4 text-tinta">
+              <li
+                key={i}
+                className="rounded-2xl border-2 border-[var(--reader-line)] bg-white p-4 text-tinta"
+              >
                 <p className="text-[17px] font-bold">
                   {i + 1}. {q.q}
                 </p>
-                <p className={cx("mt-2 flex items-center gap-2 font-bold", right ? "text-berhasil" : "text-galat")}>
-                  {right ? <Check className="size-5" aria-hidden /> : <X className="size-5" aria-hidden />}
-                  {right ? "Benar" : `Jawabanmu: ${answers[i] === null ? "kosong" : q.options[answers[i]!]}`}
+                <p
+                  className={cx(
+                    "mt-2 flex items-center gap-2 font-bold",
+                    right ? "text-berhasil" : "text-galat",
+                  )}
+                >
+                  {right ? (
+                    <Check className="size-5" aria-hidden />
+                  ) : (
+                    <X className="size-5" aria-hidden />
+                  )}
+                  {right
+                    ? "Benar"
+                    : `Jawabanmu: ${answers[i] === null ? "kosong" : q.options[answers[i]!]}`}
                 </p>
                 {!right && (
                   <p className="mt-1">
@@ -840,14 +842,19 @@ function Quiz({
           <X className="size-5" aria-hidden />
           Kembali ke materi
         </button>
-        <p className="text-[16px] font-bold text-[var(--reader-soft)]" aria-live="polite">
+        <p
+          className="text-[16px] font-bold text-[var(--reader-soft)]"
+          aria-live="polite"
+        >
           Soal {index + 1} dari {questions.length}
         </p>
       </div>
       <div className="mt-3 h-2 rounded-full bg-black/10" aria-hidden>
         <div
           className="h-2 rounded-full bg-papan transition-all"
-          style={{ width: `${((index + (revealed ? 1 : 0)) / questions.length) * 100}%` }}
+          style={{
+            width: `${((index + (revealed ? 1 : 0)) / questions.length) * 100}%`,
+          }}
         />
       </div>
 
@@ -866,7 +873,13 @@ function Quiz({
           <button
             type="button"
             onClick={() =>
-              speech.speak([q.q, ...q.options.map((o, i) => `Pilihan ${LETTERS[i]}: ${o}.`)], { lang: "id-ID", rate })
+              speech.speak(
+                [
+                  q.q,
+                  ...q.options.map((o, i) => `Pilihan ${LETTERS[i]}: ${o}.`),
+                ],
+                { lang: "id-ID", rate },
+              )
             }
             className="mt-2 inline-flex h-11 items-center gap-2 rounded-lg px-2 font-bold text-[var(--reader-ink)] hover:bg-black/5"
           >
@@ -886,7 +899,10 @@ function Quiz({
                   !revealed && "border-[var(--reader-line)] hover:border-papan",
                   revealed && isAnswer && "border-berhasil bg-green-50",
                   revealed && isChosen && !isAnswer && "border-galat bg-red-50",
-                  revealed && !isChosen && !isAnswer && "border-[var(--reader-line)] opacity-70",
+                  revealed &&
+                    !isChosen &&
+                    !isAnswer &&
+                    "border-[var(--reader-line)] opacity-70",
                 )}
               >
                 <input
@@ -919,7 +935,10 @@ function Quiz({
                     LETTERS[i]
                   )}
                 </span>
-                <span className="reader-text" style={{ fontSize: "var(--reader-size)" }}>
+                <span
+                  className="reader-text"
+                  style={{ fontSize: "var(--reader-size)" }}
+                >
                   {opt}
                 </span>
               </label>
@@ -929,15 +948,24 @@ function Quiz({
       </fieldset>
 
       {revealed && (
-        <div className="mt-6 rounded-2xl border-2 border-[var(--reader-line)] bg-white p-4 text-tinta" role="status">
+        <div
+          className="mt-6 rounded-2xl border-2 border-[var(--reader-line)] bg-white p-4 text-tinta"
+          role="status"
+        >
           <p
             className={cx(
               "flex items-center gap-2 text-[19px] font-bold",
               chosen === q.answer ? "text-berhasil" : "text-galat",
             )}
           >
-            {chosen === q.answer ? <Check className="size-6" aria-hidden /> : <X className="size-6" aria-hidden />}
-            {chosen === q.answer ? "Benar!" : `Belum tepat. Jawabannya ${LETTERS[q.answer]}: ${q.options[q.answer]}.`}
+            {chosen === q.answer ? (
+              <Check className="size-6" aria-hidden />
+            ) : (
+              <X className="size-6" aria-hidden />
+            )}
+            {chosen === q.answer
+              ? "Benar!"
+              : `Belum tepat. Jawabannya ${LETTERS[q.answer]}: ${q.options[q.answer]}.`}
           </p>
           {q.explain && <p className="mt-1 text-[17px]">{q.explain}</p>}
           <button
@@ -945,8 +973,15 @@ function Quiz({
             onClick={() => {
               if (last) {
                 setDone(true);
-                const durasi = Math.min(10_800, Math.round((Date.now() - startedAt.current) / 1000));
-                onFinish(answers.filter((a, i) => a === questions[i].answer).length, questions.length, durasi);
+                const durasi = Math.min(
+                  10_800,
+                  Math.round((Date.now() - startedAt.current) / 1000),
+                );
+                onFinish(
+                  answers.filter((a, i) => a === questions[i].answer).length,
+                  questions.length,
+                  durasi,
+                );
               } else {
                 setIndex(index + 1);
               }

@@ -19,7 +19,9 @@
   --color-info: #1d4ed8;
 
   --font-sans: "Atkinson Hyperlegible", ui-sans-serif, system-ui, sans-serif;
-  --font-display: "Plus Jakarta Sans Variable", "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-display:
+    "Plus Jakarta Sans Variable", "Plus Jakarta Sans", ui-sans-serif, system-ui,
+    sans-serif;
 }
 
 @layer base {
@@ -74,13 +76,19 @@
   --reader-leading: 1.7;
   --reader-tracking: 0;
   --reader-word: 0;
-  --reader-bg: #ffffff;
+  --reader-bg: #f3f9f1;
+  --reader-card: #ffffff;
+  --reader-card-line: #ffffff;
   --reader-ink: var(--color-tinta);
   --reader-soft: var(--color-tinta-2);
   --reader-line: var(--color-garis);
   --reader-term: var(--color-aksen);
   --reader-mark: var(--color-stabilo);
-  background: var(--reader-bg);
+  background-color: var(--reader-bg);
+  background-image:
+    radial-gradient(34rem 18rem at 4% 0, #ffefc2, transparent),
+    radial-gradient(40rem 20rem at 92% 0, #d4eef0, transparent);
+  background-repeat: no-repeat;
   color: var(--reader-ink);
 }
 .reader[data-besar="true"] {
@@ -94,11 +102,31 @@
 }
 .reader[data-kontras="true"] {
   --reader-bg: #fffbe6;
+  --reader-card: transparent;
+  --reader-card-line: transparent;
   --reader-ink: #000000;
   --reader-soft: #1a1a1a;
   --reader-line: #000000;
   --reader-term: #000000;
   --reader-mark: #ffd400;
+  background-image: none;
+}
+
+.reader-card {
+  background: var(--reader-card);
+  border: 1px solid var(--reader-card-line);
+  border-radius: 1.5rem;
+  padding: 1.5rem 1.25rem;
+  box-shadow: 0 20px 50px -30px rgba(11, 92, 92, 0.35);
+}
+@media (min-width: 640px) {
+  .reader-card {
+    padding: 1.5rem 2rem;
+  }
+}
+.reader[data-kontras="true"] .reader-card {
+  box-shadow: none;
+  padding: 0;
 }
 .reader-text {
   font-size: var(--reader-size);
@@ -335,5 +363,11 @@
   }
   body {
     background: #fff;
+  }
+  .reader-card {
+    background: transparent;
+    border: 0;
+    box-shadow: none;
+    padding: 0;
   }
 }
