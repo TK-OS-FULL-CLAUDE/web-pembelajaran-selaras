@@ -25,10 +25,17 @@ export async function POST(req: Request) {
       return fail("Terlalu banyak percobaan masuk yang gagal. Coba lagi 15 menit lagi.", 429);
     }
 
-    const rows = await sql<{ id: string; password_hash: string }[]>`
+    const rows = await sql<{ id: string; password_hash: string | null }[]>`
       select id, password_hash from teachers where email = ${email}`;
     const teacher = rows[0];
-    const success = !!teacher && verifyPassword(password, teacher.password_hash);
+    if (teacher && !teacher.password_hash) {
+      // Akun ini dibuat lewat "Masuk dengan Google" dan tidak punya kata sandi.
+      return fail(
+        "Akun ini dibuat dengan Google dan belum punya kata sandi. Masuk dengan Google, lalu buat kata sandi di halaman Profil.",
+        401,
+      );
+    }
+    const success = !!teacher?.password_hash && verifyPassword(password, teacher.password_hash);
 
     await sql`insert into auth_attempts (email, ok) values (${email}, ${success})`;
     // Bersihkan catatan lama supaya tabel tetap kecil.
