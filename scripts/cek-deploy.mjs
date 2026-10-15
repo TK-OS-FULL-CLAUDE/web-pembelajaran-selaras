@@ -127,6 +127,16 @@ if (dbOk) {
       expect(r, 409, "simpan versi lama");
     });
 
+    await step("Simpan perangkat ajar (rubrik diisi guru)", async () => {
+      const rubrik = {
+        data: { judul: "Rubrik cek", kriteria: [{ nama: "Pemahaman", level: ["1", "2", "3", "4"] }] },
+        origin: "guru",
+        checked: false,
+        updatedAt: new Date().toISOString(),
+      };
+      expect(await call("PATCH", `/api/materi/${lessonId}`, { teachingKit: { rubrik } }), 200, "simpan perangkat");
+    });
+
     await step("Salin materi", async () => {
       const d = expect(await call("POST", `/api/materi/${lessonId}/salin`, { classId }), 201, "salin");
       copyId = d.id;
@@ -142,6 +152,13 @@ if (dbOk) {
         const d = expect(await call("POST", "/api/ai/versi", { lessonId, jenis: "ringkasan" }), 200, "AI ringkasan");
         if (d.version?.checked !== false) throw new Error("draf AI seharusnya belum dicek");
         return d.version?.text?.split("\n")[0]?.slice(0, 50);
+      });
+      await step("AI membuat draf rubrik perangkat ajar (Claude dulu, cadangan Gemini)", async () => {
+        const d = expect(await call("POST", "/api/ai/perangkat", { lessonId, jenis: "rubrik" }), 200, "AI rubrik");
+        if (d.item?.checked !== false) throw new Error("draf AI seharusnya belum dicek");
+        const k = d.item?.data?.kriteria ?? [];
+        if (!k.length || k.some((x) => x.level?.length !== 4)) throw new Error("rubrik harus punya kriteria × 4 tingkat");
+        return `${k.length} kriteria × 4 tingkat`;
       });
     }
   }

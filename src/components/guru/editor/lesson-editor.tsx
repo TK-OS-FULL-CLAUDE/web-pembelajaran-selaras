@@ -1,6 +1,6 @@
 "use client";
 
-// Editor materi (Peran 1 + 2 + 4): satu layar dengan lima tab.
+// Editor materi (Peran 1 + 2 + 4): satu layar dengan enam tab.
 // Perubahan tersimpan otomatis 1 detik setelah guru berhenti mengetik (atau langsung dengan Ctrl/Cmd+S).
 // Setiap simpan membawa nomor revisi; bila materi diubah di tab/perangkat lain, simpan ditolak sebagai
 // konflik dan guru memilih: muat versi terbaru, atau simpan versi miliknya.
@@ -11,12 +11,13 @@ import { ArrowLeft, CheckCircle2, CircleAlert, Copy, ExternalLink, Settings2, Tr
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { LessonStats } from "@/lib/data";
 import { api, ApiError } from "@/lib/client";
-import type { ClassNeeds, GlossaryItem, LessonVersions, QuizQuestion } from "@/lib/types";
+import type { ClassNeeds, GlossaryItem, LessonVersions, QuizQuestion, TeachingKit } from "@/lib/types";
 import { Badge, Button, Notice, Select, Spinner, cx } from "../../ui";
 import { useToast } from "../../toast";
 import { BagikanTab } from "./bagikan-tab";
 import { KuisTab } from "./kuis-tab";
 import { MateriTab } from "./materi-tab";
+import { PerangkatTab } from "./perangkat-tab";
 import { RekapTab } from "./rekap-tab";
 import { VersiTab } from "./versi-tab";
 
@@ -27,6 +28,7 @@ export type EditableLesson = {
   glossary: GlossaryItem[];
   versions: LessonVersions;
   quiz: QuizQuestion[];
+  teachingKit: TeachingKit;
 };
 
 /** Perubahan biasa, atau fungsi bila perubahan bergantung pada isi terbaru (mis. hasil AI yang datang belakangan). */
@@ -43,6 +45,7 @@ export type EditorProps = {
   shareCode: string | null;
   cls: Cls | null;
   classes: { id: string; name: string }[];
+  teacher: { name: string; school: string | null };
   aiOn: boolean;
   stats: LessonStats;
   initialTab: TabKey;
@@ -51,6 +54,7 @@ export type EditorProps = {
 const TABS = [
   { key: "materi", label: "Materi" },
   { key: "versi", label: "Versi" },
+  { key: "perangkat", label: "Perangkat Ajar" },
   { key: "kuis", label: "Kuis" },
   { key: "bagikan", label: "Bagikan" },
   { key: "rekap", label: "Rekap" },
@@ -155,6 +159,7 @@ export function LessonEditor(props: EditorProps) {
   };
 
   const uncheckedVersions = Object.values(lesson.versions).filter((v) => v && v.text.trim() && !v.checked).length;
+  const uncheckedKit = Object.values(lesson.teachingKit).filter((k) => k && !k.checked).length;
 
   return (
     <div>
@@ -249,6 +254,11 @@ export function LessonEditor(props: EditorProps) {
                 {uncheckedVersions}
               </span>
             )}
+            {t.key === "perangkat" && uncheckedKit > 0 && (
+              <span className="rounded-full bg-aksen px-1.5 text-[12px] text-white" aria-label={`${uncheckedKit} perlu dicek`}>
+                {uncheckedKit}
+              </span>
+            )}
             {t.key === "kuis" && lesson.quiz.length > 0 && (
               <span className="text-[13px] font-normal text-tinta-2">{lesson.quiz.length}</span>
             )}
@@ -264,6 +274,17 @@ export function LessonEditor(props: EditorProps) {
             lesson={lesson}
             update={update}
             cls={props.cls}
+            aiOn={props.aiOn}
+            goTo={selectTab}
+          />
+        )}
+        {tab === "perangkat" && (
+          <PerangkatTab
+            lessonId={props.lessonId}
+            lesson={lesson}
+            update={update}
+            cls={props.cls}
+            teacher={props.teacher}
             aiOn={props.aiOn}
             goTo={selectTab}
           />
@@ -352,7 +373,7 @@ function ManagePanel({
       <div>
         <h2 className="font-bold">Salin materi</h2>
         <p className="mt-0.5 text-[14px] text-tinta-2">
-          Untuk kelas paralel atau tahun depan. Salinan berupa draf baru beserta versi, glosarium, dan kuisnya.
+          Untuk kelas paralel atau tahun depan. Salinan berupa draf baru beserta versi, glosarium, kuis, dan perangkat ajarnya.
         </p>
         <div className="mt-3 flex items-center gap-2">
           <label htmlFor="salin-ke" className="sr-only">

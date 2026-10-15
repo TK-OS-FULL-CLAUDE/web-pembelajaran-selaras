@@ -105,6 +105,58 @@ export const quizInput = z
   )
   .max(30);
 
+// Perangkat ajar. Batas jumlah baris dibuat longgar karena baris kosong ikut tersimpan saat guru mengetik.
+const kitText = (max: number) => z.string().max(max);
+const kitLines = z.array(kitText(800)).max(40);
+const tahapInput = z.object({ menit: z.number().int().min(0).max(600), langkah: kitLines });
+
+const modulInput = z.object({
+  identitas: z.object({
+    penyusun: kitText(160),
+    sekolah: kitText(160),
+    mapel: kitText(120),
+    kelas: kitText(160),
+    fase: kitText(20),
+    topik: kitText(200),
+    alokasi: kitText(120),
+  }),
+  tujuan: kitLines,
+  sarana: kitLines,
+  pendahuluan: tahapInput,
+  inti: tahapInput,
+  penutup: tahapInput,
+  asesmen: kitLines,
+  akomodasi: kitLines,
+});
+
+const lkpdInput = z.object({
+  judul: kitText(200),
+  tujuan: kitText(600),
+  petunjuk: kitLines,
+  aktivitas: z.array(z.object({ judul: kitText(200), langkah: kitLines, pertanyaan: kitLines })).max(10),
+});
+
+const rubrikInput = z.object({
+  judul: kitText(200),
+  kriteria: z.array(z.object({ nama: kitText(200), level: z.array(kitText(800)).length(4) })).max(12),
+});
+
+const kitItem = <T extends z.ZodType>(data: T) =>
+  z.object({
+    data,
+    origin: z.enum(["ai", "guru"]),
+    checked: z.boolean(),
+    basedOn: z.string().max(40).optional(),
+    updatedAt: z.string().max(40),
+  });
+
+export const teachingKitInput = z.object({
+  modul: kitItem(modulInput).optional(),
+  lkpd: kitItem(lkpdInput).optional(),
+  lkpdMudah: kitItem(lkpdInput).optional(),
+  rubrik: kitItem(rubrikInput).optional(),
+});
+
 export const prefsInput = z.object({
   // "daerah" = nilai lama sebelum Jawa & Sunda dipisah; diterima supaya HP siswa yang masih
   // menyimpan pilihan lama tidak gagal mencatat, lalu dibaca sebagai teks asli.

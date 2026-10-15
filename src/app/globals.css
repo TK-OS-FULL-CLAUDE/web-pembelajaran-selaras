@@ -152,9 +152,183 @@
   }
 }
 
+/* ---------- Perangkat ajar (modul ajar, LKPD, rubrik): pratinjau dan cetak ---------- */
+
+.dok {
+  color: var(--color-tinta);
+  font-size: 15px;
+  line-height: 1.55;
+}
+.dok-judul {
+  font-size: 1.4em;
+  font-weight: 800;
+  margin: 0.1em 0 0.6em;
+}
+.dok-bagian {
+  font-size: 1.08em;
+  font-weight: 800;
+  margin: 1.3em 0 0.4em;
+}
+.dok-sub {
+  font-size: 1em;
+  font-weight: 700;
+  margin: 0.8em 0 0.3em;
+}
+.dok p {
+  margin: 0 0 0.6em;
+}
+.dok ol,
+.dok ul {
+  margin: 0 0 0.6em;
+  padding-left: 1.5em;
+}
+.dok ol {
+  list-style: decimal;
+}
+.dok ul {
+  list-style: disc;
+}
+.dok li {
+  margin: 0.2em 0;
+  padding-left: 0.15em;
+}
+.dok table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.dok th,
+.dok td {
+  border: 1px solid #94a3b8;
+  padding: 0.4em 0.6em;
+  text-align: left;
+  vertical-align: top;
+}
+.dok thead th,
+.dok tbody th {
+  background: #f1f5f9;
+  font-weight: 700;
+}
+.dok-identitas th {
+  width: 32%;
+}
+.dok-tabel {
+  min-width: 40rem;
+}
+.dok-tabel thead th:first-child,
+.dok-tabel tbody th {
+  width: 18%;
+}
+.dok-gulir {
+  overflow-x: auto;
+}
+.dok-kecil {
+  color: var(--color-tinta-2);
+  font-size: 0.87em;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+.dok-catatan {
+  margin-top: 0.6em;
+  font-weight: 400;
+}
+.dok-kosong {
+  color: var(--color-tinta-2);
+  font-style: italic;
+}
+.dok-draf {
+  display: inline-block;
+  border: 2px solid var(--color-aksen);
+  border-radius: 6px;
+  color: var(--color-aksen);
+  font-weight: 700;
+  padding: 0.1em 0.6em;
+}
+.dok-isian {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6em 1.5em;
+  margin: 0.4em 0 1em;
+}
+.dok-isian span {
+  flex: 1 1 10em;
+  border-bottom: 1px solid #64748b;
+  padding-bottom: 0.1em;
+}
+.dok-label {
+  font-weight: 700;
+  margin-top: 0.6em;
+}
+.dok-soal > li {
+  margin-bottom: 0.7em;
+}
+.dok-jawab {
+  display: flex;
+  flex-direction: column;
+}
+.dok-garis {
+  display: block;
+  height: 1.9em;
+  border-bottom: 1px dashed #94a3b8;
+}
+/* LKPD versi sederhana: huruf lebih besar, jarak lega, ruang jawab lebih tinggi */
+.dok-mudah {
+  font-size: 19px;
+  line-height: 1.8;
+  letter-spacing: 0.02em;
+  word-spacing: 0.1em;
+}
+.dok-mudah .dok-garis {
+  height: 2.6em;
+}
+#area-cetak {
+  display: none;
+}
+
 @media print {
   .no-print {
     display: none !important;
+  }
+  @page {
+    size: A4;
+    margin: 15mm 14mm;
+  }
+  /* Saat guru menekan "Cetak" di tab Perangkat Ajar, hanya dokumennya yang dicetak. */
+  body.cetak-perangkat > :not(#area-cetak) {
+    display: none !important;
+  }
+  body.cetak-perangkat #area-cetak {
+    display: block;
+  }
+  .dok-halaman {
+    break-after: page;
+  }
+  .dok-halaman:last-child {
+    break-after: auto;
+  }
+  .dok {
+    font-size: 11.5pt;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .dok-mudah {
+    font-size: 15pt;
+  }
+  .dok-tabel {
+    min-width: 0;
+  }
+  .dok-gulir {
+    overflow: visible;
+  }
+  .dok tr,
+  .dok-soal > li,
+  .dok-tahap {
+    break-inside: avoid;
+  }
+  .dok-judul,
+  .dok-bagian,
+  .dok-sub,
+  .dok-label {
+    break-after: avoid;
   }
   .reader {
     background: #fff !important;
