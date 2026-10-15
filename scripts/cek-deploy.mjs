@@ -127,6 +127,35 @@ if (dbOk) {
       expect(r, 409, "simpan versi lama");
     });
 
+    await step("Unggah gambar materi, tampilkan lagi, terbit ditolak sebelum deskripsi dicek", async () => {
+      // PNG 1×1 piksel
+      const png = Buffer.from(
+        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==",
+        "base64",
+      );
+      const up = await fetch(`${base}/api/gambar?materi=${lessonId}&w=1&h=1`, {
+        method: "POST",
+        headers: { "content-type": "image/png", cookie },
+        body: png,
+      });
+      const { id } = await up.json();
+      if (up.status !== 201 || !id) throw new Error(`unggah gambar: HTTP ${up.status}`);
+      const get = await fetch(`${base}/api/gambar/${id}`);
+      if (get.status !== 200 || get.headers.get("content-type") !== "image/png") {
+        throw new Error(`tampilkan gambar: HTTP ${get.status} ${get.headers.get("content-type")}`);
+      }
+      expect(
+        await call("PATCH", `/api/materi/${lessonId}`, {
+          body: `Air di bumi selalu bergerak. Matahari memanaskan air laut.\n\n![Uji](gambar:${id})`,
+          figures: { [id]: { alt: "Titik uji.", altOrigin: "guru", altChecked: false } },
+        }),
+        200,
+        "simpan gambar",
+      );
+      expect(await call("POST", `/api/materi/${lessonId}/terbit`), 422, "terbit dengan deskripsi belum dicek");
+      return `gambar ${id.slice(0, 8)}…`;
+    });
+
     await step("Simpan perangkat ajar (rubrik diisi guru)", async () => {
       const rubrik = {
         data: { judul: "Rubrik cek", kriteria: [{ nama: "Pemahaman", level: ["1", "2", "3", "4"] }] },
