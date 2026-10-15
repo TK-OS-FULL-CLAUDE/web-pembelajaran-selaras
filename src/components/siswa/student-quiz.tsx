@@ -3,7 +3,7 @@
 // Kuis siswa: satu soal per layar, lima jenis soal (pilihan ganda, pilihan ganda kompleks,
 // benar/salah, isian singkat, menjodohkan), pembahasan langsung setelah menjawab.
 
-import { BookOpen, Check, ChevronRight, RotateCcw, Trophy, Volume2, X } from "lucide-react";
+import { BookOpen, Check, ChevronRight, Lightbulb, ListChecks, RotateCcw, Target, Trophy, Volume2, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { QUIZ_TONE, TONES } from "@/lib/modes";
 import {
@@ -12,14 +12,19 @@ import {
   isCorrect,
   questionKey,
   quizType,
+  responseSummary,
   stableShuffle,
   type QuizResponse,
 } from "@/lib/quiz";
-import type { QuizQuestion, QuizType } from "@/lib/types";
+import { JENJANG_INFO, jenjangFor, type Jenjang, type QuizQuestion, type QuizType } from "@/lib/types";
+import { InlineText } from "../reader-text";
 import type { SpeechRate, useSpeech } from "../use-speech";
 import { cx } from "../ui";
 
-export type QuestionResultPayload = { k: string; b: boolean };
+/** k = kunci soal, b = benar, j = jawaban siswa (ringkas, untuk rekap pengecoh), h = petunjuk yang dibuka. */
+export type QuestionResultPayload = { k: string; b: boolean; j?: string; h?: number };
+
+const sameConcept = (a?: string, b?: string) => !!a && !!b && a.trim().toLowerCase() === b.trim().toLowerCase();
 
 const LETTERS = ["A", "B", "C", "D", "E", "F"];
 
@@ -74,6 +79,9 @@ function speechFor(q: QuizQuestion): string[] {
 
 export function StudentQuiz({
   questions,
+  practice = [],
+  jenjang = null,
+  mode = "kuis",
   title,
   speech,
   rate,
@@ -82,6 +90,12 @@ export function StudentQuiz({
   onSwitchStudent,
 }: {
   questions: QuizQuestion[];
+  /** Bank latihan adaptif (sudah dicek guru): ditawarkan untuk konsep yang dijawab salah. */
+  practice?: QuizQuestion[];
+  /** Tugas berjenjang (TaRL): siswa melihat tugas sesuai skornya. */
+  jenjang?: Jenjang | null;
+  /** "latihan" = latihan adaptif setelah kuis; tidak dicatat ke rekap dan tidak menawarkan latihan lagi. */
+  mode?: "kuis" | "latihan";
   title: string;
   speech: ReturnType<typeof useSpeech>;
   rate: SpeechRate;
@@ -94,6 +108,8 @@ export function StudentQuiz({
   const [responses, setResponses] = useState<QuizResponse[]>(() => questions.map(emptyResponse));
   const [checked, setChecked] = useState<boolean[]>(() => questions.map(() => false));
   const [done, setDone] = useState(false);
+  const [hintsShown, setHintsShown] = useState<number[]>(() => questions.map(() => 0));
+  const [drill, setDrill] = useState<{ title: string; questions: QuizQuestion[] } | null>(null);
   const headingRef = useRef<HTMLHeadingElement>(null);
   const feedbackRef = useRef<HTMLDivElement>(null);
   const startedAt = useRef(0);
@@ -119,21 +135,56 @@ export function StudentQuiz({
   function finish() {
     setDone(true);
     const durasi = Math.min(10_800, Math.round((Date.now() - startedAt.current) / 1000));
-    const detail = questions.map((q, i) => ({ k: questionKey(q), b: results[i] }));
+    const detail = questions.map((q, i) => ({
+      k: questionKey(q),
+      b: results[i],
+      ...(results[i] ? {} : { j: responseSummary(q, responses[i]) }),
+      ...(hintsShown[i] ? { h: hintsShown[i] } : {}),
+    }));
     onFinish(results.filter(Boolean).length, questions.length, durasi, detail);
   }
 
   function restart() {
     setResponses(questions.map(emptyResponse));
     setChecked(questions.map(() => false));
+    setHintsShown(questions.map(() => 0));
     setIndex(0);
     setDone(false);
     startedAt.current = Date.now();
   }
 
+  if (drill) {
+    return (
+      <StudentQuiz
+        key={drill.title}
+        mode="latihan"
+        questions={drill.questions}
+        title={drill.title}
+        speech={speech}
+        rate={rate}
+        onFinish={() => {}}
+        onBack={() => setDrill(null)}
+      />
+    );
+  }
+
   if (done) {
     const total = questions.length;
     const pct = Math.round((score / Math.max(1, total)) * 100);
+    const level = jenjangFor(pct);
+    const task = mode === "kuis" && jenjang ? jenjang[level] : null;
+    // Latihan adaptif: konsep yang dijawab salah dan punya soal latihan.
+    const wrongConcepts = [
+      ...new Map(
+        questions.filter((q, i) => !results[i] && q.concept?.trim()).map((q) => [q.concept!.trim().toLowerCase(), q.concept!.trim()]),
+      ).values(),
+    ];
+    const drills =
+      mode === "kuis"
+        ? wrongConcepts
+            .map((c) => ({ concept: c, items: practice.filter((p) => sameConcept(p.concept, c)).slice(0, 3) }))
+            .filter((d) => d.items.length > 0)
+        : [];
     return (
       <main id="isi" className="mx-auto max-w-3xl px-4 py-8 sm:py-12">
         <div className="muncul overflow-hidden rounded-[1.75rem] border border-[var(--reader-line)] bg-[var(--reader-bg)] shadow-kartu">
@@ -146,7 +197,15 @@ export function StudentQuiz({
                 tabIndex={-1}
                 className="font-display text-[1.9rem] font-extrabold leading-tight outline-none"
               >
-                {score === total ? "Hebat, semua benar!" : pct >= 60 ? "Bagus, terus berlatih!" : "Ayo coba lagi!"}
+                {mode === "latihan"
+                  ? score === total
+                    ? "Latihan selesai, semua benar!"
+                    : "Latihan selesai!"
+                  : score === total
+                    ? "Hebat, semua benar!"
+                    : pct >= 60
+                      ? "Bagus, terus berlatih!"
+                      : "Ayo coba lagi!"}
               </h1>
               <p className="mt-1 text-[18px] text-[var(--reader-soft)]">
                 Kamu menjawab{" "}
@@ -158,6 +217,82 @@ export function StudentQuiz({
             </div>
           </div>
         </div>
+
+        {task && (task.judul.trim() || task.tugas.trim()) && (
+          <section
+            aria-labelledby="tugas-jenjang"
+            className="muncul mt-6 rounded-[1.5rem] border-2 border-papan bg-white p-5 text-tinta shadow-kartu"
+          >
+            <p className="inline-flex items-center gap-1.5 rounded-full bg-papan-50 px-3 py-1 text-[14px] font-bold text-papan">
+              <ListChecks className="size-4" aria-hidden />
+              Tugas {JENJANG_INFO[level].label.toLowerCase()}
+            </p>
+            <h2 id="tugas-jenjang" className="mt-2 font-display text-[21px] font-extrabold">
+              Tugasmu berikutnya: {task.judul}
+            </h2>
+            <p className="mt-1 text-[15px] text-tinta-2">Dari gurumu, dipilih sesuai hasil kuismu.</p>
+            {task.tugas.trim() && (
+              <p className="mt-3 text-[18px]">
+                <InlineText text={task.tugas.trim()} />
+              </p>
+            )}
+            {task.langkah.filter((l) => l.trim()).length > 0 && (
+              <ol className="mt-3 list-decimal space-y-1.5 pl-6 text-[17px]">
+                {task.langkah
+                  .filter((l) => l.trim())
+                  .map((l, k) => (
+                    <li key={k}>
+                      <InlineText text={l.trim()} />
+                    </li>
+                  ))}
+              </ol>
+            )}
+            {speech.supported && (
+              <button
+                type="button"
+                onClick={() =>
+                  speech.speak([`Tugasmu berikutnya: ${task.judul}.`, task.tugas, ...task.langkah.filter((l) => l.trim())], {
+                    lang: "id-ID",
+                    rate,
+                  })
+                }
+                className="mt-3 inline-flex h-11 items-center gap-2 rounded-xl px-2 font-bold text-papan hover:bg-papan-50"
+              >
+                <Volume2 className="size-5" aria-hidden />
+                Dengarkan tugas
+              </button>
+            )}
+          </section>
+        )}
+
+        {drills.length > 0 && (
+          <section
+            aria-labelledby="latihan-untukmu"
+            className="muncul mt-6 rounded-[1.5rem] border-2 border-aksen/50 bg-aksen-50 p-5 text-tinta"
+          >
+            <h2 id="latihan-untukmu" className="flex items-center gap-2 font-display text-[21px] font-extrabold">
+              <Target className="size-6 text-aksen" aria-hidden />
+              Latihan untukmu
+            </h2>
+            <p className="mt-1 text-[17px]">
+              Kamu belum tepat di bagian berikut. Coba latihan singkat, lengkap dengan petunjuk. Latihan tidak mengubah
+              nilai kuismu.
+            </p>
+            <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+              {drills.map((d) => (
+                <button
+                  key={d.concept}
+                  type="button"
+                  onClick={() => setDrill({ title: `Latihan: ${d.concept}`, questions: d.items })}
+                  className="flex min-h-14 items-center justify-center gap-2 rounded-2xl bg-aksen px-5 text-[17px] font-bold text-white shadow-kartu hover:bg-amber-800"
+                >
+                  {d.concept} · {d.items.length} soal
+                  <ChevronRight className="size-5" aria-hidden />
+                </button>
+              ))}
+            </div>
+          </section>
+        )}
 
         <h2 className="mt-8 font-display text-[19px] font-extrabold">Pembahasan</h2>
         <ol className="mt-3 space-y-3">
@@ -178,21 +313,25 @@ export function StudentQuiz({
                   <div className="min-w-0">
                     <p className="text-[17px] font-bold">
                       <span className="sr-only">{right ? "Benar. " : "Belum tepat. "}</span>
-                      {i + 1}. {q.q}
+                      {i + 1}. <InlineText text={q.q} />
                     </p>
                     {!right && (
                       <p className="mt-1">
                         Jawaban yang benar: <strong>{correctText(q)}</strong>
                       </p>
                     )}
-                    {q.explain && <p className="mt-1 text-tinta-2">{q.explain}</p>}
+                    {q.explain && (
+                      <p className="mt-1 text-tinta-2">
+                        <InlineText text={q.explain} />
+                      </p>
+                    )}
                   </div>
                 </div>
               </li>
             );
           })}
         </ol>
-        {onSwitchStudent && <button type="button" onClick={onSwitchStudent}
+        {mode === "kuis" && onSwitchStudent && <button type="button" onClick={onSwitchStudent}
           className="mt-8 min-h-14 w-full rounded-2xl bg-papan px-5 py-3 text-lg font-bold text-white">Selesai — ganti siswa</button>}
         <div className="mt-8 flex flex-col gap-3 sm:flex-row">
           <button
@@ -201,7 +340,7 @@ export function StudentQuiz({
             className="flex h-14 items-center justify-center gap-2 rounded-2xl bg-papan px-5 text-[18px] font-bold text-white shadow-kartu hover:bg-papan-600 sm:flex-1"
           >
             <BookOpen className="size-5" aria-hidden />
-            Baca materi lagi
+            {mode === "latihan" ? "Kembali ke hasil kuis" : "Baca materi lagi"}
           </button>
           <button
             type="button"
@@ -209,7 +348,7 @@ export function StudentQuiz({
             className="flex h-14 items-center justify-center gap-2 rounded-2xl border-2 border-[var(--reader-line)] bg-white px-5 text-[17px] font-bold text-tinta hover:border-batas"
           >
             <RotateCcw className="size-5" aria-hidden />
-            Ulangi kuis
+            {mode === "latihan" ? "Ulangi latihan" : "Ulangi kuis"}
           </button>
         </div>
       </main>
@@ -223,6 +362,8 @@ export function StudentQuiz({
   const revealed = checked[index];
   const right = results[index];
   const last = index === questions.length - 1;
+  const hints = q.hints ?? [];
+  const shown = hintsShown[index] ?? 0;
 
   return (
     <main id="isi" className="mx-auto max-w-3xl px-4 py-6 sm:py-8">
@@ -233,7 +374,7 @@ export function StudentQuiz({
           className="inline-flex h-11 items-center gap-1.5 rounded-xl px-2 font-bold text-[var(--reader-ink)] hover:bg-black/5"
         >
           <X className="size-5" aria-hidden />
-          Kembali ke materi
+          {mode === "latihan" ? "Kembali ke hasil kuis" : "Kembali ke materi"}
         </button>
         <p className="text-[16px] font-bold text-[var(--reader-soft)]" aria-live="polite">
           Soal {index + 1} dari {questions.length}
@@ -267,7 +408,7 @@ export function StudentQuiz({
           className="reader-text mt-3 font-display font-extrabold outline-none"
           style={{ fontSize: "calc(var(--reader-size) * 1.15)" }}
         >
-          {q.q}
+          <InlineText text={q.q} />
         </h1>
         {speech.supported && (
           <button
@@ -278,6 +419,45 @@ export function StudentQuiz({
             <Volume2 className="size-5" aria-hidden />
             Dengarkan soal
           </button>
+        )}
+
+        {hints.length > 0 && (shown > 0 || !revealed) && (
+          <div className="mt-3">
+            {shown > 0 && (
+              <ol className="space-y-2" aria-live="polite">
+                {hints.slice(0, shown).map((h, k) => (
+                  <li key={k} className="flex gap-2 rounded-xl bg-aksen-50 px-4 py-3 text-[17px] text-tinta">
+                    <Lightbulb className="mt-1 size-5 shrink-0 text-aksen" aria-hidden />
+                    <span>
+                      <strong>Petunjuk {k + 1}:</strong> <InlineText text={h} />
+                    </span>
+                  </li>
+                ))}
+              </ol>
+            )}
+            <div className="mt-2 flex flex-wrap gap-2">
+              {!revealed && shown < hints.length && (
+                <button
+                  type="button"
+                  onClick={() => setHintsShown((hs) => hs.map((x, j) => (j === index ? x + 1 : x)))}
+                  className="inline-flex min-h-11 items-center gap-2 rounded-xl border-2 border-aksen/40 bg-white px-3 font-bold text-aksen hover:bg-aksen-50"
+                >
+                  <Lightbulb className="size-5" aria-hidden />
+                  {shown === 0 ? "Minta petunjuk" : "Petunjuk berikutnya"} ({shown + 1} dari {hints.length})
+                </button>
+              )}
+              {shown > 0 && speech.supported && (
+                <button
+                  type="button"
+                  onClick={() => speech.speak([`Petunjuk ${shown}.`, hints[shown - 1]], { lang: "id-ID", rate })}
+                  className="inline-flex min-h-11 items-center gap-2 rounded-xl px-2 font-bold text-aksen hover:bg-aksen-50"
+                >
+                  <Volume2 className="size-5" aria-hidden />
+                  Dengarkan petunjuk
+                </button>
+              )}
+            </div>
+          </div>
         )}
 
         <div className="mt-5">
@@ -355,7 +535,11 @@ export function StudentQuiz({
             </p>
           )}
           {!right && type === "jodoh" && <p className="mt-1 text-[17px]">Lihat pasangan yang benar di setiap baris.</p>}
-          {q.explain && <p className="mt-1 text-[17px] text-tinta-2">{q.explain}</p>}
+          {q.explain && (
+            <p className="mt-1 text-[17px] text-tinta-2">
+              <InlineText text={q.explain} />
+            </p>
+          )}
           <button
             type="button"
             onClick={() => (last ? finish() : setIndex(index + 1))}
@@ -475,7 +659,7 @@ function SingleChoice({
               )}
             </span>
             <span className={cx("reader-text", boolean && "font-bold")} style={{ fontSize: "var(--reader-size)" }}>
-              {opt}
+              <InlineText text={opt} />
             </span>
           </label>
         );
@@ -541,7 +725,7 @@ function MultiChoice({
                 (revealed && !isAnswer ? <X className="size-5" /> : <Check className="size-5" />)}
             </span>
             <span className="reader-text" style={{ fontSize: "var(--reader-size)" }}>
-              {opt}
+              <InlineText text={opt} />
               {revealed && isAnswer && !isChosen && (
                 <span className="ml-2 text-[0.8em] font-bold text-berhasil">(juga benar)</span>
               )}

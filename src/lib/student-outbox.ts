@@ -11,7 +11,7 @@ export type StudentEvent = {
   score?: number;
   total?: number;
   durasi?: number;
-  detail?: { k: string; b: boolean }[];
+  detail?: { k: string; b: boolean; j?: string; h?: number }[];
 };
 const PREFIX = "selaras:kiriman:";
 const memory = new Map<string, StudentEvent>();

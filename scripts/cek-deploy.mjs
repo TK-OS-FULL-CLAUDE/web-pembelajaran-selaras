@@ -189,6 +189,19 @@ if (dbOk) {
         if (!k.length || k.some((x) => x.level?.length !== 4)) throw new Error("rubrik harus punya kriteria × 4 tingkat");
         return `${k.length} kriteria × 4 tingkat`;
       });
+      await step("AI memeriksa kesetiaan draf terhadap materi (pemeriksa kesetiaan)", async () => {
+        const d = expect(
+          await call("POST", "/api/ai/periksa", {
+            lessonId,
+            target: "mudah",
+            draft: "Air di bumi selalu bergerak. Matahari memanaskan air laut sampai 500 derajat.",
+          }),
+          200,
+          "AI periksa",
+        );
+        if (!Array.isArray(d.findings)) throw new Error("jawaban harus berisi daftar temuan");
+        return `${d.findings.length} temuan`;
+      });
     }
   }
 

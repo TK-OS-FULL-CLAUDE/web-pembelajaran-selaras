@@ -9,11 +9,13 @@ export type ClassNeeds = {
   tuli: number;
   disleksia: number;
   sulitFokus: number;
+  /** Kesulitan berhitung. Profil lama tanpa kolom ini dibaca 0 (lihat normalizeNeeds). */
+  diskalkulia: number;
   bahasaDaerah: number;
   bahasa: RegionalLang | null;
 };
 
-export type NeedKey = "lowVision" | "tuli" | "disleksia" | "sulitFokus" | "bahasaDaerah";
+export type NeedKey = "lowVision" | "tuli" | "disleksia" | "sulitFokus" | "diskalkulia" | "bahasaDaerah";
 
 export type GlossaryItem = { kata: string; arti: string };
 
@@ -113,6 +115,10 @@ export type QuizQuestion = {
   pairs?: MatchPair[];
   explain: string;
   origin?: "ai" | "guru";
+  /** Petunjuk bertahap (paling banyak 3), dibuka siswa satu per satu sebelum menjawab. */
+  hints?: string[];
+  /** Matematika: ekspresi hitungan untuk memeriksa kunci jawaban (mis. "3/4 - 1/8"). Tidak dikirim ke siswa. */
+  calc?: string;
 };
 
 /**
@@ -133,18 +139,19 @@ export type LessonFigure = {
 export type LessonFigures = Record<string, LessonFigure>;
 
 // ---------- Perangkat ajar (modul ajar, LKPD, rubrik) ----------
-// Hanya untuk guru: disimpan di lessons.teaching_kit dan tidak pernah dikirim ke halaman siswa.
+// Disimpan di lessons.teaching_kit. Hanya untuk guru, kecuali tugas berjenjang yang sudah dicek (lihat Jenjang).
 
-export type KitKey = "modul" | "lkpd" | "lkpdMudah" | "rubrik";
+export type KitKey = "modul" | "lkpd" | "lkpdMudah" | "rubrik" | "jenjang";
 
 /** Urutan tampil dan urutan cetak "Cetak semua". */
-export const KIT_KEYS: KitKey[] = ["modul", "lkpd", "lkpdMudah", "rubrik"];
+export const KIT_KEYS: KitKey[] = ["modul", "lkpd", "lkpdMudah", "rubrik", "jenjang"];
 
 export const KIT_LABEL: Record<KitKey, string> = {
   modul: "Modul ajar",
   lkpd: "LKPD",
   lkpdMudah: "LKPD versi sederhana",
   rubrik: "Rubrik penilaian",
+  jenjang: "Tugas berjenjang (TaRL)",
 };
 
 export type KegiatanTahap = { menit: number; langkah: string[] };
@@ -187,7 +194,31 @@ export type RubrikKriteria = { nama: string; level: string[] };
 
 export type Rubrik = { judul: string; kriteria: RubrikKriteria[] };
 
-export type KitData = { modul: ModulAjar; lkpd: Lkpd; lkpdMudah: Lkpd; rubrik: Rubrik };
+/**
+ * Tugas berjenjang ala Teaching at the Right Level: siswa dikelompokkan menurut skor kuisnya,
+ * lalu tiap kelompok mendapat tugas yang sesuai. Satu-satunya bagian perangkat ajar yang dikirim ke siswa
+ * (hanya bila sudah dicek guru).
+ */
+export type JenjangKey = "dasar" | "inti" | "tantangan";
+
+export const JENJANG_KEYS: JenjangKey[] = ["dasar", "inti", "tantangan"];
+
+export const JENJANG_INFO: Record<JenjangKey, { label: string; range: string; min: number }> = {
+  dasar: { label: "Penguatan", range: "skor kuis di bawah 60", min: 0 },
+  inti: { label: "Inti", range: "skor kuis 60–84", min: 60 },
+  tantangan: { label: "Tantangan", range: "skor kuis 85 ke atas", min: 85 },
+};
+
+/** Kelompok kesiapan dari persentase skor kuis (0–100). */
+export function jenjangFor(pct: number): JenjangKey {
+  return pct >= JENJANG_INFO.tantangan.min ? "tantangan" : pct >= JENJANG_INFO.inti.min ? "inti" : "dasar";
+}
+
+export type TugasJenjang = { judul: string; tugas: string; langkah: string[] };
+
+export type Jenjang = Record<JenjangKey, TugasJenjang>;
+
+export type KitData = { modul: ModulAjar; lkpd: Lkpd; lkpdMudah: Lkpd; rubrik: Rubrik; jenjang: Jenjang };
 
 export type KitItem<T> = {
   data: T;
@@ -226,6 +257,8 @@ export type LessonRow = {
   quiz: QuizQuestion[];
   figures: LessonFigures;
   teaching_kit: TeachingKit;
+  /** Bank latihan adaptif. Soal dengan origin "guru" = sudah dicek dan dikirim ke siswa. */
+  practice: QuizQuestion[];
   status: "draft" | "published";
   share_code: string | null;
   /** Bertambah setiap kali isi materi disimpan; dipakai untuk mendeteksi simpan yang bertabrakan. */
@@ -266,9 +299,19 @@ export const EMPTY_NEEDS: ClassNeeds = {
   tuli: 0,
   disleksia: 0,
   sulitFokus: 0,
+  diskalkulia: 0,
   bahasaDaerah: 0,
   bahasa: null,
 };
+
+/** Profil kelas dari database: kebutuhan yang belum ada di data lama dianggap 0. */
+export function normalizeNeeds(needs: Partial<ClassNeeds> | null | undefined): ClassNeeds {
+  const n = { ...EMPTY_NEEDS, ...(needs ?? {}) };
+  for (const k of ["totalSiswa", "lowVision", "tuli", "disleksia", "sulitFokus", "diskalkulia", "bahasaDaerah"] as const) {
+    n[k] = Number.isFinite(Number(n[k])) ? Number(n[k]) : 0;
+  }
+  return n;
+}
 
 export const LANG_LABEL: Record<RegionalLang, string> = {
   jw: "Bahasa Jawa",

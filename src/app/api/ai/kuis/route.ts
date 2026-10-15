@@ -31,7 +31,8 @@ export async function POST(req: Request) {
       grade: cls?.grade || "siswa SD",
       count: input.count,
       types: input.types,
+      subject: lesson.subject,
     });
-    return ok({ questions: result.questions });
+    return ok({ questions: result.questions, math: result.math });
   });
 }

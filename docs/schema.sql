@@ -45,6 +45,9 @@ alter table lessons add column if not exists revision integer not null default 1
 -- Perangkat ajar guru (modul ajar, LKPD, LKPD sederhana, rubrik). Tidak pernah dikirim ke halaman siswa.
 alter table lessons add column if not exists teaching_kit jsonb not null default '{}'::jsonb;
 
+-- Bank latihan adaptif: soal tambahan per konsep untuk siswa yang salah di konsep itu (hanya yang dicek guru dikirim).
+alter table lessons add column if not exists practice jsonb not null default '[]'::jsonb;
+
 create index if not exists lessons_teacher_idx on lessons(teacher_id);
 
 create index if not exists lessons_class_idx on lessons(class_id);

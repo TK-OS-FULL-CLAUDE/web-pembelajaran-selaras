@@ -3,10 +3,16 @@ import { randomInt } from "node:crypto";
 import { getDb } from "./db";
 import { conceptStats, type ConceptStat } from "./teacher-tools";
 import {
+  JENJANG_KEYS,
   VERSION_KEYS,
+  jenjangFor,
+  normalizeNeeds,
+  type JenjangKey,
   type ClassNeeds,
   type ClassRow,
   type GlossaryItem,
+  type Jenjang,
+  type KitItem,
   type LessonFigures,
   type LessonRow,
   type LessonVersions,
@@ -27,10 +33,11 @@ export function isUuid(value: string | null | undefined): value is string {
 
 export async function listClasses(teacherId: string) {
   const sql = await getDb();
-  return sql<(ClassRow & { lesson_count: number })[]>`
+  const rows = await sql<(ClassRow & { lesson_count: number })[]>`
     select c.*, (select count(*)::int from lessons l where l.class_id = c.id) as lesson_count
     from classes c where c.teacher_id = ${teacherId}
     order by c.created_at asc`;
+  return rows.map((r) => ({ ...r, needs: normalizeNeeds(r.needs) }));
 }
 
 export async function getClass(teacherId: string, classId: string) {
@@ -38,7 +45,7 @@ export async function getClass(teacherId: string, classId: string) {
   const sql = await getDb();
   const rows = await sql<ClassRow[]>`
     select * from classes where id = ${classId} and teacher_id = ${teacherId}`;
-  return rows[0] ?? null;
+  return rows[0] ? { ...rows[0], needs: normalizeNeeds(rows[0].needs) } : null;
 }
 
 export async function createClass(teacherId: string, input: { name: string; grade: string; needs: ClassNeeds }) {
@@ -129,6 +136,7 @@ export type LessonPatch = Partial<{
   quiz: QuizQuestion[];
   figures: LessonFigures;
   teachingKit: TeachingKit;
+  practice: QuizQuestion[];
 }>;
 
 export type UpdateResult =
@@ -166,6 +174,7 @@ export async function updateLesson(
       is_template = coalesce(${patch.is_template ?? null}, is_template),
       status = case when ${opts.restoreDraft ?? false} then 'draft' else status end,
       teaching_kit = coalesce(${json(patch.teachingKit)}::jsonb, teaching_kit),
+      practice = coalesce(${json(patch.practice)}::jsonb, practice),
       revision = revision + 1,
       updated_at = now()
     where id = ${lessonId} and teacher_id = ${teacherId}
@@ -181,8 +190,8 @@ export async function duplicateLesson(teacherId: string, lessonId: string, class
   if (!isUuid(lessonId)) return null;
   const sql = await getDb();
   const rows = await sql<LessonRow[]>`
-    insert into lessons (teacher_id, class_id, title, subject, body, glossary, versions, quiz, figures, teaching_kit, status, topic, target_grade)
-    select teacher_id, ${classId}, title || ' (salinan)', subject, body, glossary, versions, quiz, figures, teaching_kit, 'draft', topic, target_grade
+    insert into lessons (teacher_id, class_id, title, subject, body, glossary, versions, quiz, figures, teaching_kit, practice, status, topic, target_grade)
+    select teacher_id, ${classId}, title || ' (salinan)', subject, body, glossary, versions, quiz, figures, teaching_kit, practice, 'draft', topic, target_grade
     from lessons where id = ${lessonId} and teacher_id = ${teacherId}
     returning *`;
   return rows[0] ?? null;
@@ -248,8 +257,10 @@ export async function unpublishLesson(teacherId: string, lessonId: string) {
 
 export type PublicLesson = Pick<
   LessonRow,
-  "id" | "title" | "subject" | "body" | "glossary" | "versions" | "quiz" | "figures"
+  "id" | "title" | "subject" | "body" | "glossary" | "versions" | "quiz" | "figures" | "practice"
 > & {
+  /** Hanya tugas berjenjang dari perangkat ajar; bagian lain perangkat ajar tidak pernah dipilih. */
+  jenjang: KitItem<Jenjang> | null;
   share_code: string;
   class_name: string | null;
   teacher_name: string;
@@ -259,7 +270,8 @@ export type PublicLesson = Pick<
 export async function getPublishedLesson(code: string) {
   const sql = await getDb();
   const rows = await sql<PublicLesson[]>`
-    select l.id, l.title, l.subject, l.body, l.glossary, l.versions, l.quiz, l.figures, l.share_code,
+    select l.id, l.title, l.subject, l.body, l.glossary, l.versions, l.quiz, l.figures, l.practice,
+      l.teaching_kit->'jenjang' as jenjang, l.share_code,
       c.name as class_name, t.name as teacher_name, t.school as school_name
     from lessons l
     join teachers t on t.id = l.teacher_id
@@ -293,7 +305,8 @@ export async function recordStudentEvent(input: {
     on conflict (lesson_id, event_id) do nothing`;
 }
 
-export type QuestionResult = { k: string; b: boolean };
+/** Hasil satu soal: k = kunci soal, b = benar, j = jawaban siswa (ringkas), h = petunjuk yang dibuka. */
+export type QuestionResult = { k: string; b: boolean; j?: string; h?: number };
 
 // ---------- Rekap ----------
 
@@ -310,8 +323,13 @@ export type LessonStats = {
   /** Rata-rata lama pengerjaan kuis (detik), dari siswa yang durasinya tercatat. */
   avgDurationSec: number | null;
   byVersion: { versi: StudentPrefs["versi"]; attempts: number; avgPct: number | null; avgDurationSec: number | null }[];
-  /** Persentase benar per soal (kunci = questionKey), dari hasil terakhir tiap siswa. */
-  byQuestion: Record<string, { attempts: number; correct: number }>;
+  /**
+   * Hasil per soal (kunci = questionKey), dari hasil terakhir tiap sesi: jumlah benar, jawaban salah yang
+   * paling sering (pengecoh), dan berapa sesi membuka petunjuk.
+   */
+  byQuestion: Record<string, { attempts: number; correct: number; wrong: { text: string; n: number }[]; hints: number }>;
+  /** Kelompok kesiapan (TaRL) dari skor kuis terakhir tiap sesi: nama panggilan per kelompok. */
+  groups: Record<JenjangKey, string[]>;
   recent: {
     alias: string | null;
     versi: string;
@@ -394,14 +412,33 @@ export async function getLessonStats(lessonId: string, { allRecent = false } = {
     .filter((v) => v.versi === "asli" || v.attempts > 0 || availableVersions.includes(v.versi));
 
   const byQuestion: LessonStats["byQuestion"] = {};
+  const wrongCounts: Record<string, Map<string, { text: string; n: number }>> = {};
   for (const q of quizzes) {
     for (const d of Array.isArray(q.detail) ? q.detail : []) {
       if (!d || typeof d.k !== "string") continue;
-      const row = (byQuestion[d.k] ??= { attempts: 0, correct: 0 });
+      const row = (byQuestion[d.k] ??= { attempts: 0, correct: 0, wrong: [], hints: 0 });
       row.attempts++;
       if (d.b) row.correct++;
+      if (typeof d.h === "number" && d.h > 0) row.hints++;
+      if (!d.b && typeof d.j === "string" && d.j.trim()) {
+        const text = d.j.trim().slice(0, 80);
+        const map = (wrongCounts[d.k] ??= new Map());
+        const key = text.toLocaleLowerCase();
+        const cur = map.get(key) ?? { text, n: 0 };
+        cur.n++;
+        map.set(key, cur);
+      }
     }
   }
+  for (const [k, map] of Object.entries(wrongCounts)) {
+    if (byQuestion[k]) byQuestion[k].wrong = [...map.values()].sort((a, b) => b.n - a.n).slice(0, 3);
+  }
+
+  const groups: LessonStats["groups"] = { dasar: [], inti: [], tantangan: [] };
+  for (const q of quizzes) {
+    groups[jenjangFor(pct(q.score, q.total))].push(q.student_alias?.trim() || "Tanpa nama");
+  }
+  for (const k of JENJANG_KEYS) groups[k].sort((a, b) => a.localeCompare(b, "id"));
 
   const recent = [...quizzes]
     .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
@@ -428,6 +465,7 @@ export async function getLessonStats(lessonId: string, { allRecent = false } = {
     avgDurationSec: avg(durations(quizzes)),
     byVersion,
     byQuestion,
+    groups,
     recent,
   };
 }

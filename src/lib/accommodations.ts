@@ -87,6 +87,20 @@ export const NEEDS: NeedInfo[] = [
     rujukan: "Praktik umum pendidikan inklusif.",
   },
   {
+    key: "diskalkulia",
+    label: "Diskalkulia / kesulitan berhitung",
+    short: "Sulit memahami angka, nilai tempat, dan operasi hitung",
+    modes: ["Petunjuk bertahap", "Latihan adaptif", "Dibacakan", "LKPD versi sederhana"],
+    tips: [
+      "Mulai dari benda nyata (lidi, kancing, potongan kertas), lalu gambar, baru lambang angka.",
+      "Sediakan garis bilangan, tabel perkalian, atau kalkulator bila yang dinilai adalah cara berpikirnya.",
+      "Pakai kertas berpetak supaya angka tersusun rapi sesuai nilai tempatnya.",
+      "Beri soal sedikit demi sedikit dengan angka kecil, dan satu contoh yang dikerjakan langkah demi langkah.",
+      "Beri waktu tambahan dan nilai langkah pengerjaannya, bukan hanya jawaban akhir.",
+    ],
+    rujukan: "Praktik umum pendidikan inklusif. Diskalkulia tidak disebut khusus di Permendikbudristek 48/2023.",
+  },
+  {
     key: "bahasaDaerah",
     label: "Berbahasa ibu daerah",
     short: "Lebih paham bahasa daerah daripada Bahasa Indonesia",

@@ -37,6 +37,7 @@ import {
   VERSION_SPEECH_LANG,
   isRegionalVersion,
   type GlossaryItem,
+  type Jenjang,
   type LessonFigures,
   type QuizQuestion,
   type StudentPrefs,
@@ -65,6 +66,10 @@ export type StudentLesson = {
   figures: LessonFigures;
   /** Hanya soal yang lengkap (lihat playableQuestion). */
   quiz: QuizQuestion[];
+  /** Bank latihan adaptif yang sudah dicek guru (per konsep). */
+  practice?: QuizQuestion[];
+  /** Tugas berjenjang (TaRL) yang sudah dicek guru. */
+  jenjang?: Jenjang | null;
 };
 
 type Step = "mulai" | "pilih" | "baca" | "kuis";
@@ -296,6 +301,8 @@ export function StudentApp({ lesson }: { lesson: StudentLesson }) {
         key={sessionId}
         onSwitchStudent={() => resetLearner(true)}
         questions={lesson.quiz}
+        practice={lesson.practice ?? []}
+        jenjang={lesson.jenjang ?? null}
         title={lesson.title}
         speech={speech}
         rate={rate}

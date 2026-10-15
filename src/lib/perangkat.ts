@@ -1,6 +1,6 @@
 // Utilitas perangkat ajar yang dipakai di server (route AI) dan di browser (tab Perangkat Ajar).
 
-import type { Lkpd, ModulAjar, Rubrik } from "./types";
+import type { Jenjang, KitData, KitKey, Lkpd, ModulAjar, Rubrik } from "./types";
 import { RUBRIK_LEVELS } from "./types";
 
 /** "Bu Rina (akun demo)" → "Bu Rina", supaya label akun tidak ikut tercetak. */
@@ -94,6 +94,11 @@ export function emptyRubrik(title: string): Rubrik {
   };
 }
 
+export function emptyJenjang(): Jenjang {
+  const tugas = (judul: string) => ({ judul, tugas: "", langkah: [""] });
+  return { dasar: tugas("Ayo ulangi bersama"), inti: tugas("Ayo berlatih"), tantangan: tugas("Ayo tantang dirimu") };
+}
+
 /** Rapikan satu daftar: buang penanda butir/nomor di awal dan baris kosong. */
 export function cleanLines(items: string[]): string[] {
   return items
@@ -109,4 +114,42 @@ export function cleanLines(items: string[]): string[] {
 /** Baris yang benar-benar berisi (untuk pratinjau dan cetak; saat mengetik baris kosong dibiarkan). */
 export function filled(items: string[] | undefined): string[] {
   return (items ?? []).map((s) => s.trim()).filter(Boolean);
+}
+
+/** Perangkat ajar sebagai teks polos, untuk diperiksa kesetiaannya terhadap materi. */
+export function kitPlain<K extends KitKey>(key: K, data: KitData[K]): string {
+  const list = (title: string, items: string[]) => (filled(items).length ? `${title}:\n- ${filled(items).join("\n- ")}` : "");
+  if (key === "modul") {
+    const m = data as ModulAjar;
+    return [
+      list("Tujuan pembelajaran", m.tujuan),
+      list("Media", m.sarana),
+      list("Pendahuluan", m.pendahuluan.langkah),
+      list("Kegiatan inti", m.inti.langkah),
+      list("Penutup", m.penutup.langkah),
+      list("Asesmen", m.asesmen),
+      list("Akomodasi", m.akomodasi),
+    ]
+      .filter(Boolean)
+      .join("\n\n");
+  }
+  if (key === "rubrik") {
+    const r = data as Rubrik;
+    return r.kriteria.map((k) => `${k.nama}: ${k.level.filter((l) => l.trim()).join(" | ")}`).join("\n");
+  }
+  if (key === "jenjang") {
+    const j = data as Jenjang;
+    return (["dasar", "inti", "tantangan"] as const)
+      .map((k) => [j[k].judul, j[k].tugas, ...filled(j[k].langkah)].filter((x) => x.trim()).join("\n"))
+      .join("\n\n");
+  }
+  const l = data as Lkpd;
+  return [
+    l.judul,
+    l.tujuan,
+    list("Petunjuk", l.petunjuk),
+    ...l.aktivitas.map((a) => [a.judul, list("Langkah", a.langkah), list("Pertanyaan", a.pertanyaan)].filter(Boolean).join("\n")),
+  ]
+    .filter((x) => x.trim())
+    .join("\n\n");
 }

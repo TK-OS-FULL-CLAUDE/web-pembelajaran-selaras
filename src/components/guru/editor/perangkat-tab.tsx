@@ -4,13 +4,13 @@
 // Dari satu materi, AI menyiapkan DRAF modul ajar ringkas, LKPD, LKPD versi sederhana (dari versi teks mudah),
 // dan rubrik. Pola review sama dengan tab Versi: guru membaca, mengedit, lalu menandai sudah dicek.
 // Cetak/simpan PDF memakai window.print() dengan CSS cetak (globals.css, bagian "Perangkat ajar").
-// Perangkat ajar hanya untuk guru dan tidak pernah tampil di halaman siswa.
+// Perangkat ajar hanya untuk guru; satu-satunya yang tampil di halaman siswa adalah tugas berjenjang yang sudah dicek.
 
 import { Check, PenLine, Plus, Printer, RefreshCw, Sparkles, Trash2, TriangleAlert, X } from "lucide-react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { api } from "@/lib/client";
-import { emptyLkpd, emptyModul, emptyRubrik, filled, type KitContext } from "@/lib/perangkat";
+import { emptyJenjang, emptyLkpd, emptyModul, emptyRubrik, filled, kitPlain, type KitContext } from "@/lib/perangkat";
 import { fingerprint } from "@/lib/text";
 import {
   KIT_KEYS,
@@ -20,13 +20,17 @@ import {
   type KitData,
   type KitItem,
   type KitKey,
+  JENJANG_INFO,
+  JENJANG_KEYS,
+  type Jenjang,
   type Lkpd,
   type ModulAjar,
   type Rubrik,
 } from "@/lib/types";
 import { Badge, Button, Field, Input, Notice, Spinner, Textarea, cx } from "../../ui";
 import { useToast } from "../../toast";
-import { LkpdDoc, ModulDoc, RubrikDoc } from "./perangkat-doc";
+import { FaithfulnessCheck } from "./faithfulness-check";
+import { JenjangDoc, LkpdDoc, ModulDoc, RubrikDoc } from "./perangkat-doc";
 import type { EditableLesson, TabKey, UpdateLesson } from "./lesson-editor";
 
 type Cls = { id: string; name: string; grade: string; needs: ClassNeeds } | null;
@@ -38,9 +42,11 @@ const INFO: Record<KitKey, string> = {
   lkpdMudah:
     "LKPD dengan kalimat pendek, huruf besar, dan ruang jawab lega, disusun dari versi Teks mudah. Untuk siswa disleksia, sulit fokus, atau yang masih belajar Bahasa Indonesia.",
   rubrik: "Kriteria penilaian LKPD dengan empat tingkat capaian: perlu bimbingan, cukup, baik, sangat baik.",
+  jenjang:
+    "Pembelajaran berdiferensiasi: tiga tugas lanjutan (penguatan, inti, tantangan). Setelah kuis, setiap siswa otomatis melihat tugas sesuai skornya, dan tab Rekap menunjukkan siapa di kelompok mana.",
 };
 
-const NO_FLAGS: Record<KitKey, boolean> = { modul: false, lkpd: false, lkpdMudah: false, rubrik: false };
+const NO_FLAGS: Record<KitKey, boolean> = { modul: false, lkpd: false, lkpdMudah: false, rubrik: false, jenjang: false };
 
 /** Batas yang sama dengan validasi server (api.ts), supaya simpan otomatis tidak ditolak. */
 const MAX_LINES = 40;
@@ -77,7 +83,8 @@ export function PerangkatTab({
   const hasMudah = mudahText.length >= 40;
   const tooShort = lesson.body.trim().length < 40;
   const needs = cls?.needs;
-  const recommendSimple = !!needs && needs.disleksia + needs.sulitFokus + needs.bahasaDaerah > 0;
+  const recommendSimple =
+    !!needs && needs.disleksia + needs.sulitFokus + needs.bahasaDaerah + (needs.diskalkulia ?? 0) > 0;
 
   const ctx: KitContext = {
     teacherName: teacher.name,
@@ -137,7 +144,7 @@ export function PerangkatTab({
           jenis: key,
           body: l.body,
           mudahText: key === "lkpdMudah" ? l.versions.mudah?.text : undefined,
-          ...(key === "lkpd" || key === "rubrik" ? related(override) : {}),
+          ...(key === "lkpd" || key === "rubrik" || key === "jenjang" ? related(override) : {}),
         },
       });
       setItem(key, res.item);
@@ -155,14 +162,17 @@ export function PerangkatTab({
   const missing = KIT_KEYS.filter((k) => !kit[k] && canGenerate(k));
   const anyBusy = KIT_KEYS.some((k) => busy[k]);
 
-  /** Modul, LKPD, dan LKPD sederhana dibuat bersamaan; rubrik menyusul supaya mengacu ke tujuan dan aktivitasnya. */
+  /**
+   * Modul, LKPD, dan LKPD sederhana dibuat bersamaan; rubrik dan tugas berjenjang menyusul supaya mengacu ke
+   * tujuan dan aktivitas yang baru dibuat.
+   */
   async function generateMissing() {
-    const first = missing.filter((k) => k !== "rubrik");
+    const later: KitKey[] = ["rubrik", "jenjang"];
+    const first = missing.filter((k) => !later.includes(k));
     const results = await Promise.all(first.map((k) => generate(k)));
-    if (missing.includes("rubrik")) {
-      const got = Object.fromEntries(first.map((k, i) => [k, results[i]?.data]));
-      await generate("rubrik", { modul: got.modul as ModulAjar | undefined, lkpd: got.lkpd as Lkpd | undefined });
-    }
+    const got = Object.fromEntries(first.map((k, i) => [k, results[i]?.data]));
+    const override = { modul: got.modul as ModulAjar | undefined, lkpd: got.lkpd as Lkpd | undefined };
+    await Promise.all(missing.filter((k) => later.includes(k)).map((k) => generate(k, override)));
   }
 
   function regenerate(key: KitKey) {
@@ -179,7 +189,13 @@ export function PerangkatTab({
 
   function startManual(key: KitKey) {
     const data =
-      key === "modul" ? emptyModul(ctx) : key === "rubrik" ? emptyRubrik(lesson.title) : emptyLkpd(lesson.title);
+      key === "modul"
+        ? emptyModul(ctx)
+        : key === "rubrik"
+          ? emptyRubrik(lesson.title)
+          : key === "jenjang"
+            ? emptyJenjang()
+            : emptyLkpd(lesson.title);
     setItem(key, {
       data,
       origin: "guru",
@@ -215,7 +231,8 @@ export function PerangkatTab({
   return (
     <div className="space-y-6">
       <Notice tone="info">
-        Perangkat ajar hanya untuk Anda dan tidak tampil di halaman siswa. Hasil AI adalah <strong>draf</strong>: baca,
+        Perangkat ajar hanya untuk Anda, kecuali <strong>Tugas berjenjang</strong> yang sudah Anda tandai dicek: tugas
+        itu tampil di layar hasil kuis siswa. Hasil AI adalah <strong>draf</strong>: baca,
         sesuaikan dengan kelas Anda, lalu tandai &ldquo;Sudah dicek&rdquo;. Perangkat yang belum dicek tetap bisa dicetak,
         dengan tanda &ldquo;Draf AI — wajib dicek guru&rdquo; di kertasnya.
       </Notice>
@@ -322,6 +339,15 @@ export function PerangkatTab({
                       <KitDoc kitKey={key} item={item} level={3} />
                     </div>
                   )}
+                  <FaithfulnessCheck
+                    lessonId={lessonId}
+                    target={key}
+                    draft={kitPlain(key, item.data)}
+                    source={key === "lkpdMudah" ? mudahText : lesson.body}
+                    sourceLabel={key === "lkpdMudah" ? "versi Teks mudah" : "materi asli"}
+                    aiOn={aiOn}
+                    checkNumbers={false}
+                  />
                 </div>
                 <div className="mt-5 flex flex-wrap gap-2 border-t border-garis pt-4">
                   <Button
@@ -408,6 +434,7 @@ export function PerangkatTab({
 function KitDoc({ kitKey, item, level }: { kitKey: KitKey; item: AnyItem; level: number }) {
   if (kitKey === "modul") return <ModulDoc data={item.data as ModulAjar} checked={item.checked} level={level} />;
   if (kitKey === "rubrik") return <RubrikDoc data={item.data as Rubrik} checked={item.checked} level={level} />;
+  if (kitKey === "jenjang") return <JenjangDoc data={item.data as Jenjang} checked={item.checked} level={level} />;
   return <LkpdDoc data={item.data as Lkpd} checked={item.checked} simple={kitKey === "lkpdMudah"} level={level} />;
 }
 
@@ -422,6 +449,7 @@ function KitEditor({
 }) {
   if (kitKey === "modul") return <ModulEditor data={item.data as ModulAjar} onChange={onChange} />;
   if (kitKey === "rubrik") return <RubrikEditor data={item.data as Rubrik} onChange={onChange} />;
+  if (kitKey === "jenjang") return <JenjangEditor data={item.data as Jenjang} onChange={onChange} />;
   return <LkpdEditor idPrefix={kitKey} data={item.data as Lkpd} onChange={onChange} />;
 }
 
@@ -705,6 +733,45 @@ function RubrikEditor({ data, onChange }: { data: Rubrik; onChange: (d: Rubrik) 
           Tambah kriteria
         </Button>
       )}
+    </div>
+  );
+}
+
+function JenjangEditor({ data, onChange }: { data: Jenjang; onChange: (d: Jenjang) => void }) {
+  return (
+    <div className="space-y-5">
+      {JENJANG_KEYS.map((key) => {
+        const t = data[key];
+        const set = (patch: Partial<Jenjang[typeof key]>) => onChange({ ...data, [key]: { ...t, ...patch } });
+        return (
+          <Fieldset key={key} legend={`${JENJANG_INFO[key].label} (${JENJANG_INFO[key].range})`}>
+            <Field label="Judul tugas" htmlFor={`jenjang-${key}-judul`}>
+              <Input
+                id={`jenjang-${key}-judul`}
+                value={t.judul}
+                maxLength={200}
+                onChange={(e) => set({ judul: e.target.value })}
+              />
+            </Field>
+            <Field label="Apa yang dikerjakan siswa" htmlFor={`jenjang-${key}-tugas`}>
+              <Textarea
+                id={`jenjang-${key}-tugas`}
+                rows={3}
+                maxLength={1200}
+                value={t.tugas}
+                onChange={(e) => set({ tugas: e.target.value })}
+              />
+            </Field>
+            <LinesField
+              id={`jenjang-${key}-langkah`}
+              label="Langkah"
+              hint="Satu langkah per baris."
+              items={t.langkah}
+              onChange={(langkah) => set({ langkah })}
+            />
+          </Fieldset>
+        );
+      })}
     </div>
   );
 }

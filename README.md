@@ -12,7 +12,7 @@ Dibuat untuk **Hackathon JOINTS UGM 2026** (JOINTSxINSPIRE, HIMAKOM FMIPA UGM), 
 | 🎬 Video demo | _isi link YouTube_ |
 | 📊 Pitch deck | _isi link PDF_ |
 | 👩‍🏫 Akun demo guru | `guru@selaras.id` / `selaras-demo` (atau tombol **Masuk sebagai guru demo**) |
-| 📱 Materi demo untuk siswa | `/s/DEMO01` (Fotosintesis), `/s/DEMO02` (Bagian Tumbuhan), `/s/DEMO03` (Teks Prosedur) |
+| 📱 Materi demo untuk siswa | `/s/DEMO01` (Fotosintesis), `/s/DEMO02` (Bagian Tumbuhan), `/s/DEMO03` (Teks Prosedur), `/s/DEMO04` (Pecahan Senilai, Matematika) |
 
 ---
 
@@ -26,7 +26,7 @@ Selaras membuat inklusi tidak menambah beban guru.
 
 - **Sisi guru:** guru mengisi profil kebutuhan kelas (hanya jumlah siswa per kebutuhan, tanpa nama), lalu mendapat panduan akomodasi yang bisa dicentang. Guru menulis atau memotret materi sekali, AI menyiapkan draf versinya, dan guru mengecek setiap versi sebelum terbit.
 - **Sisi siswa:** siswa membuka materi lewat link atau QR tanpa login, memilih "cara belajarku", membaca atau mendengarkan materi, lalu mengerjakan kuis.
-- **Umpan balik:** guru melihat rekap cara belajar yang dipilih siswa dan skor kuis per versi teks.
+- **Umpan balik:** guru melihat rekap cara belajar yang dipilih siswa dan skor kuis per versi teks. AI membaca hasil kelas (jawaban salah yang sering dipilih, petunjuk yang dibuka) untuk menduga miskonsepsi dan menyiapkan tindak lanjut; siswa langsung mendapat latihan untuk konsep yang salah dan tugas sesuai kelompok kesiapannya.
 
 Bedanya dengan alat yang sudah ada: Microsoft Immersive Reader hanya melayani sisi siswa, Ruang GTK berisi referensi umum, dan ChatGPT/Gemini terlalu generik. Selaras menyatukan sisi guru dan sisi siswa dalam satu alur.
 
@@ -34,16 +34,17 @@ Bedanya dengan alat yang sudah ada: Microsoft Immersive Reader hanya melayani si
 
 **Ruang guru** (`/guru`, perlu masuk)
 - Daftar dan masuk dengan email dan kata sandi. Percobaan masuk yang gagal dibatasi.
-- Kelas dengan profil kebutuhan: low vision, tuli, disleksia, sulit fokus, dan bahasa ibu daerah (Jawa atau Sunda).
+- Kelas dengan profil kebutuhan: low vision, tuli, disleksia, sulit fokus, **diskalkulia (kesulitan berhitung)**, dan bahasa ibu daerah (Jawa atau Sunda).
 - Panduan akomodasi per kebutuhan, lengkap dengan dasar rujukannya (lihat [Rujukan](#rujukan)). Centang tersimpan di browser guru.
 - Editor materi dengan enam tab dan simpan otomatis. Kalau materi diubah dari dua tab sekaligus, simpanan yang bertabrakan terdeteksi.
   - **Materi:** tulis atau tempel teks dengan format kaya (judul, subjudul, tebal, stabilo, daftar, langkah bernomor, kotak catatan *Ingat/Penting/Contoh/Tahukah kamu?*, tabel, gambar) lewat toolbar, lalu lihat hasilnya seperti halaman buku. Materi juga bisa diambil dari **foto halaman buku** (AI), **PDF**, atau **Word (.docx)**: teks, daftar, tabel, dan **gambar/diagram ikut terbawa**. Ada penanda kata sulit (glosarium), panel **Gambar**, pratinjau layar HP siswa, dan cek keterbacaan sederhana tanpa AI.
   - **Gambar & deskripsi:** setiap gambar punya deskripsi (alt text) yang dibacakan untuk siswa tunanetra. AI menulis drafnya dari gambar + teks di sekitarnya, guru mengecek dan menandai **Sudah dicek**. Materi tidak bisa terbit selama ada gambar yang deskripsinya belum dicek.
-  - **Versi:** satu klik menyiapkan 4 draf AI: **teks mudah**, **ringkasan** (3–7 poin), **Basa Jawa**, dan **Basa Sunda** (keduanya dengan glosarium dua bahasa). Draf berlabel **Draf AI — wajib dicek guru**. Setiap versi bisa diedit, dibuat ulang, atau ditulis sendiri; versi yang sudah dicek tidak ditimpa tanpa konfirmasi. Versi baru tampil untuk siswa setelah guru menandai **Sudah dicek**. Versi bahasa daerah berlabel **perlu dicek penutur asli**, dan bahasa ibu di profil kelas menentukan versi daerah yang disarankan.
-  - **Perangkat Ajar:** dari materi yang sama, AI menyiapkan draf **modul ajar ringkas** (identitas, tujuan pembelajaran, kegiatan pendahuluan–inti–penutup, asesmen, dan akomodasi sesuai profil kelas), **LKPD** (aktivitas + pertanyaan dengan ruang jawab), **LKPD versi sederhana** (disusun dari versi teks mudah, huruf lebih besar), dan **rubrik** (kriteria × 4 tingkat). Identitas modul (penyusun, sekolah, kelas, fase, alokasi waktu) diisi otomatis dari data guru dan kelas. Pola review sama dengan tab Versi: berlabel **Draf AI — wajib dicek guru**, bisa diedit, dibuat ulang, atau diisi sendiri tanpa AI. Cetak atau simpan PDF satu per satu atau sekaligus lewat dialog cetak browser. Perangkat ajar hanya untuk guru dan tidak tampil di halaman siswa.
-  - **Kuis:** lima jenis soal — pilihan ganda, pilihan ganda kompleks, benar/salah, isian singkat, dan menjodohkan — ditulis manual atau didraf AI (guru memilih jenis dan jumlahnya). Soal yang belum lengkap ditandai dan tidak ditampilkan ke siswa.
+  - **Versi:** satu klik menyiapkan 4 draf AI: **teks mudah**, **ringkasan** (3–7 poin), **Basa Jawa**, dan **Basa Sunda** (keduanya dengan glosarium dua bahasa). Draf berlabel **Draf AI — wajib dicek guru**. Setiap versi bisa diedit, dibuat ulang, atau ditulis sendiri; versi yang sudah dicek tidak ditimpa tanpa konfirmasi. Versi baru tampil untuk siswa setelah guru menandai **Sudah dicek**. Versi bahasa daerah berlabel **perlu dicek penutur asli**, dan bahasa ibu di profil kelas menentukan versi daerah yang disarankan. **Pemeriksa kesetiaan:** angka di versi yang tidak ada di materi asli langsung ditandai (tanpa AI), dan tombol **Periksa kesetiaan dengan AI** meminta AI kedua menandai kalimat yang menambah fakta, mengubah angka/makna, atau menghilangkan gagasan penting, lengkap dengan kutipannya.
+  - **Perangkat Ajar:** dari materi yang sama, AI menyiapkan draf **modul ajar ringkas** (identitas, tujuan pembelajaran, kegiatan pendahuluan–inti–penutup, asesmen, dan akomodasi sesuai profil kelas), **LKPD** (aktivitas + pertanyaan dengan ruang jawab), **LKPD versi sederhana** (disusun dari versi teks mudah, huruf lebih besar), **rubrik** (kriteria × 4 tingkat), dan **tugas berjenjang (TaRL)**: tugas penguatan, inti, dan tantangan untuk pembelajaran berdiferensiasi. Identitas modul (penyusun, sekolah, kelas, fase, alokasi waktu) diisi otomatis dari data guru dan kelas. Pola review sama dengan tab Versi: berlabel **Draf AI — wajib dicek guru**, bisa diedit, dibuat ulang, atau diisi sendiri tanpa AI. Cetak atau simpan PDF satu per satu atau sekaligus lewat dialog cetak browser. Perangkat ajar hanya untuk guru, kecuali tugas berjenjang yang sudah dicek: siswa melihatnya di layar hasil kuis sesuai skornya.
+  - **Kuis:** lima jenis soal — pilihan ganda, pilihan ganda kompleks, benar/salah, isian singkat, dan menjodohkan — ditulis manual atau didraf AI (guru memilih jenis dan jumlahnya). Soal yang belum lengkap ditandai dan tidak ditampilkan ke siswa. Setiap soal punya **konsep yang dinilai** dan **petunjuk bertahap** (sampai 3, dibuka siswa satu per satu). **Latihan adaptif:** bank soal latihan per konsep (draf AI, dipakai setelah guru menandai sudah dicek) untuk siswa yang salah pada konsep itu.
   - **Bagikan:** daftar cek sebelum terbit, kode 6 karakter, link, QR (bisa diunduh), dan tombol tarik dari siswa. Server menolak terbit selama masih ada versi atau deskripsi gambar yang belum dicek.
-  - **Rekap:** cara belajar yang dipilih siswa, skor dan lama pengerjaan kuis per versi teks, **persentase benar per soal** (soal paling sulit untuk dibahas ulang), dan pengerjaan terbaru.
+  - **Rekap:** cara belajar yang dipilih siswa, skor dan lama pengerjaan kuis per versi teks, **persentase benar per soal** beserta jawaban salah yang paling sering dipilih dan berapa sesi membuka petunjuk, **kelompok kesiapan (TaRL)** dari skor kuis, dan pengerjaan terbaru. **Analisis kelas dengan AI** menduga miskonsepsi dari data itu, memberi saran tindak lanjut, menyiapkan penjelasan ulang untuk siswa, dan membuat draf latihan untuk konsep yang lemah. Angka buktinya dihitung aplikasi, bukan AI.
+  - **Matematika:** pecahan (`3/4`) tampil bersusun dan pangkat (`s^2`) tampil sebagai superskrip; jawaban angka diperiksa nilainya (minus, koma/titik desimal, satuan opsional); AI memakai aturan khusus Matematika (angka, lambang, dan langkah hitung disalin persis; soal latihan boleh memakai angka baru) dan mengirim ekspresi hitungan yang **dihitung ulang aplikasi** — kunci yang tidak cocok ditandai **Periksa hitungan**.
 - Salin materi ke kelas lain.
 - Akun demo bersama dengan tombol **Reset data demo**.
 
@@ -56,6 +57,8 @@ Bedanya dengan alat yang sudah ada: Microsoft Immersive Reader hanya melayani si
 - Glosarium: ketuk kata bergaris untuk melihat artinya, plus daftar **Kata penting** di akhir bacaan.
 - Pilihan cara belajar tersimpan di HP siswa dan dipakai lagi di materi berikutnya.
 - Kuis satu soal per layar (lima jenis soal) dengan pembahasan, bisa dibacakan dan dikerjakan dengan keyboard. Hasilnya dicatat tanpa data pribadi; nama panggilan boleh dikosongkan.
+- **Petunjuk bertahap** di setiap soal (tidak langsung memberi jawaban), dan setelah kuis: **Latihan untukmu** untuk konsep yang salah (tidak mengubah nilai) serta **Tugasmu berikutnya** sesuai kelompok skor (penguatan, inti, tantangan).
+- Matematika ikut dibacakan dengan benar: "3 × 4 = 12" → "3 kali 4 sama dengan 12", "1/2" → "1 per 2", "s²" → "s kuadrat", "-3" → "negatif 3".
 - Huruf Atkinson Hyperlegible, yang dirancang untuk pembaca low vision.
 
 ## Alur Kerja
@@ -71,11 +74,15 @@ flowchart LR
     C --> E["/api/ai/versi<br/>teks mudah, ringkasan,<br/>Basa Jawa, Basa Sunda"]
     E --> F[Guru mengecek versi<br/>dan deskripsi gambar]
     F --> G[Terbitkan<br/>kode + link + QR]
-    C --> K["/api/ai/perangkat<br/>modul ajar, LKPD,<br/>LKPD sederhana, rubrik"]
+    C --> K["/api/ai/perangkat<br/>modul ajar, LKPD, LKPD sederhana,<br/>rubrik, tugas berjenjang"]
     K --> L[Guru mengecek<br/>+ cetak / simpan PDF]
+    E -.-> P["/api/ai/periksa<br/>pemeriksa kesetiaan"]
     G --> H[Siswa: /s/kode<br/>pilih cara belajar]
-    H --> I[Kuis]
-    I --> J[Rekap per cara belajar<br/>dan per versi]
+    H --> I[Kuis + petunjuk bertahap]
+    I --> N[Latihan adaptif per konsep<br/>+ tugas sesuai kelompok]
+    I --> J[Rekap per cara belajar,<br/>per soal, per kelompok]
+    J --> Q["/api/ai/analisis<br/>dugaan miskonsepsi + tindak lanjut"]
+    Q -->|"/api/ai/latihan"| N
 ```
 
 ## Tech Stack
@@ -105,6 +112,7 @@ src/
 │   ├── s/[kode]/                    # ruang siswa
 │   └── api/
 │       ├── ai/foto|versi|kuis|alt|perangkat/  # foto → teks, draf versi, draf kuis, deskripsi gambar, draf perangkat ajar
+│       ├── ai/latihan|analisis|periksa/       # bank latihan adaptif, analisis kelas, pemeriksa kesetiaan
 │       ├── gambar/, gambar/[id]/    # unggah & tampilkan gambar materi
 │       ├── auth/masuk|daftar|keluar|demo/
 │       ├── kelas/, materi/          # termasuk materi/[id]/terbit dan /salin
@@ -114,7 +122,9 @@ src/
 ├── components/                      # ui.tsx (UI kit), guru/, siswa/, editor/
 └── lib/
     ├── ai-tasks.ts                  # prompt AI: foto, versi teks, kuis, deskripsi gambar
-    ├── ai-perangkat.ts              # prompt AI: modul ajar, LKPD, rubrik
+    ├── ai-perangkat.ts              # prompt AI: modul ajar, LKPD, rubrik, tugas berjenjang
+    ├── ai-kelas.ts                  # prompt AI berbasis data kelas: analisis hasil kuis, pemeriksa kesetiaan
+    ├── matematika.ts                # angka gaya Indonesia, penghitung ekspresi, pembaca simbol (tanpa AI)
     ├── perangkat.ts                 # fase, alokasi waktu, identitas & templat perangkat ajar
     ├── text.ts                      # format materi (judul, daftar, kotak, tabel, gambar) + pemecah kalimat
     ├── quiz.ts                      # lima jenis soal: merapikan & memeriksa jawaban
@@ -125,6 +135,7 @@ src/
     ├── accommodations.ts            # panduan akomodasi + rujukan
     ├── data.ts, db.ts, schema.ts    # akses data, koneksi, skema (dibuat otomatis)
     ├── seed.ts, demo-content.ts     # data demo
+    ├── demo-adaptif.ts              # data demo: konsep, petunjuk, latihan, tugas berjenjang, materi Matematika
     ├── demo-images.ts               # diagram demo (SVG buatan tim)
     └── auth.ts, password.ts
 docs/
@@ -133,6 +144,7 @@ docs/
 scripts/cek-deploy.mjs               # uji cepat setelah deploy
 tests/ai/                            # uji mesin AI dengan server palsu
 tests/format.test.mts                # uji format materi & pemeriksaan kuis
+tests/matematika.test.mts            # uji angka, hitungan, notasi, dan pembaca simbol Matematika
 ```
 
 ## Skema Data
@@ -143,9 +155,9 @@ Tabel dibuat otomatis saat app pertama kali terhubung ke database. Salinannya ad
 |---|---|
 | `teachers` | id, email, name, school, password_hash, is_demo |
 | `classes` | id, teacher_id, name, grade, needs (JSON: jumlah siswa per kebutuhan + bahasa daerah) |
-| `lessons` | id, teacher_id, class_id, title, subject, body, glossary, versions, quiz, figures (deskripsi gambar), teaching_kit, status (`draft`/`published`), share_code, revision |
+| `lessons` | id, teacher_id, class_id, title, subject, body, glossary, versions, quiz, practice (bank latihan adaptif), figures (deskripsi gambar), teaching_kit, status (`draft`/`published`), share_code, revision |
 | `lesson_images` | gambar materi (dikecilkan di browser, disimpan sebagai bytea): id, teacher_id, mime, data, width, height |
-| `student_events` | lesson_id, session_id, kind (`open`/`quiz`), student_alias, prefs (cara belajar), score, total, duration_sec, detail (benar/salah per soal) |
+| `student_events` | lesson_id, session_id, kind (`open`/`quiz`), student_alias, prefs (cara belajar), score, total, duration_sec, detail (per soal: benar/salah, jawaban yang dipilih bila salah, petunjuk yang dibuka) |
 | `ai_usage` | catatan permintaan AI per guru, untuk batas pemakaian per jam |
 | `auth_attempts` | catatan percobaan masuk, untuk membatasi tebak kata sandi |
 
@@ -178,7 +190,7 @@ Isi `.env.local` (penjelasan lengkap ada di [`.env.example`](.env.example)):
 | `ANTHROPIC_MODEL`, `GEMINI_MODEL` | Opsional | Memaksa satu model dicoba lebih dulu. |
 | `AI_LIMIT_PER_HOUR` | Opsional | Batas permintaan AI per akun per jam (default 100). |
 
-Saat pertama kali terhubung, app membuat tabel dan mengisi data demo sendiri: 1 guru demo, 2 kelas (4B berbahasa ibu Jawa, 6A berbahasa ibu Sunda) dengan profil kebutuhan, 3 materi terbit (`DEMO01` Fotosintesis, `DEMO02` Bagian Tumbuhan, `DEMO03` Teks Prosedur), masing-masing dengan 4 versi yang sudah dicek dan kuis 5 soal (dua materi IPAS memakai diagram, tabel, kotak catatan, dan lima jenis soal), materi "Daur Air" yang masih draf untuk mendemokan AI, dan sekitar 60 hasil kuis siswa contoh untuk rekap. Database yang sudah berisi data demo lama perlu menekan **Reset data demo** di halaman guru. Tidak perlu menjalankan SQL manual. Tanpa kunci AI, semua fitur tetap jalan kecuali tombol AI.
+Saat pertama kali terhubung, app membuat tabel dan mengisi data demo sendiri: 1 guru demo, 2 kelas (4B berbahasa ibu Jawa, 6A berbahasa ibu Sunda) dengan profil kebutuhan, 3 materi terbit (`DEMO01` Fotosintesis, `DEMO02` Bagian Tumbuhan, `DEMO03` Teks Prosedur), masing-masing dengan 4 versi yang sudah dicek dan kuis 5 soal (dua materi IPAS memakai diagram, tabel, kotak catatan, dan lima jenis soal), materi Matematika `DEMO04` "Pecahan Senilai" (teks mudah, ringkasan, kuis dengan hitungan pemeriksa), materi "Daur Air" yang masih draf untuk mendemokan AI, dan hasil kuis siswa contoh untuk rekap. Soal demo sudah punya konsep dan petunjuk bertahap; jawaban salah contoh memakai pengecoh yang khas supaya analisis AI punya bahan; Fotosintesis dan Pecahan Senilai punya bank latihan adaptif yang sudah dicek, dan Fotosintesis punya tugas berjenjang. Database yang sudah berisi data demo lama perlu menekan **Reset data demo** di halaman guru. Tidak perlu menjalankan SQL manual. Tanpa kunci AI, semua fitur tetap jalan kecuali tombol AI.
 
 > **Jangan pernah commit `.env.local`.** Semua kunci API hanya dipakai di route server, jadi tidak pernah sampai ke browser.
 
@@ -187,10 +199,11 @@ Saat pertama kali terhubung, app membuat tabel dan mengisi data demo sendiri: 1 
 ```bash
 npm run typecheck                        # pemeriksaan TypeScript
 npm run test:format                      # uji format materi, pemecah kalimat, dan pemeriksaan lima jenis soal
-npm run test:ai                          # 30 uji mesin AI & perangkat ajar dengan server palsu (tanpa kunci, tanpa biaya)
-npm test                                 # format + AI + fitur (lihat juga "Pengujian tambahan" di bawah)
+npm run test:mtk                         # uji Matematika: angka, hitungan ulang, notasi, pembaca simbol
+npm run test:ai                          # 37 uji mesin AI, perangkat ajar, dan fitur adaptif dengan server palsu (tanpa kunci, tanpa biaya)
+npm test                                 # format + Matematika + AI + fitur (lihat juga "Pengujian tambahan" di bawah)
 npm run cek -- https://alamat-app        # uji cepat versi ter-deploy: database, login demo, kelas, materi, simpan, gambar, perangkat ajar, salin, siswa
-npm run cek -- https://alamat-app --ai   # ditambah uji draf kuis, ringkasan, dan rubrik dengan kunci AI asli
+npm run cek -- https://alamat-app --ai   # ditambah uji draf kuis, ringkasan, rubrik, dan pemeriksa kesetiaan dengan kunci AI asli
 ```
 
 Setelah deploy, buka `/api/status` untuk melihat apakah database dan AI sudah aktif.
@@ -207,9 +220,13 @@ Sesuai guidebook JOINTS 2026, penggunaan AI diperbolehkan asal transparan. Berik
 | Deskripsi gambar (alt text) | `/api/ai/alt` | Gemini | Claude | deskripsi 1–3 kalimat + keterangan |
 | Teks mudah, ringkasan, Basa Jawa, Basa Sunda | `/api/ai/versi` | Claude | Gemini | teks versi + glosarium |
 | Draf soal kuis | `/api/ai/kuis` | Gemini | Claude | lima jenis soal + pembahasan |
-| Modul ajar, LKPD, LKPD versi sederhana, rubrik | `/api/ai/perangkat` | Claude | Gemini | draf perangkat ajar yang bisa diedit dan dicetak |
+| Modul ajar, LKPD, LKPD versi sederhana, rubrik, tugas berjenjang | `/api/ai/perangkat` | Claude | Gemini | draf perangkat ajar yang bisa diedit dan dicetak |
+| Tutor siswa (menjawab hanya dari materi) | `/api/s/[kode]/tanya` | Claude | Gemini | jawaban 1–3 kalimat sesuai cara belajar siswa |
+| Bank latihan adaptif | `/api/ai/latihan` | Gemini | Claude | soal latihan per konsep + petunjuk bertahap (+ hitungan untuk Matematika) |
+| Analisis hasil kelas | `/api/ai/analisis` | Claude | Gemini | dugaan miskonsepsi, saran tindak lanjut, penjelasan ulang |
+| Pemeriksa kesetiaan draf | `/api/ai/periksa` | Claude | Gemini | kutipan bagian draf yang menambah fakta atau mengubah angka/makna |
 
-Model yang dicoba: `claude-haiku-5-5` lalu `claude-sonnet-5-5`; `gemini-3.6-flash` lalu `gemini-3.5-flash-lite`. Semua prompt ada di [`src/lib/ai-tasks.ts`](src/lib/ai-tasks.ts) dan [`src/lib/ai-perangkat.ts`](src/lib/ai-perangkat.ts). Detail mesin AI ada di [`docs/peran2-mesin-ai.md`](docs/peran2-mesin-ai.md).
+Model yang dicoba: `claude-haiku-5-5` lalu `claude-sonnet-5-5`; `gemini-3.6-flash` lalu `gemini-3.5-flash-lite`. Semua prompt ada di [`src/lib/ai-tasks.ts`](src/lib/ai-tasks.ts), [`src/lib/ai-perangkat.ts`](src/lib/ai-perangkat.ts), dan [`src/lib/ai-kelas.ts`](src/lib/ai-kelas.ts). Detail mesin AI ada di [`docs/peran2-mesin-ai.md`](docs/peran2-mesin-ai.md).
 
 **Pengaman:**
 - Semua hasil AI adalah **draf**. Siswa baru melihat sebuah versi setelah guru menandainya **Sudah dicek**, dan server menolak terbit selama masih ada versi atau deskripsi gambar yang belum dicek.
@@ -217,6 +234,10 @@ Model yang dicoba: `claude-haiku-5-5` lalu `claude-sonnet-5-5`; `gemini-3.6-flas
 - Prompt melarang AI menambah fakta di luar materi guru. Isi materi diperlakukan sebagai data, jadi perintah yang terselip di dalam materi diabaikan.
 - Versi bahasa daerah berlabel **perlu dicek penutur asli**.
 - Perangkat ajar (modul ajar, LKPD, rubrik) juga berupa draf berlabel **Draf AI — wajib dicek guru**. Yang belum dicek tetap bisa dicetak, tetapi tanda draf ikut tercetak di kertasnya. Identitas modul diisi dari data guru dan kelas, bukan dari AI, dan profil kelas yang dikirim ke AI hanya berupa jumlah siswa per kebutuhan.
+- Matematika: kunci jawaban dari AI dihitung ulang aplikasi lewat ekspresi `hitungan` (penghitung sendiri, tanpa `eval`). Kunci yang tidak cocok **tidak diubah otomatis**, tetapi ditandai **Periksa hitungan** supaya guru yang memutuskan.
+- Latihan adaptif tidak dibuat langsung untuk siswa: soal latihan dari AI masuk bank sebagai draf dan baru dipakai setelah guru menandainya sudah dicek. Tugas berjenjang juga baru tampil setelah dicek.
+- Analisis kelas hanya mengirim angka agregat dan jawaban salah anonim ke AI, tanpa nama siswa. Angka bukti yang ditampilkan ke guru dihitung aplikasi; temuan AI yang menyebut nomor soal atau konsep yang tidak ada di data dibuang.
+- Pemeriksa kesetiaan hanya menampilkan temuan yang kutipannya benar-benar ada di teks, supaya guru bisa menemukannya.
 - Output AI divalidasi ke format JSON. Kalau gagal, sistem mencoba ulang dengan permintaan yang lebih sederhana, lalu pindah ke model atau penyedia cadangan.
 - Ada batas pemakaian AI per akun per jam, supaya kredit tidak habis bila akun demo dipakai bersama.
 - Fitur aksesibilitas tampilan (huruf besar, kontras, spasi, garis bantu, dibacakan) tidak bergantung pada AI, jadi tetap jalan walaupun API AI bermasalah.

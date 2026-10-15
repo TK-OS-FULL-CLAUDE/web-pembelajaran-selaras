@@ -1,5 +1,6 @@
 // Logika kuis bersama (server & browser): merapikan soal, memeriksa jawaban siswa.
 
+import { sameNumber } from "./matematika";
 import { fingerprint } from "./text";
 import type { MatchPair, QuizQuestion, QuizType } from "./types";
 
@@ -49,16 +50,30 @@ export function isAnswered(r: QuizResponse): boolean {
   }
 }
 
-/** Penyamaan jawaban isian: huruf kecil, tanpa tanda baca, spasi rapi; "1.000" = "1000". */
+/**
+ * Penyamaan jawaban isian: huruf kecil, tanpa tanda baca, spasi rapi; "1.000" = "1000".
+ * Tanda minus di depan angka dipertahankan, jadi "-3" tidak sama dengan "3".
+ */
 export function normalizeAnswer(s: string): string {
   return s
     .normalize("NFKC")
     .toLowerCase()
+    .replace(/[−–—]/g, "-")
     .replace(/(\d)[.,](?=\d{3}\b)/g, "$1")
-    .replace(/[^\p{L}\p{N}\s.,]/gu, " ")
+    .replace(/[^\p{L}\p{N}\s.,-]/gu, " ")
+    .replace(/([\p{L}\p{N}])-/gu, "$1 ")
+    .replace(/-(?!\d)/g, " ")
     .replace(/[.,](?!\d)/g, " ")
     .replace(/\s+/g, " ")
     .trim();
+}
+
+/** Satu jawaban isian cocok dengan salah satu jawaban yang diterima (angka dibandingkan nilainya). */
+export function answerMatches(accepted: string, given: string): boolean {
+  const num = sameNumber(accepted, given);
+  if (num !== null) return num;
+  const got = normalizeAnswer(given);
+  return !!got && normalizeAnswer(accepted) === got;
 }
 
 export function isCorrect(q: QuizQuestion, r: QuizResponse): boolean {
@@ -73,10 +88,8 @@ export function isCorrect(q: QuizQuestion, r: QuizResponse): boolean {
       const got = [...new Set(r.choices)].sort();
       return want.length === got.length && want.every((v, i) => v === got[i]);
     }
-    case "isian": {
-      const got = normalizeAnswer(r.text);
-      return !!got && (q.accepted ?? []).some((a) => normalizeAnswer(a) === got);
-    }
+    case "isian":
+      return !!r.text.trim() && (q.accepted ?? []).some((a) => a.trim() && answerMatches(a, r.text));
     case "jodoh": {
       const pairs = q.pairs ?? [];
       return (
@@ -99,6 +112,12 @@ export function playableQuestion(q: QuizQuestion): QuizQuestion | null {
   const text = q.q.trim();
   const explain = (q.explain ?? "").trim();
   if (!text) return null;
+  // Konsep (untuk latihan adaptif) dan petunjuk bertahap ikut ke siswa; hitungan pemeriksa tidak.
+  const hints = (q.hints ?? []).map((h) => h.trim()).filter(Boolean).slice(0, 3);
+  const extra = {
+    ...(q.concept?.trim() ? { concept: q.concept.trim() } : {}),
+    ...(hints.length ? { hints } : {}),
+  };
 
   if (type === "pg" || type === "pgk") {
     const kept = q.options.map((o, i) => ({ o: o.trim(), i })).filter((x) => x.o);
@@ -106,28 +125,28 @@ export function playableQuestion(q: QuizQuestion): QuizQuestion | null {
     if (type === "pg") {
       const answer = kept.findIndex((x) => x.i === q.answer);
       if (answer < 0) return null;
-      return { type, q: text, options: kept.map((x) => x.o), answer, explain };
+      return { ...extra, type, q: text, options: kept.map((x) => x.o), answer, explain };
     }
     const answers = [...new Set(q.answers ?? [])]
       .map((a) => kept.findIndex((x) => x.i === a))
       .filter((i) => i >= 0)
       .sort((a, b) => a - b);
     if (!answers.length) return null;
-    return { type, q: text, options: kept.map((x) => x.o), answer: answers[0], answers, explain };
+    return { ...extra, type, q: text, options: kept.map((x) => x.o), answer: answers[0], answers, explain };
   }
   if (type === "bs") {
-    return { type, q: text, options: BS_OPTIONS, answer: q.answer === 1 ? 1 : 0, explain };
+    return { ...extra, type, q: text, options: BS_OPTIONS, answer: q.answer === 1 ? 1 : 0, explain };
   }
   if (type === "isian") {
     const accepted = [...new Set((q.accepted ?? []).map((a) => a.trim()).filter(Boolean))];
     if (!accepted.length) return null;
-    return { type, q: text, options: [], answer: 0, accepted, explain };
+    return { ...extra, type, q: text, options: [], answer: 0, accepted, explain };
   }
   const pairs: MatchPair[] = (q.pairs ?? [])
     .map((p) => ({ kiri: p.kiri.trim(), kanan: p.kanan.trim() }))
     .filter((p) => p.kiri && p.kanan);
   if (pairs.length < 2) return null;
-  return { type: "jodoh", q: text, options: [], answer: 0, pairs, explain };
+  return { ...extra, type: "jodoh", q: text, options: [], answer: 0, pairs, explain };
 }
 
 /** Penjelasan singkat apa yang kurang dari sebuah soal (untuk guru). null = lengkap. */
@@ -143,6 +162,21 @@ export function questionProblem(q: QuizQuestion): string | null {
   if (type === "jodoh" && (q.pairs ?? []).filter((p) => p.kiri.trim() && p.kanan.trim()).length < 2)
     return "Isi minimal dua pasangan.";
   return null;
+}
+
+/** Ringkasan jawaban siswa untuk rekap guru (pengecoh yang sering dipilih). Tanpa data pribadi. */
+export function responseSummary(q: QuizQuestion, r: QuizResponse): string | undefined {
+  switch (r.type) {
+    case "pg":
+    case "bs":
+      return r.choice === null ? undefined : (q.options[r.choice] ?? "").slice(0, 80) || undefined;
+    case "pgk":
+      return r.choices.length ? r.choices.map((i) => q.options[i] ?? "").join("; ").slice(0, 80) : undefined;
+    case "isian":
+      return r.text.trim().slice(0, 60) || undefined;
+    default:
+      return undefined;
+  }
 }
 
 /** Pengacakan yang selalu sama untuk teks yang sama (urutan pilihan menjodohkan di layar siswa). */
@@ -164,7 +198,7 @@ export function stableShuffle<T>(items: T[], seedText: string): T[] {
 
 /** Ubah soal ke jenis lain sambil mempertahankan isi yang masih masuk akal. */
 export function convertQuestion(q: QuizQuestion, to: QuizType): QuizQuestion {
-  const base = { q: q.q, explain: q.explain, concept: q.concept, origin: "guru" as const };
+  const base = { q: q.q, explain: q.explain, concept: q.concept, hints: q.hints, origin: "guru" as const };
   const opts = q.options.length && quizType(q) !== "bs" ? q.options : ["", "", "", ""];
   switch (to) {
     case "pg":

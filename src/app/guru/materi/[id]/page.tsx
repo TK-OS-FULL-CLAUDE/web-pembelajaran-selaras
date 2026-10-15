@@ -43,6 +43,7 @@ export default async function LessonPage({
         target_grade: lesson.target_grade ?? "",
         is_template: lesson.is_template ?? false,
         teachingKit: lesson.teaching_kit ?? {},
+        practice: lesson.practice ?? [],
       }}
       revision={lesson.revision}
       status={lesson.status}

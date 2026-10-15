@@ -6,7 +6,7 @@
 //   ## Judul bagian            ### Subjudul
 //   Paragraf biasa. Baris kosong memisahkan paragraf.
 //   - butir daftar             1. langkah bernomor
-//   **tebal**  *miring*  ==stabilo==
+//   **tebal**  *miring*  ==stabilo==   s^2 (pangkat)   3/4 (pecahan, tampil bersusun)
 //   > Penting: kotak catatan   (label lain: Ingat, Catatan, Contoh, Tahukah kamu?, Info, Definisi …)
 //   | Kolom | Kolom |          tabel (baris kedua |---|---| menandai baris judul)
 //   ![Keterangan gambar](gambar:ID)   gambar/diagram; deskripsinya (alt text) disimpan terpisah
@@ -210,9 +210,9 @@ function lineOf(content: string): CalloutLine {
 }
 
 // ---------------------------------------------------------------------------
-// Format dalam baris: **tebal**, *miring*, ==stabilo==
+// Format dalam baris: **tebal**, *miring*, ==stabilo==, dan notasi matematika: s^2 (pangkat), 3/4 (pecahan)
 
-export type MarkType = "b" | "i" | "m";
+export type MarkType = "b" | "i" | "m" | "sup" | "frac";
 export type InlineMark = { start: number; end: number; type: MarkType };
 export type Inline = { plain: string; marks: InlineMark[] };
 
@@ -231,9 +231,22 @@ function walkInline(raw: string, acc: Inline) {
       i += 2;
       continue;
     }
+    // Pangkat: s^2, 10^-3, x^(n+1) → angka/huruf pangkat ditulis tanpa "^" dan diberi tanda superskrip.
+    if (c === "^" && i > 0 && !/\s/.test(raw[i - 1])) {
+      const exp = raw.slice(i + 1).match(/^\((-?[\p{L}\d+\-]{1,10})\)|^(-?[\p{L}\d]{1,4})/u);
+      if (exp) {
+        const start = acc.plain.length;
+        acc.plain += exp[1] ?? exp[2];
+        acc.marks.push({ start, end: acc.plain.length, type: "sup" });
+        i += 1 + exp[0].length;
+        continue;
+      }
+    }
     let matched = false;
     for (const [m, type] of MARKERS) {
       if (!raw.startsWith(m, i)) continue;
+      // "2*3*4" adalah perkalian, bukan teks miring.
+      if (m === "*" && /\d/.test(raw[i - 1] ?? "")) break;
       const after = raw[i + m.length];
       // Penanda pembuka harus langsung diikuti huruf, bukan spasi (jadi "5 * 3" tetap teks biasa).
       if (!after || /\s/.test(after) || after === m[0]) break;
@@ -258,10 +271,36 @@ function walkInline(raw: string, acc: Inline) {
   }
 }
 
+// Pecahan angka/angka, bukan tanggal (15/10/2026) dan bukan bagian bilangan lain. Tanpa lookbehind (Safari lama).
+const FRACTION = /(^|[^\d/.,])(\d{1,4})\/(\d{1,4})(?![\d/])/g;
+
 export function parseInline(raw: string): Inline {
   const acc: Inline = { plain: "", marks: [] };
   walkInline(raw, acc);
+  for (const m of acc.plain.matchAll(FRACTION)) {
+    const start = (m.index ?? 0) + m[1].length;
+    const end = start + m[2].length + 1 + m[3].length;
+    if (!acc.marks.some((x) => x.type === "sup" && x.start < end && x.end > start)) {
+      acc.marks.push({ start, end, type: "frac" });
+    }
+  }
   return acc;
+}
+
+/**
+ * Potongan teks untuk dibacakan: pangkat ditulis lagi dengan "^" (s^2 → "s kuadrat" di spokenMath),
+ * sedangkan teks tampilannya tanpa "^".
+ */
+export function inlineSpeech(inline: Inline, start = 0, end = inline.plain.length): string {
+  const sups = inline.marks.filter((m) => m.type === "sup" && m.start >= start && m.start < end).map((m) => m.start);
+  if (!sups.length) return inline.plain.slice(start, end);
+  let out = "";
+  let last = start;
+  for (const at of sups.sort((a, b) => a - b)) {
+    out += inline.plain.slice(last, at) + "^";
+    last = at;
+  }
+  return out + inline.plain.slice(last, end);
 }
 
 /** Teks tanpa penanda format dalam baris. */
