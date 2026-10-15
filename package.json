@@ -9,7 +9,11 @@
     "start": "next start",
     "typecheck": "tsc --noEmit",
     "test:ai": "npx --yes tsx@4.23.15 --conditions=react-server tests/ai/ai.test.mts && npx --yes tsx@4.23.15 --conditions=react-server tests/ai/perangkat.test.mts",
-    "cek": "node scripts/cek-deploy.mjs"
+    "cek": "node scripts/cek-deploy.mjs",
+    "test:format": "npx --yes tsx@4.23.15 tests/format.test.mts",
+    "test:fitur": "npx --yes tsx@4.23.15 tests/student-teacher.test.mts",
+    "test:data": "npx --yes tsx@4.23.15 --conditions=react-server tests/data-features.test.mts",
+    "test": "npm run test:format && npm run test:ai && npm run test:fitur"
   },
   "engines": {
     "node": ">=20.9.0"
@@ -18,7 +22,9 @@
     "@fontsource-variable/plus-jakarta-sans": "5.3.0",
     "@fontsource/atkinson-hyperlegible": "5.3.0",
     "lucide-react": "1.57.0",
+    "mammoth": "1.12.3",
     "next": "16.3.8",
+    "pdfjs-dist": "6.3.289",
     "postgres": "3.4.9",
     "qrcode": "1.5.4",
     "react": "19.2.8",
