@@ -84,7 +84,7 @@ Isi minimal salah satu kunci. `GET /api/status` menampilkan penyedia yang aktif,
 npm run test:ai
 ```
 
-Ada 27 uji yang menjalankan kode AI asli terhadap server palsu (`tests/ai/fake-ai-server.mjs`), tanpa kunci API dan tanpa biaya. `ai.test.mts` (18 uji) menguji urutan penyedia per tugas, cadangan saat kredit habis/kunci ditolak/sibuk/timeout, ulang tanpa skema, penyaringan glosarium, format ringkasan, dan pesan galat; satu uji timeout memakan sekitar 40 detik. `perangkat.test.mts` (9 uji) menguji fase dan alokasi waktu, identitas modul, isi prompt (profil kelas, alokasi, tujuan, teks mudah), perapian butir, rubrik 4 tingkat, dan cadangan Gemini.
+Ada 30 uji yang menjalankan kode AI asli terhadap server palsu (`tests/ai/fake-ai-server.mjs`), tanpa kunci API dan tanpa biaya. `ai.test.mts` (21 uji) menguji urutan penyedia per tugas, cadangan saat kredit habis/kunci ditolak/sibuk/timeout, ulang tanpa skema, penyaringan glosarium, format ringkasan, deskripsi gambar, dan pesan galat; satu uji timeout memakan sekitar 40 detik. `perangkat.test.mts` (9 uji) menguji fase dan alokasi waktu, identitas modul, isi prompt (profil kelas, alokasi, tujuan, teks mudah), perapian butir, rubrik 4 tingkat, dan cadangan Gemini.
 
 Untuk mencoba UI tanpa kunci asli, jalankan `node tests/ai/fake-ai-server.mjs`, lalu isi `.env.local` dengan:
 
@@ -104,3 +104,11 @@ Setelah deploy, `npm run cek -- https://alamat-app --ai` ikut menguji draf kuis,
 - **Sabri (ruang siswa):** pilihan "Pakai Basa Jawa" dan "Pakai Basa Sunda" muncul terpisah di layar pilih cara belajar. Di HP, bilah versi otomatis disusun 2 atau 3 kolom.
 - **Faza (fondasi):** kolom baru `lessons.teaching_kit` dibuat otomatis saat startup (`alter table … add column if not exists`), tidak perlu SQL manual. Editor kini punya 6 tab (`?tab=perangkat`).
 - **Aufa (kuis & rekap):** lama pengerjaan kuis kini dicatat (`student_events.duration_sec`) dan tampil di rekap: rata-rata keseluruhan, per versi teks, dan per siswa. Versi yang tidak ada di materi tidak ditampilkan di rekap.
+
+## Pembaruan: gambar, deskripsi gambar, dan lima jenis soal
+
+- **Foto → teks + gambar** (`photoToText`): selain teks, AI mengembalikan `gambar[]` berisi `nomor`, `keterangan`, `deskripsi`, dan `kotak` [ymin, xmin, ymax, xmax] skala 0–1000, serta penanda `[[GAMBAR n]]` di posisinya. Browser memotong gambar dari foto, mengunggahnya ke `/api/gambar`, lalu mengganti penanda dengan baris `![keterangan](gambar:ID)` (`src/lib/impor/photo.ts`).
+- **Deskripsi gambar** (`describeImage`, `/api/ai/alt`): Gemini dulu, cadangan Claude. Prompt meminta 1–3 kalimat sederhana untuk siswa tunanetra (label, arah panah, urutan), memakai teks di sekitar gambar sebagai konteks. Hasilnya draf; guru wajib menandai **Sudah dicek** sebelum materi terbit.
+- **Versi teks menjaga gambar**: prompt teks mudah dan bahasa daerah mewajibkan baris gambar disalin persis; bila tetap hilang, `restoreFigureLines` mengembalikannya ke posisi yang kira-kira sama.
+- **Kuis campuran** (`makeQuizDraft` dengan `types`): skema JSON memuat `jenis`, `pilihan`, `jawaban[]`, `isian[]`, `pasangan[]`. Soal yang tidak lengkap dibuang sebelum sampai ke guru.
+- **Impor PDF dan Word tidak memakai AI**: PDF dibaca dengan pdf.js (build legacy) di browser, termasuk letak gambar; halaman hasil pindai baru dikirim ke AI. Word dibaca dengan mammoth.

@@ -15,7 +15,7 @@ export default async function EditClassPage({ params }: { params: Promise<{ id: 
   const lessonCount = await countLessonsInClass(teacher.id, cls.id);
   return (
     <div className="max-w-2xl">
-      <h1 className="mb-6 font-display text-3xl font-extrabold text-papan">Ubah {cls.name}</h1>
+      <h1 className="mb-6 font-display text-[2rem] font-extrabold leading-tight">Ubah {cls.name}</h1>
       <ClassForm classId={cls.id} initial={{ name: cls.name, grade: cls.grade, needs: cls.needs }} />
       <DeleteClass classId={cls.id} name={cls.name} lessonCount={lessonCount} />
     </div>

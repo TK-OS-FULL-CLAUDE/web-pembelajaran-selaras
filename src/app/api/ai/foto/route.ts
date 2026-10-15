@@ -20,6 +20,12 @@ export async function POST(req: Request) {
     if (!result.terbaca || result.teks.trim().length < 10) {
       return fail("Teks di foto tidak terbaca. Coba foto ulang dengan cahaya cukup dan halaman lurus.", 422);
     }
-    return ok({ title: result.judul, text: result.teks.trim(), model: result.model });
+    return ok({
+      title: result.judul,
+      text: result.teks.trim(),
+      // Gambar/diagram di halaman: browser memotongnya dari foto lalu mengunggahnya (lihat import-figures.ts).
+      figures: result.gambar,
+      model: result.model,
+    });
   });
 }

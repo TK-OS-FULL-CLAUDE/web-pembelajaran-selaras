@@ -2,6 +2,8 @@ import { z } from "zod";
 import { fail, handle, ok, readJson } from "@/lib/api";
 import { answerFromLesson, type TutorStyle } from "@/lib/ai-tasks";
 import { getPublishedLesson } from "@/lib/data";
+import { FIGURE_LINE, plainText } from "@/lib/text";
+import type { LessonFigures } from "@/lib/types";
 
 export const maxDuration = 60;
 
@@ -9,7 +11,7 @@ type Ctx = { params: Promise<{ kode: string }> };
 
 const schema = z.object({
   question: z.string().trim().min(3, "Tulis pertanyaanmu dulu.").max(300, "Pertanyaan terlalu panjang."),
-  versi: z.enum(["asli", "mudah", "daerah", "ringkasan"]),
+  versi: z.enum(["asli", "mudah", "ringkasan", "jawa", "sunda"]),
 });
 
 // Pembatas sederhana per alamat IP dan materi, supaya jalur tanpa login ini tidak menghabiskan kuota AI.
@@ -34,6 +36,25 @@ function tooMany(key: string) {
 
 const NOT_FOUND_TEXT = "Itu belum ada di materi ini. Coba tanyakan ke gurumu ya.";
 
+/**
+ * Materi untuk tutor: tanpa penanda format, dan setiap gambar diganti deskripsinya yang sudah dicek guru,
+ * supaya tutor juga bisa menjawab pertanyaan tentang isi diagram.
+ */
+function tutorText(body: string, figures: LessonFigures | undefined): string {
+  const withFigures = body
+    .split("\n")
+    .map((line) => {
+      const m = line.trim().match(FIGURE_LINE);
+      if (!m) return line;
+      const fig = figures?.[m[2]];
+      const alt = fig?.altChecked ? fig.alt.trim() : "";
+      const desc = [m[1].trim(), alt].filter(Boolean).join(". ").replace(/[[\]]/g, "");
+      return desc ? `[Gambar: ${desc}]` : "";
+    })
+    .join("\n");
+  return plainText(withFigures);
+}
+
 /** Tutor siswa: menjawab pertanyaan hanya dari materi guru, dengan gaya sesuai cara belajar siswa. Tanpa login. */
 export async function POST(req: Request, { params }: Ctx) {
   return handle(async () => {
@@ -47,12 +68,14 @@ export async function POST(req: Request, { params }: Ctx) {
 
     // Gaya mengikuti versi yang dipilih siswa, tetapi hanya bila guru sudah mengecek versi itu.
     let style: TutorStyle = "asli";
-    const { mudah, daerah, ringkasan } = lesson.versions;
+    const { mudah, ringkasan, jawa, sunda } = lesson.versions;
     if (input.versi === "mudah" && mudah?.checked) style = "mudah";
     else if (input.versi === "ringkasan" && ringkasan?.checked) style = "ringkasan";
-    else if (input.versi === "daerah" && daerah?.checked) style = daerah.lang === "su" ? "su" : "jw";
+    else if (input.versi === "jawa" && jawa?.checked) style = "jw";
+    else if (input.versi === "sunda" && sunda?.checked) style = "su";
 
-    const result = await answerFromLesson({ body: lesson.body, question: input.question, style });
+    const body = tutorText(lesson.body, lesson.figures);
+    const result = await answerFromLesson({ body, question: input.question, style });
     return ok({ found: result.found, answer: result.found ? result.answer : NOT_FOUND_TEXT });
   });
 }

@@ -8,12 +8,14 @@ import {
   VERSION_KEYS,
   isRegionalVersion,
   type GlossaryItem,
+  type LessonFigures,
   type LessonVersions,
   type StudentPrefs,
   type VersionKey,
 } from "@/lib/types";
 
 const SHORT_LABEL: Record<VersionKey, string> = { mudah: "Mudah", ringkasan: "Ringkas", jawa: "Jawa", sunda: "Sunda" };
+import { MODE_TONE, TONES } from "@/lib/modes";
 import { ReaderText } from "../../reader-text";
 import { cx } from "../../ui";
 
@@ -22,13 +24,17 @@ export function StudentPreview({
   body,
   glossary,
   versions,
+  figures,
 }: {
   title: string;
   body: string;
   glossary: GlossaryItem[];
   versions: LessonVersions;
+  figures?: LessonFigures;
 }) {
-  const [versi, setVersi] = useState<StudentPrefs["versi"]>("asli");
+  const [picked, setVersi] = useState<StudentPrefs["versi"]>("asli");
+  // Versi yang dipilih bisa saja baru dihapus guru: kembali ke teks asli.
+  const versi = picked === "asli" || versions[picked]?.text.trim() ? picked : "asli";
   const [besar, setBesar] = useState(false);
   const [kontras, setKontras] = useState(false);
   const [spasi, setSpasi] = useState(false);
@@ -52,7 +58,7 @@ export function StudentPreview({
       aria-pressed={on}
       onClick={() => set(!on)}
       className={cx(
-        "h-8 rounded-md border px-2 text-[13px] font-bold",
+        "h-8 rounded-lg border px-2 text-[13px] font-bold",
         on ? "border-papan bg-papan text-white" : "border-garis bg-white text-tinta hover:border-papan",
       )}
     >
@@ -73,8 +79,8 @@ export function StudentPreview({
               setTerm(null);
             }}
             className={cx(
-              "h-8 rounded-md px-2.5 text-[13px] font-bold",
-              versi === o.key ? "bg-papan text-white" : "bg-slate-100 text-tinta hover:bg-papan-50",
+              "h-8 rounded-lg px-2.5 text-[13px] font-bold",
+              versi === o.key ? TONES[MODE_TONE[o.key]].solid : "bg-slate-100 text-tinta hover:bg-papan-50",
             )}
           >
             {o.label}
@@ -87,9 +93,9 @@ export function StudentPreview({
         {toggle("Spasi lega", spasi, setSpasi)}
       </div>
 
-      <div className="mx-auto mt-3 w-full max-w-[22rem] rounded-[2rem] border-[6px] border-tinta bg-tinta p-0.5 shadow-lg">
+      <div className="mx-auto mt-3 w-full max-w-[22rem] rounded-[2.2rem] border-[7px] border-tinta bg-tinta p-0.5 shadow-angkat">
         <div
-          className="reader relative flex h-[30rem] flex-col overflow-y-auto rounded-[1.6rem] px-4 pt-4"
+          className="reader relative flex h-[32rem] flex-col overflow-y-auto rounded-[1.7rem] bg-[var(--reader-bg)] px-4 pt-4"
           data-besar={besar}
           data-kontras={kontras}
           data-spasi={spasi}
@@ -104,7 +110,7 @@ export function StudentPreview({
           <p className="mb-2 text-[12px] font-bold text-[var(--reader-soft)]">{title}</p>
           {text.trim() ? (
             <div className="[&_.reader-text]:text-[calc(var(--reader-size)*0.82)]">
-              <ReaderText text={text} glossary={terms} onTerm={setTerm} />
+              <ReaderText text={text} glossary={terms} figures={figures} onTerm={setTerm} />
             </div>
           ) : (
             <p className="text-[14px] text-[var(--reader-soft)]">Materi masih kosong.</p>

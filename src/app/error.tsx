@@ -7,7 +7,7 @@ export default function ErrorPage({ error, reset }: { error: Error & { digest?: 
   return (
     <main id="isi" className="mx-auto flex min-h-dvh max-w-lg flex-col items-start justify-center gap-4 px-6">
       <Logo />
-      <h1 className="font-display text-3xl font-extrabold text-papan">Ada yang tidak beres</h1>
+      <h1 className="font-display text-3xl font-extrabold text-tinta">Ada yang tidak beres</h1>
       <p className="text-tinta-2">
         {missingDb
           ? "Database belum tersambung. Isi DATABASE_URL di environment variables lalu deploy ulang. Cek status di /api/status."

@@ -14,7 +14,7 @@ export function LogoutButton() {
         router.push("/");
         router.refresh();
       }}
-      className="inline-flex h-10 items-center gap-2 rounded-lg px-3 font-bold text-tinta-2 hover:bg-papan-50 hover:text-papan"
+      className="inline-flex h-10 items-center gap-2 rounded-xl border border-garis px-3 font-bold text-tinta-2 hover:border-papan/40 hover:bg-papan-50 hover:text-papan"
     >
       <LogOut className="size-4" aria-hidden />
       Keluar

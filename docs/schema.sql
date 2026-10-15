@@ -77,6 +77,27 @@ update lessons
     (versions->'daerah') - 'lang')
   where versions ? 'daerah';
 
+-- Deskripsi gambar (alt text) per gambar di materi.
+alter table lessons add column if not exists figures jsonb not null default '{}'::jsonb;
+
+-- Benar/salah tiap soal per siswa, untuk "hasil per soal" di Rekap.
+alter table student_events add column if not exists detail jsonb;
+
+-- Gambar dan diagram materi (dari foto buku, PDF, Word, atau unggahan guru).
+create table if not exists lesson_images (
+  id uuid primary key default gen_random_uuid(),
+  teacher_id uuid not null references teachers(id) on delete cascade,
+  lesson_id uuid,
+  mime text not null,
+  data bytea not null,
+  width int,
+  height int,
+  bytes int not null,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists lesson_images_teacher_idx on lesson_images(teacher_id, created_at);
+
 create table if not exists auth_attempts (
   id bigserial primary key,
   email text not null,
@@ -106,3 +127,47 @@ alter table student_events enable row level security;
 alter table auth_attempts enable row level security;
 
 alter table ai_usage enable row level security;
+
+alter table lesson_images enable row level security;
+
+
+-- Alur siswa bersama, perpustakaan, dan riwayat revisi
+alter table student_events add column if not exists event_id text;
+
+alter table student_events add column if not exists occurred_at timestamptz;
+
+create unique index if not exists student_events_delivery_idx on student_events(lesson_id, event_id);
+
+alter table lessons add column if not exists topic text not null default '';
+
+alter table lessons add column if not exists target_grade text not null default '';
+
+alter table lessons add column if not exists is_template boolean not null default false;
+
+create table if not exists lesson_revisions (
+    lesson_id uuid not null references lessons(id) on delete cascade,
+    revision integer not null,
+    snapshot jsonb not null,
+    saved_at timestamptz not null default now(),
+    primary key (lesson_id, revision)
+  );
+
+create or replace function selaras_keep_revision() returns trigger language plpgsql as $$
+    begin
+      if new.revision <> old.revision then
+        insert into lesson_revisions(lesson_id, revision, snapshot, saved_at)
+          values (old.id, old.revision, to_jsonb(old), old.updated_at)
+          on conflict do nothing;
+        delete from lesson_revisions where lesson_id = old.id and revision not in (
+          select revision from lesson_revisions where lesson_id = old.id order by revision desc limit 50
+        );
+      end if;
+      return new;
+    end;
+  $$;
+
+drop trigger if exists selaras_revision_history on lessons;
+
+create trigger selaras_revision_history before update on lessons for each row execute function selaras_keep_revision();
+
+alter table lesson_revisions enable row level security;

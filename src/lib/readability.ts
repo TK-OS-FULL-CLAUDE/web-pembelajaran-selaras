@@ -40,9 +40,12 @@ export function analyze(body: string): Readability {
       currentParagraph = 0;
       continue;
     }
-    if (/^#{1,3}\s/.test(trimmed)) continue; // judul bagian tidak dihitung sebagai kalimat
+    // Judul, gambar, tabel, dan garis pemisah tidak dihitung sebagai kalimat.
+    if (/^#{1,4}\s/.test(trimmed) || /^!\[|^\[(gambar|diagram|foto|ilustrasi|tabel|grafik|peta)\s*:/i.test(trimmed))
+      continue;
+    if (trimmed.startsWith("|") || /^(-{3,}|\*{3,}|_{3,})$/.test(trimmed)) continue;
 
-    const prefix = line.match(/^\s*(?:[-•*]\s+)?/)?.[0].length ?? 0;
+    const prefix = line.match(/^\s*(?:>\s*)?(?:(?:[-•*–]|\d{1,3}[.)])\s+)?/)?.[0].length ?? 0;
     const content = line.slice(prefix);
     for (const m of content.matchAll(/[^.!?]+[.!?]*/g)) {
       const raw = m[0];
@@ -51,7 +54,7 @@ export function analyze(body: string): Readability {
       if (!words || m.index === undefined) continue;
       const lead = raw.length - raw.trimStart().length;
       const start = lineStart + prefix + m.index + lead;
-      sentences.push({ text, words, start, end: start + text.length });
+      sentences.push({ text: text.replace(/\*\*|==/g, ""), words, start, end: start + text.length });
       currentParagraph++;
     }
   }
@@ -73,5 +76,6 @@ export function containsTerm(text: string, term: string): boolean {
   const t = term.trim();
   if (!t) return false;
   const escaped = t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  return new RegExp(`(?<![\\p{L}\\p{N}])${escaped}(?![\\p{L}\\p{N}])`, "iu").test(text);
+  // Tanpa lookbehind (?<!…) supaya tetap jalan di Safari lama (iOS < 16.4).
+  return new RegExp(`(?:^|[^\\p{L}\\p{N}])${escaped}(?![\\p{L}\\p{N}])`, "iu").test(text);
 }

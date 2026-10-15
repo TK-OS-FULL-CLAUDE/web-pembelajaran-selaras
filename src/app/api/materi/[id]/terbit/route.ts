@@ -1,9 +1,10 @@
 import { fail, ok, withTeacher } from "@/lib/api";
 import { getLesson, publishLesson, unpublishLesson } from "@/lib/data";
+import { figureIds } from "@/lib/text";
 
 type Ctx = { params: Promise<{ id: string }> };
 
-/** Terbitkan: hanya bila materi asli terisi dan semua versi sudah dicek guru. */
+/** Terbitkan: hanya bila materi asli terisi, semua versi sudah dicek, dan semua gambar punya deskripsi yang sudah dicek. */
 export async function POST(_req: Request, { params }: Ctx) {
   return withTeacher(async (teacher) => {
     const { id } = await params;
@@ -15,6 +16,16 @@ export async function POST(_req: Request, { params }: Ctx) {
     const unchecked = Object.entries(lesson.versions).filter(([, v]) => v && v.text.trim() && !v.checked);
     if (unchecked.length) {
       return fail('Masih ada versi yang belum ditandai "Sudah dicek". Periksa tab Versi.', 422);
+    }
+    const texts = [lesson.body, ...Object.values(lesson.versions).map((v) => (v?.checked ? v.text : ""))];
+    const ids = [...new Set(texts.flatMap(figureIds))];
+    const figures = lesson.figures ?? {};
+    const missing = ids.filter((fid) => !figures[fid]?.alt?.trim() || !figures[fid]?.altChecked);
+    if (missing.length) {
+      return fail(
+        `${missing.length} gambar belum punya deskripsi yang dicek guru. Deskripsi ini dibacakan untuk siswa tunanetra dan low vision; periksa di tab Materi → Gambar.`,
+        422,
+      );
     }
     const row = await publishLesson(teacher.id, id);
     return ok({ status: row?.status, shareCode: row?.share_code });

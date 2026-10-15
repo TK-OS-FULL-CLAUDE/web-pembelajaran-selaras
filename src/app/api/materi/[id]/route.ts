@@ -1,5 +1,15 @@
 import { z } from "zod";
-import { fail, glossaryInput, ok, quizInput, readJson, teachingKitInput, versionsInput, withTeacher } from "@/lib/api";
+import {
+  figuresInput,
+  fail,
+  glossaryInput,
+  ok,
+  quizInput,
+  readJson,
+  teachingKitInput,
+  versionsInput,
+  withTeacher,
+} from "@/lib/api";
 import { deleteLesson, updateLesson } from "@/lib/data";
 
 type Ctx = { params: Promise<{ id: string }> };
@@ -11,6 +21,10 @@ const patchSchema = z.object({
   glossary: glossaryInput.optional(),
   versions: versionsInput.optional(),
   quiz: quizInput.optional(),
+  figures: figuresInput.optional(),
+  topic: z.string().trim().max(120).optional(),
+  target_grade: z.string().trim().max(80).optional(),
+  is_template: z.boolean().optional(),
   teachingKit: teachingKitInput.optional(),
   // Revisi yang dilihat editor; bila materi sudah diubah di tempat lain, simpan ditolak (409).
   baseRevision: z.number().int().min(1).optional(),

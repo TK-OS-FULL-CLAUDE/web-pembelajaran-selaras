@@ -73,13 +73,64 @@ export type LessonVersion = {
 
 export type LessonVersions = Partial<Record<VersionKey, LessonVersion>>;
 
+/**
+ * Jenis soal:
+ * - pg    = pilihan ganda (satu jawaban benar)
+ * - pgk   = pilihan ganda kompleks (bisa lebih dari satu jawaban benar)
+ * - bs    = benar/salah untuk satu pernyataan
+ * - isian = isian singkat (jawaban pendek, beberapa jawaban boleh diterima)
+ * - jodoh = menjodohkan (pasangan kiri–kanan)
+ */
+export type QuizType = "pg" | "pgk" | "bs" | "isian" | "jodoh";
+
+export const QUIZ_TYPES: QuizType[] = ["pg", "pgk", "bs", "isian", "jodoh"];
+
+export const QUIZ_TYPE_LABEL: Record<QuizType, string> = {
+  pg: "Pilihan ganda",
+  pgk: "Pilihan ganda kompleks",
+  bs: "Benar / salah",
+  isian: "Isian singkat",
+  jodoh: "Menjodohkan",
+};
+
+export type MatchPair = { kiri: string; kanan: string };
+
 export type QuizQuestion = {
+  /** Konsep yang dinilai, ditetapkan guru untuk rekap pembelajaran. */
+  concept?: string;
+  /** Kosong = "pg" (data lama sebelum ada jenis soal). */
+  type?: QuizType;
   q: string;
+  /** pg & pgk: pilihan jawaban. bs: ["Benar", "Salah"]. */
   options: string[];
+  /** pg: indeks jawaban benar. bs: 0 = Benar, 1 = Salah. */
   answer: number;
+  /** pgk: semua indeks jawaban benar. */
+  answers?: number[];
+  /** isian: jawaban yang diterima (tidak peka huruf besar/kecil dan tanda baca). */
+  accepted?: string[];
+  /** jodoh: pasangan yang benar. Urutan kanan diacak di layar siswa. */
+  pairs?: MatchPair[];
   explain: string;
   origin?: "ai" | "guru";
 };
+
+/**
+ * Gambar atau diagram di materi. Ditulis di teks sebagai baris `![keterangan](gambar:ID)`;
+ * deskripsi gambar (alt text) untuk siswa tunanetra dan low vision disimpan di sini, per ID gambar.
+ */
+export type LessonFigure = {
+  /** Deskripsi gambar yang dibacakan pembaca layar dan tombol "Dengarkan". */
+  alt: string;
+  /** "ai" = draf dari AI, "guru" = ditulis/diubah guru */
+  altOrigin: "ai" | "guru";
+  /** Guru sudah membaca dan menyetujui deskripsinya. Wajib sebelum terbit. */
+  altChecked: boolean;
+  width?: number;
+  height?: number;
+};
+
+export type LessonFigures = Record<string, LessonFigure>;
 
 // ---------- Perangkat ajar (modul ajar, LKPD, rubrik) ----------
 // Hanya untuk guru: disimpan di lessons.teaching_kit dan tidak pernah dikirim ke halaman siswa.
@@ -161,6 +212,9 @@ export type ClassRow = {
 };
 
 export type LessonRow = {
+  topic?: string;
+  target_grade?: string;
+  is_template?: boolean;
   id: string;
   teacher_id: string;
   class_id: string | null;
@@ -170,6 +224,7 @@ export type LessonRow = {
   glossary: GlossaryItem[];
   versions: LessonVersions;
   quiz: QuizQuestion[];
+  figures: LessonFigures;
   teaching_kit: TeachingKit;
   status: "draft" | "published";
   share_code: string | null;

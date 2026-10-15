@@ -5,10 +5,13 @@
 
 import {
   ALargeSmall,
+  BookA,
   BookOpen,
   Check,
+  ChevronDown,
   ChevronRight,
   Contrast,
+  FileText,
   Languages,
   ListChecks,
   Pause,
@@ -21,8 +24,11 @@ import {
   SpaceIcon,
   Volume2,
   X,
+  type LucideIcon,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { clearLearnerPreferences, enqueueEvent, flushEvents, outboxState, OUTBOX_CHANGED } from "@/lib/student-outbox";
+import { MODE_TONE, TONES, type ModeKey } from "@/lib/modes";
 import {
   DEFAULT_PREFS,
   VERSION_HTML_LANG,
@@ -31,10 +37,13 @@ import {
   VERSION_SPEECH_LANG,
   isRegionalVersion,
   type GlossaryItem,
+  type LessonFigures,
   type QuizQuestion,
   type StudentPrefs,
   type VersionKey,
 } from "@/lib/types";
+import type { QuestionResultPayload } from "./student-quiz";
+import { StudentQuiz } from "./student-quiz";
 import { ReaderText, useReaderStructure } from "../reader-text";
 import { AskTutor } from "./ask-tutor";
 import { ReadingRuler } from "./reading-ruler";
@@ -47,14 +56,18 @@ export type StudentLesson = {
   subject: string;
   className: string | null;
   teacherName: string;
+  schoolName?: string | null;
   body: string;
   glossary: GlossaryItem[];
   /** Hanya versi yang sudah dicek guru. */
   versions: Partial<Record<VersionKey, { text: string; glossary: GlossaryItem[] }>>;
+  /** Deskripsi gambar yang sudah dicek guru. */
+  figures: LessonFigures;
+  /** Hanya soal yang lengkap (lihat playableQuestion). */
   quiz: QuizQuestion[];
 };
 
-type Step = "mulai" | "pilih" | "baca" | "kuis" | "hasil";
+type Step = "mulai" | "pilih" | "baca" | "kuis";
 
 function readStorage<T>(key: string): T | null {
   try {
@@ -82,6 +95,22 @@ function newSessionId() {
   }
 }
 
+const VERSION_ICON: Record<"asli" | VersionKey, LucideIcon> = {
+  asli: FileText,
+  mudah: BookOpen,
+  ringkasan: ScrollText,
+  jawa: Languages,
+  sunda: Languages,
+};
+
+const VERSION_DESC: Record<"asli" | VersionKey, string> = {
+  asli: "Materi seperti yang ditulis gurumu.",
+  mudah: "Kalimat pendek dan kata sehari-hari.",
+  ringkasan: "Poin-poin penting saja.",
+  jawa: "Materi dalam Basa Jawa.",
+  sunda: "Materi dalam Basa Sunda.",
+};
+
 export function StudentApp({ lesson }: { lesson: StudentLesson }) {
   const prefsKey = `selaras:prefs:${lesson.code}`;
   const sessionKey = `selaras:sesi:${lesson.code}`;
@@ -92,36 +121,52 @@ export function StudentApp({ lesson }: { lesson: StudentLesson }) {
   const [prefs, setPrefs] = useState<StudentPrefs>(DEFAULT_PREFS);
   const [sessionId, setSessionId] = useState("");
   const [rate, setRate] = useState<SpeechRate>(1);
+  const [device, setDevice] = useState<"personal" | "shared">("shared");
+  const [delivery, setDelivery] = useState({ pending: 0, volatile: false });
+  const [switchError, setSwitchError] = useState("");
   const speech = useSpeech();
   const lastLogged = useRef<string>("");
 
   // Muat pilihan tersimpan (siswa yang kembali langsung ke bacaan).
   useEffect(() => {
-    const saved = readStorage<StudentPrefs>(prefsKey) ?? readStorage<StudentPrefs>(GLOBAL_PREFS_KEY);
-    const savedAlias = readStorage<string>("selaras:nama");
-    let sid = readStorage<string>(sessionKey);
-    if (!sid) {
-      sid = newSessionId();
-      writeStorage(sessionKey, sid);
-    }
-    setSessionId(sid);
-    if (savedAlias) setAlias(savedAlias);
-    if (saved) {
-      setPrefs(sanitize(saved, lesson));
-      setStep("baca");
+    const mode = readStorage<string>("selaras:perangkat") === "personal" ? "personal" : "shared";
+    setDevice(mode);
+    // Awal selalu menjelaskan tujuan materi dan siapa yang memakai perangkat.
+    if (mode === "personal") {
+      const saved = readStorage<StudentPrefs>(prefsKey) ?? readStorage<StudentPrefs>(GLOBAL_PREFS_KEY);
+      if (saved) setPrefs(sanitize(saved, lesson));
+      setAlias(readStorage<string>("selaras:nama") ?? "");
     }
     setReady(true);
   }, [prefsKey, sessionKey, lesson]);
 
+  useEffect(() => {
+    const refresh = () => setDelivery(outboxState());
+    const retry = () => { void flushEvents(); };
+    refresh(); retry();
+    window.addEventListener(OUTBOX_CHANGED, refresh);
+    window.addEventListener("storage", refresh);
+    window.addEventListener("online", retry);
+    const timer = setInterval(retry, 15000);
+    const unload = (e: BeforeUnloadEvent) => { if (outboxState().volatile) e.preventDefault(); };
+    window.addEventListener("beforeunload", unload);
+    return () => {
+      clearInterval(timer);
+      window.removeEventListener(OUTBOX_CHANGED, refresh);
+      window.removeEventListener("storage", refresh);
+      window.removeEventListener("online", retry);
+      window.removeEventListener("beforeunload", unload);
+    };
+  }, []);
+
   const log = useCallback(
-    (kind: "open" | "quiz", extra: { score?: number; total?: number; durasi?: number } = {}) => {
+    (
+      kind: "open" | "quiz",
+      extra: { score?: number; total?: number; durasi?: number; detail?: QuestionResultPayload[] } = {},
+    ) => {
       if (!sessionId) return;
-      fetch(`/api/s/${lesson.code}/catat`, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ sessionId, kind, alias: alias.trim() || null, prefs, ...extra }),
-        keepalive: true,
-      }).catch(() => {});
+      enqueueEvent({ eventId: newSessionId(), occurredAt: new Date().toISOString(), code: lesson.code,
+        sessionId, kind, alias: alias.trim() || null, prefs, ...extra });
     },
     [sessionId, lesson.code, alias, prefs],
   );
@@ -145,14 +190,56 @@ export function StudentApp({ lesson }: { lesson: StudentLesson }) {
   const updatePrefs = (patch: Partial<StudentPrefs>) => {
     setPrefs((p) => {
       const next = { ...p, ...patch };
-      writeStorage(prefsKey, next);
-      writeStorage(GLOBAL_PREFS_KEY, next);
+      if (device === "personal") {
+        writeStorage(prefsKey, next);
+        writeStorage(GLOBAL_PREFS_KEY, next);
+      }
       return next;
     });
   };
 
+  const go = (next: Step) => {
+    speech.stop();
+    setStep(next);
+    window.scrollTo({ top: 0 });
+  };
+
+  const resetLearner = (finished = false) => {
+    if (outboxState().volatile) {
+      setSwitchError("Hasil belum aman tersimpan. Sambungkan internet lalu tekan Kirim ulang sebelum berganti siswa.");
+      return;
+    }
+    if (step === "kuis" && !finished && !window.confirm("Ganti siswa? Jawaban kuis yang belum diselesaikan akan dikosongkan.")) return;
+    speech.stop();
+    try { clearLearnerPreferences(localStorage); } catch { /* Preferensi di memori tetap direset. */ }
+    setAlias(""); setPrefs(DEFAULT_PREFS); setRate(1); setSessionId("");
+    lastLogged.current = ""; setSwitchError(""); setStep("mulai");
+    window.scrollTo({ top: 0 });
+  };
+
+  const changeDevice = (mode: "personal" | "shared") => {
+    setDevice(mode); writeStorage("selaras:perangkat", mode);
+    setAlias(""); setPrefs(DEFAULT_PREFS);
+    try { clearLearnerPreferences(localStorage); } catch { /* Tetap aman di memori. */ }
+  };
+
   const shell = (children: React.ReactNode) => (
     <div className="reader min-h-dvh" data-besar={prefs.besar} data-kontras={prefs.kontras} data-spasi={prefs.spasi}>
+      {ready && <div className="no-print border-b border-garis bg-white px-4 py-3 text-tinta">
+        <div className="mx-auto flex max-w-4xl flex-wrap items-center justify-between gap-3">
+          <div><p className="font-bold">{lesson.className || "Materi umum"} · {lesson.teacherName}</p>
+            {lesson.schoolName && <p className="text-sm">Sekolah guru: {lesson.schoolName}</p>}
+            <p className="text-sm">{device === "shared" ? "Perangkat bersama" : "Perangkat pribadi"}{sessionId && alias ? ` · ${alias}` : ""}</p>
+          </div>
+          {sessionId && <button type="button" onClick={() => resetLearner()} className="min-h-12 rounded-xl border-2 border-papan px-4 font-bold text-papan">Ganti siswa</button>}
+        </div>
+        <div className="mx-auto mt-2 max-w-4xl text-sm" role="status" aria-live="polite">
+          {delivery.pending ? <><span>{delivery.volatile ? "Hasil belum tersimpan aman. Jangan tutup halaman." : `${delivery.pending} catatan tersimpan di perangkat, menunggu dikirim. Jangan hapus data browser.`}</span>{" "}
+            <button type="button" className="min-h-12 px-2 font-bold underline" onClick={() => void flushEvents()}>Kirim ulang</button></>
+            : sessionId ? "Semua catatan belajar yang selesai dikirim sudah tersimpan." : null}
+        </div>
+        {switchError && <p role="alert" className="mx-auto max-w-4xl text-galat">{switchError}</p>}
+      </div>}
       {children}
     </div>
   );
@@ -161,43 +248,27 @@ export function StudentApp({ lesson }: { lesson: StudentLesson }) {
 
   if (step === "mulai") {
     return shell(
-      <main id="isi" className="mx-auto flex min-h-dvh max-w-xl flex-col justify-center px-5 py-10">
-        <p className="text-[16px] text-[var(--reader-soft)]">
-          {[lesson.subject, lesson.className, lesson.teacherName].filter(Boolean).join(", ")}
-        </p>
-        <h1 className="mt-2 font-display text-[2.2rem] font-extrabold leading-tight">{lesson.title}</h1>
-        <form
-          className="mt-8 space-y-4"
-          onSubmit={(e) => {
-            e.preventDefault();
-            writeStorage("selaras:nama", alias.trim());
-            setStep("pilih");
-            window.scrollTo({ top: 0 });
-          }}
-        >
-          <label htmlFor="nama" className="block text-[18px] font-bold">
-            Nama panggilanmu
-          </label>
-          <input
-            id="nama"
-            value={alias}
-            onChange={(e) => setAlias(e.target.value.slice(0, 40))}
-            autoComplete="nickname"
-            placeholder="Contoh: Dimas"
-            className="h-14 w-full rounded-xl border-2 border-batas bg-white px-4 text-[19px] text-tinta"
-          />
-          <p className="text-[15px] text-[var(--reader-soft)]">
-            Boleh dikosongkan. Cukup nama panggilan, bukan nama lengkap.
-          </p>
-          <button
-            type="submit"
-            className="flex h-14 w-full items-center justify-center gap-2 rounded-xl bg-papan text-[19px] font-bold text-white hover:bg-papan-600"
-          >
-            Mulai belajar
-            <ChevronRight className="size-5" aria-hidden />
-          </button>
-        </form>
-      </main>,
+      <><fieldset className="mx-auto mt-5 max-w-3xl px-5 text-tinta">
+        <legend className="font-bold">Perangkat ini dipakai siapa?</legend>
+        <div className="mt-2 flex flex-wrap gap-3">
+          {(["shared", "personal"] as const).map((mode) => <label key={mode} className="flex min-h-12 items-center gap-2 rounded-xl border border-batas bg-white px-4">
+            <input type="radio" name="perangkat" checked={device === mode} onChange={() => changeDevice(mode)} />
+            {mode === "shared" ? "Bersama / bergantian" : "Pribadi"}
+          </label>)}
+        </div>
+        <p className="mt-2 text-sm">{device === "shared" ? "Setiap siswa memulai sesi baru. Pilihan siswa sebelumnya tidak dipakai kembali." : "Pilihanmu diingat pada perangkat ini. Gunakan Ganti siswa jika orang lain akan belajar."}</p>
+      </fieldset><Welcome
+        lesson={lesson}
+        alias={alias}
+        setAlias={setAlias}
+        onStart={() => {
+          const sid = device === "personal" ? readStorage<string>(sessionKey) || newSessionId() : newSessionId();
+          setSessionId(sid);
+          if (device === "personal") { writeStorage("selaras:nama", alias.trim()); writeStorage(sessionKey, sid); }
+          else { try { clearLearnerPreferences(localStorage); } catch {} }
+          go("pilih");
+        }}
+      /></>,
     );
   }
 
@@ -209,29 +280,27 @@ export function StudentApp({ lesson }: { lesson: StudentLesson }) {
         speechSupported={speech.supported}
         onChange={updatePrefs}
         onDone={() => {
-          writeStorage(prefsKey, prefs);
-          writeStorage(GLOBAL_PREFS_KEY, prefs);
-          setStep("baca");
-          window.scrollTo({ top: 0 });
+          if (device === "personal") {
+            writeStorage(prefsKey, prefs);
+            writeStorage(GLOBAL_PREFS_KEY, prefs);
+          }
+          go("baca");
         }}
       />,
     );
   }
 
-  if (step === "kuis" || step === "hasil") {
+  if (step === "kuis") {
     return shell(
-      <Quiz
-        lesson={lesson}
+      <StudentQuiz
+        key={sessionId}
+        onSwitchStudent={() => resetLearner(true)}
+        questions={lesson.quiz}
+        title={lesson.title}
         speech={speech}
         rate={rate}
-        onFinish={(score, total, durasi) => {
-          log("quiz", { score, total, durasi });
-        }}
-        onBack={() => {
-          speech.stop();
-          setStep("baca");
-          window.scrollTo({ top: 0 });
-        }}
+        onFinish={(score, total, durasi, detail) => log("quiz", { score, total, durasi, detail })}
+        onBack={() => go("baca")}
       />,
     );
   }
@@ -244,16 +313,8 @@ export function StudentApp({ lesson }: { lesson: StudentLesson }) {
       speech={speech}
       rate={rate}
       setRate={setRate}
-      onChangeMode={() => {
-        speech.stop();
-        setStep("pilih");
-        window.scrollTo({ top: 0 });
-      }}
-      onQuiz={() => {
-        speech.stop();
-        setStep("kuis");
-        window.scrollTo({ top: 0 });
-      }}
+      onChangeMode={() => go("pilih")}
+      onQuiz={() => go("kuis")}
     />,
   );
 }
@@ -265,6 +326,106 @@ function sanitize(p: StudentPrefs, lesson: StudentLesson): StudentPrefs {
 }
 
 // ---------------------------------------------------------------------------
+
+function Welcome({
+  lesson,
+  alias,
+  setAlias,
+  onStart,
+}: {
+  lesson: StudentLesson;
+  alias: string;
+  setAlias: (v: string) => void;
+  onStart: () => void;
+}) {
+  const modes: ModeKey[] = [...VERSION_KEYS.filter((k) => lesson.versions[k]), "dengar", "besar", "kontras", "spasi"];
+  return (
+    <main id="isi" className="latar-titik flex min-h-dvh items-center justify-center px-4 py-10">
+      <div className="muncul w-full max-w-xl overflow-hidden rounded-[1.75rem] border border-[var(--reader-line)] bg-[var(--reader-bg)] shadow-angkat">
+        <div className="pita-warna" aria-hidden />
+        <div className="p-6 sm:p-8">
+          <p className="flex flex-wrap gap-2 text-[15px]">
+            {[lesson.subject, lesson.className, lesson.teacherName].filter(Boolean).map((t) => (
+              <span key={t} className="rounded-full bg-papan-50 px-3 py-1 font-bold text-papan">
+                {t}
+              </span>
+            ))}
+          </p>
+          <h1 className="mt-4 font-display text-[2.1rem] font-extrabold leading-tight sm:text-[2.5rem]">
+            {lesson.title}
+          </h1>
+          <p className="mt-3 text-[17px] text-[var(--reader-soft)]">
+            Kamu bisa membaca materi ini dengan cara yang paling nyaman untukmu.
+          </p>
+          <ul className="mt-4 flex flex-wrap gap-2" aria-label="Cara belajar yang tersedia">
+            {modes.map((m) => {
+              const Icon = m in VERSION_ICON ? VERSION_ICON[m as VersionKey] : MODE_ICON[m as keyof typeof MODE_ICON];
+              return (
+                <li
+                  key={m}
+                  className={cx(
+                    "inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[14px] font-bold",
+                    TONES[MODE_TONE[m]].chip,
+                  )}
+                >
+                  <Icon className="size-4" aria-hidden />
+                  {m in VERSION_LABEL ? VERSION_LABEL[m as VersionKey] : MODE_LABEL[m as keyof typeof MODE_LABEL]}
+                </li>
+              );
+            })}
+          </ul>
+          <form
+            className="mt-8 space-y-3"
+            onSubmit={(e) => {
+              e.preventDefault();
+              onStart();
+            }}
+          >
+            <label htmlFor="nama" className="block text-[18px] font-bold">
+              Nama panggilanmu
+            </label>
+            <input
+              id="nama"
+              value={alias}
+              onChange={(e) => setAlias(e.target.value.slice(0, 40))}
+              autoComplete="nickname"
+              placeholder="Contoh: Dimas"
+              className="h-14 w-full rounded-2xl border-2 border-batas bg-white px-4 text-[19px] text-tinta focus:border-papan focus:outline-none focus:ring-4 focus:ring-papan/15"
+            />
+            <p className="pb-3 text-[15px] text-[var(--reader-soft)]">
+              Boleh dikosongkan. Cukup nama panggilan, bukan nama lengkap.
+            </p>
+            <button
+              type="submit"
+              className="flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-papan text-[19px] font-bold text-white shadow-kartu hover:bg-papan-600"
+            >
+              Mulai belajar
+              <ChevronRight className="size-5" aria-hidden />
+            </button>
+          </form>
+        </div>
+      </div>
+    </main>
+  );
+}
+
+// ---------------------------------------------------------------------------
+
+const MODE_ICON = {
+  dengar: Volume2,
+  besar: ALargeSmall,
+  kontras: Contrast,
+  spasi: SpaceIcon,
+  garis: Ruler,
+} as const;
+
+const MODE_LABEL = {
+  dengar: "Dibacakan",
+  besar: "Huruf besar",
+  kontras: "Kontras tinggi",
+  spasi: "Spasi lega",
+  garis: "Garis bantu",
+} as const;
 
 function ChooseMode({
   lesson,
@@ -279,132 +440,147 @@ function ChooseMode({
   onChange: (p: Partial<StudentPrefs>) => void;
   onDone: () => void;
 }) {
-  const tiles: {
-    id: string;
-    title: string;
+  const versions = (["asli", ...VERSION_KEYS] as const).filter((k) => k === "asli" || lesson.versions[k]);
+  const extras: {
+    key: "dengar" | "besar" | "kontras" | "spasi";
     desc: string;
-    on: boolean;
-    toggle: () => void;
-    sample: React.ReactNode;
-    show: boolean;
+    sample?: React.ReactNode;
+    disabled?: boolean;
   }[] = [
     {
-      id: "mudah",
-      title: "Kalimat lebih mudah",
-      desc: "Kalimat pendek dan kata sehari-hari.",
-      on: prefs.versi === "mudah",
-      toggle: () => onChange({ versi: prefs.versi === "mudah" ? "asli" : "mudah" }),
-      sample: <BookOpen className="size-7" aria-hidden />,
-      show: !!lesson.versions.mudah,
-    },
-    {
-      id: "ringkasan",
-      title: "Poin penting saja",
-      desc: "Ringkasan singkat isi materi.",
-      on: prefs.versi === "ringkasan",
-      toggle: () => onChange({ versi: prefs.versi === "ringkasan" ? "asli" : "ringkasan" }),
-      sample: <ScrollText className="size-7" aria-hidden />,
-      show: !!lesson.versions.ringkasan,
-    },
-    ...(["jawa", "sunda"] as const).map((key) => ({
-      id: key,
-      title: `Pakai ${VERSION_LABEL[key]}`,
-      desc: "Materi dalam bahasa rumahmu.",
-      on: prefs.versi === key,
-      toggle: () => onChange({ versi: prefs.versi === key ? "asli" : key }),
-      sample: <Languages className="size-7" aria-hidden />,
-      show: !!lesson.versions[key],
-    })),
-    {
-      id: "dengar",
-      title: "Dibacakan",
+      key: "dengar",
       desc: speechSupported ? "Materi dibacakan suara, kalimatnya disorot." : "Browser ini belum bisa membacakan teks.",
-      on: prefs.dengar,
-      toggle: () => onChange({ dengar: !prefs.dengar }),
-      sample: <Volume2 className="size-7" aria-hidden />,
-      show: true,
+      disabled: !speechSupported,
     },
     {
-      id: "besar",
-      title: "Huruf besar",
+      key: "besar",
       desc: "Tulisan lebih besar dan jelas.",
-      on: prefs.besar,
-      toggle: () => onChange({ besar: !prefs.besar }),
-      sample: <span className="font-display text-[30px] font-extrabold leading-none">Aa</span>,
-      show: true,
+      sample: <span className="font-display text-[26px] font-extrabold leading-none">Aa</span>,
     },
     {
-      id: "kontras",
-      title: "Kontras tinggi",
-      desc: "Huruf hitam di latar krem.",
-      on: prefs.kontras,
-      toggle: () => onChange({ kontras: !prefs.kontras }),
+      key: "kontras",
+      desc: "Huruf hitam tebal di latar krem.",
       sample: (
-        <span className="rounded bg-[#fffbe6] px-2 py-0.5 text-[20px] font-bold text-black ring-2 ring-black">Aa</span>
+        <span className="rounded bg-[#fffbe6] px-1.5 text-[18px] font-bold text-black ring-2 ring-black">Aa</span>
       ),
-      show: true,
     },
     {
-      id: "spasi",
-      title: "Spasi lega",
+      key: "spasi",
       desc: "Jarak huruf dan baris lebih lebar.",
-      on: prefs.spasi,
-      toggle: () => onChange({ spasi: !prefs.spasi }),
-      sample: <span className="whitespace-nowrap text-[17px] font-bold tracking-[0.18em]">abc</span>,
-      show: true,
+      sample: <span className="text-[15px] font-bold tracking-[0.2em]">abc</span>,
     },
   ];
+  const plain = prefs.versi === "asli" && !prefs.besar && !prefs.kontras && !prefs.spasi && !prefs.dengar;
 
   return (
-    <main id="isi" className="mx-auto max-w-2xl px-5 py-10">
-      <h1 className="font-display text-[1.9rem] font-extrabold leading-tight">Bagaimana kamu paling nyaman belajar?</h1>
-      <p className="mt-2 text-[17px] text-[var(--reader-soft)]">
-        Pilih satu atau beberapa. Kamu bisa menggantinya kapan saja.
-      </p>
-      <ul className="mt-6 grid gap-3 sm:grid-cols-2">
-        {tiles
-          .filter((t) => t.show)
-          .map((t) => (
-            <li key={t.id}>
+    <main id="isi" className="mx-auto max-w-3xl px-4 py-8 sm:py-12">
+      <p className="text-[15px] font-bold text-[var(--reader-soft)]">{lesson.title}</p>
+      <h1 className="mt-1 font-display text-[1.9rem] font-extrabold leading-tight">
+        Bagaimana kamu paling nyaman belajar?
+      </h1>
+      <p className="mt-2 text-[17px] text-[var(--reader-soft)]">Kamu bisa menggantinya kapan saja.</p>
+
+      {versions.length > 1 && (
+        <fieldset className="mt-7">
+          <legend className="font-display text-[19px] font-extrabold">1. Pilih teks yang mau dibaca</legend>
+          <div className="mt-3 grid gap-3 sm:grid-cols-2">
+            {versions.map((k) => {
+              const tone = TONES[MODE_TONE[k]];
+              const on = prefs.versi === k;
+              const Icon = VERSION_ICON[k];
+              return (
+                <label
+                  key={k}
+                  className={cx(
+                    "flex min-h-20 cursor-pointer items-center gap-4 rounded-2xl border-2 bg-white p-4 text-tinta transition-colors has-[:focus-visible]:outline has-[:focus-visible]:outline-3 has-[:focus-visible]:outline-aksen",
+                    on ? cx(tone.border, tone.soft) : "border-[var(--reader-line)] hover:border-batas",
+                  )}
+                >
+                  <input
+                    type="radio"
+                    name="versi"
+                    className="sr-only"
+                    checked={on}
+                    onChange={() => onChange({ versi: k })}
+                  />
+                  <span
+                    className={cx("flex size-12 shrink-0 items-center justify-center rounded-xl", tone.chip)}
+                    aria-hidden
+                  >
+                    <Icon className="size-6" />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-[18px] font-bold">{VERSION_LABEL[k]}</span>
+                    <span className="block text-[15px] text-tinta-2">{VERSION_DESC[k]}</span>
+                  </span>
+                  <span
+                    className={cx(
+                      "flex size-7 shrink-0 items-center justify-center rounded-full border-2",
+                      on ? cx(tone.border, tone.solid) : "border-batas",
+                    )}
+                    aria-hidden
+                  >
+                    {on && <Check className="size-4" />}
+                  </span>
+                </label>
+              );
+            })}
+          </div>
+        </fieldset>
+      )}
+
+      <fieldset className="mt-8">
+        <legend className="font-display text-[19px] font-extrabold">
+          {versions.length > 1 ? "2. Tambahan (boleh pilih beberapa)" : "Pilih satu atau beberapa"}
+        </legend>
+        <div className="mt-3 grid gap-3 sm:grid-cols-2">
+          {extras.map((t) => {
+            const tone = TONES[MODE_TONE[t.key]];
+            const on = prefs[t.key];
+            const Icon = MODE_ICON[t.key];
+            return (
               <button
+                key={t.key}
                 type="button"
-                aria-pressed={t.on}
-                onClick={t.toggle}
+                aria-pressed={on}
+                disabled={t.disabled}
+                onClick={() => onChange({ [t.key]: !on })}
                 className={cx(
-                  "flex min-h-24 w-full items-center gap-4 rounded-2xl border-2 bg-white p-4 text-left text-tinta transition-colors",
-                  t.on
-                    ? "border-papan bg-papan-50 ring-2 ring-papan"
-                    : "border-[var(--reader-line)] hover:border-papan",
+                  "flex min-h-20 w-full items-center gap-4 rounded-2xl border-2 bg-white p-4 text-left text-tinta transition-colors disabled:cursor-not-allowed disabled:opacity-60",
+                  on ? cx(tone.border, tone.soft) : "border-[var(--reader-line)] hover:border-batas",
                 )}
               >
-                <span className="flex size-14 shrink-0 items-center justify-center rounded-xl bg-papan-50 text-papan">
-                  {t.sample}
+                <span
+                  className={cx("flex size-12 shrink-0 items-center justify-center rounded-xl", tone.chip)}
+                  aria-hidden
+                >
+                  {t.sample ?? <Icon className="size-6" />}
                 </span>
                 <span className="min-w-0 flex-1">
-                  <span className="block text-[18px] font-bold">{t.title}</span>
+                  <span className="block text-[18px] font-bold">{MODE_LABEL[t.key]}</span>
                   <span className="block text-[15px] text-tinta-2">{t.desc}</span>
                 </span>
                 <span
                   className={cx(
-                    "flex size-7 shrink-0 items-center justify-center rounded-full border-2",
-                    t.on ? "border-papan bg-papan text-white" : "border-batas",
+                    "flex size-7 shrink-0 items-center justify-center rounded-lg border-2",
+                    on ? cx(tone.border, tone.solid) : "border-batas",
                   )}
                   aria-hidden
                 >
-                  {t.on && <Check className="size-4" />}
+                  {on && <Check className="size-4" />}
                 </span>
               </button>
-            </li>
-          ))}
-      </ul>
+            );
+          })}
+        </div>
+      </fieldset>
+
       <button
         type="button"
         onClick={onDone}
-        className="mt-8 flex h-14 w-full items-center justify-center gap-2 rounded-xl bg-papan text-[19px] font-bold text-white hover:bg-papan-600"
+        className="mt-9 flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-papan text-[19px] font-bold text-white shadow-kartu hover:bg-papan-600"
       >
-        {prefs.versi === "asli" && !prefs.besar && !prefs.kontras && !prefs.spasi && !prefs.dengar
-          ? "Pakai tampilan biasa"
-          : "Lanjut membaca"}
+        {plain ? "Pakai tampilan biasa" : "Lanjut membaca"}
         <ChevronRight className="size-5" aria-hidden />
       </button>
     </main>
@@ -440,12 +616,13 @@ function Reader({
     return [...(version?.glossary ?? []), ...lesson.glossary];
   }, [prefs.versi, version, lesson]);
   const speechLang = VERSION_SPEECH_LANG[prefs.versi];
-  const { sentences } = useReaderStructure(text);
+  const { sentences } = useReaderStructure(text, lesson.figures);
   const [term, setTerm] = useState<GlossaryItem | null>(null);
   const autoStarted = useRef(false);
   // Kalimat tempat bacaan dijeda, supaya "Lanjutkan" tidak mengulang dari awal.
   const [resumeAt, setResumeAt] = useState<number | null>(null);
   const [ruler, setRuler] = useState(false);
+  const versionTone = TONES[MODE_TONE[prefs.versi]];
   // Yang sedang dibacakan adalah jawaban tutor, bukan teks materi (jangan menyorot kalimat materi).
   const [answerMode, setAnswerMode] = useState(false);
 
@@ -476,10 +653,7 @@ function Reader({
     el?.scrollIntoView({ block: "center", behavior: "smooth" });
   }, [speech.current]);
 
-  const versions: { key: StudentPrefs["versi"]; label: string }[] = [
-    { key: "asli", label: VERSION_LABEL.asli },
-    ...VERSION_KEYS.filter((k) => lesson.versions[k]).map((k) => ({ key: k, label: VERSION_LABEL[k] })),
-  ];
+  const versions = (["asli", ...VERSION_KEYS] as const).filter((k) => k === "asli" || lesson.versions[k]);
 
   const toggles = [
     { key: "besar" as const, label: "Huruf besar", icon: ALargeSmall },
@@ -495,59 +669,96 @@ function Reader({
   const speakAnswer = (answer: string) => {
     setAnswerMode(true);
     setResumeAt(null);
-    speech.speak([answer.replace(/^-s*/gm, "")], { lang: speechLang, rate });
+    speech.speak([answer.replace(/^-\s*/gm, "")], { lang: speechLang, rate });
+  };
+  /** Bacakan satu bagian saja (mis. deskripsi gambar) tanpa menyorot kalimat materi yang lain. */
+  const speakOne = (part: string) => {
+    setAnswerMode(true);
+    setResumeAt(null);
+    speech.speak([part], { lang: "id-ID", rate });
   };
   const pause = () => {
     setResumeAt(Math.max(0, speech.current));
     speech.stop();
   };
 
+  const chip = (on: boolean, tone: (typeof TONES)[keyof typeof TONES]) =>
+    cx(
+      "inline-flex h-11 shrink-0 items-center gap-1.5 rounded-xl border-2 px-3 text-[15px] font-bold transition-colors",
+      on ? cx(tone.border, tone.solid) : "border-[var(--reader-line)] bg-white text-tinta hover:border-batas",
+    );
+
   return (
     <div>
       {ruler && <ReadingRuler />}
-      <div className="no-print border-b border-[var(--reader-line)] bg-[var(--reader-bg)]">
-        <div className="mx-auto max-w-3xl space-y-2 px-4 py-2.5">
-          {versions.length > 1 && (
-            <div
-              className={cx(
-                "gap-1 rounded-xl bg-black/5 p-1",
-                versions.length >= 5 ? "grid grid-cols-3 sm:flex" : versions.length === 4 ? "grid grid-cols-2 sm:flex" : "flex",
-              )}
-              role="group"
-              aria-label="Versi teks"
+      <div className="no-print sticky top-0 z-30 border-b border-[var(--reader-line)] bg-[var(--reader-bg)]/95 backdrop-blur">
+        <div className="mx-auto max-w-4xl space-y-2 px-3 py-2.5 sm:px-4">
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={onChangeMode}
+              aria-label="Ganti cara belajar"
+              className="inline-flex h-11 shrink-0 items-center gap-1.5 rounded-xl px-2.5 font-bold text-[var(--reader-ink)] hover:bg-black/5"
             >
-              {versions.map((v) => (
+              <Settings2 className="size-5" aria-hidden />
+              <span className="hidden sm:inline">Cara belajar</span>
+            </button>
+            <p className="min-w-0 flex-1 truncate font-display text-[16px] font-extrabold">{lesson.title}</p>
+            {speech.supported && (
+              <div className="flex shrink-0 items-center gap-1.5">
+                {!speech.speaking && resumeAt !== null && (
+                  <button
+                    type="button"
+                    onClick={() => play(0)}
+                    className="inline-flex h-11 items-center gap-1.5 rounded-xl border-2 border-[var(--reader-line)] bg-white px-2.5 text-[15px] font-bold text-tinta hover:border-batas"
+                    aria-label="Dengarkan dari awal"
+                  >
+                    <RotateCcw className="size-5" aria-hidden />
+                  </button>
+                )}
                 <button
-                  key={v.key}
                   type="button"
-                  aria-pressed={prefs.versi === v.key}
-                  onClick={() => {
-                    speech.stop();
-                    onChange({ versi: v.key });
-                  }}
-                  className={cx(
-                    "h-11 flex-1 rounded-lg px-2 text-[16px] font-bold",
-                    prefs.versi === v.key ? "bg-papan text-white" : "text-[var(--reader-ink)] hover:bg-black/5",
-                  )}
+                  onClick={() => (speech.speaking ? pause() : play(resumeAt ?? 0))}
+                  className="inline-flex h-11 items-center gap-2 rounded-xl bg-jingga px-4 text-[16px] font-bold text-white shadow-kartu hover:brightness-110"
                 >
-                  {v.label}
+                  {speech.speaking ? <Pause className="size-5" aria-hidden /> : <Play className="size-5" aria-hidden />}
+                  {speech.speaking ? "Jeda" : resumeAt !== null ? "Lanjutkan" : "Dengarkan"}
                 </button>
-              ))}
+              </div>
+            )}
+          </div>
+
+          {versions.length > 1 && (
+            <div className="-mx-1 flex gap-1.5 overflow-x-auto px-1 pb-0.5" role="group" aria-label="Versi teks">
+              {versions.map((k) => {
+                const Icon = VERSION_ICON[k];
+                return (
+                  <button
+                    key={k}
+                    type="button"
+                    aria-pressed={prefs.versi === k}
+                    onClick={() => {
+                      speech.stop();
+                      onChange({ versi: k });
+                    }}
+                    className={chip(prefs.versi === k, TONES[MODE_TONE[k]])}
+                  >
+                    <Icon className="size-4" aria-hidden />
+                    {VERSION_LABEL[k]}
+                  </button>
+                );
+              })}
             </div>
           )}
-          <div className="flex flex-wrap items-center gap-1.5">
+
+          <div className="-mx-1 flex items-center gap-1.5 overflow-x-auto px-1 pb-0.5">
             {toggles.map((t) => (
               <button
                 key={t.key}
                 type="button"
                 aria-pressed={prefs[t.key]}
                 onClick={() => onChange({ [t.key]: !prefs[t.key] })}
-                className={cx(
-                  "inline-flex h-11 items-center gap-1.5 rounded-lg border-2 px-3 text-[15px] font-bold",
-                  prefs[t.key]
-                    ? "border-papan bg-papan text-white"
-                    : "border-[var(--reader-line)] bg-white text-tinta hover:border-papan",
-                )}
+                className={chip(prefs[t.key], TONES[MODE_TONE[t.key]])}
               >
                 <t.icon className="size-5" aria-hidden />
                 {t.label}
@@ -557,16 +768,13 @@ function Reader({
               type="button"
               aria-pressed={ruler}
               onClick={toggleRuler}
-              className={cx(
-                "inline-flex h-11 items-center gap-1.5 rounded-lg border-2 px-3 text-[15px] font-bold",
-                ruler ? "border-papan bg-papan text-white" : "border-[var(--reader-line)] bg-white text-tinta hover:border-papan",
-              )}
+              className={chip(ruler, TONES[MODE_TONE.garis])}
             >
               <Ruler className="size-5" aria-hidden />
               Garis bantu
             </button>
             {speech.supported && (
-              <div className="ml-auto flex items-center gap-1.5">
+              <>
                 <label htmlFor="kecepatan" className="sr-only">
                   Kecepatan suara
                 </label>
@@ -579,94 +787,107 @@ function Reader({
                     if (speech.speaking)
                       speech.speak(sentences, { lang: speechLang, rate: r, startAt: Math.max(0, speech.current) });
                   }}
-                  className="h-11 rounded-lg border-2 border-[var(--reader-line)] bg-white px-2 text-[15px] font-bold text-tinta"
+                  className="h-11 shrink-0 rounded-xl border-2 border-[var(--reader-line)] bg-white px-2 text-[15px] font-bold text-tinta"
                 >
-                  <option value={0.8}>Pelan</option>
-                  <option value={1}>Biasa</option>
-                  <option value={1.2}>Cepat</option>
+                  <option value={0.8}>Suara pelan</option>
+                  <option value={1}>Suara biasa</option>
+                  <option value={1.2}>Suara cepat</option>
                 </select>
-                {!speech.speaking && resumeAt !== null && (
-                  <button
-                    type="button"
-                    onClick={() => play(0)}
-                    className="inline-flex h-11 items-center gap-1.5 rounded-lg border-2 border-[var(--reader-line)] bg-white px-3 text-[15px] font-bold text-tinta hover:border-papan"
-                  >
-                    <RotateCcw className="size-5" aria-hidden />
-                    Dari awal
-                  </button>
-                )}
-                <button
-                  type="button"
-                  onClick={() => (speech.speaking ? pause() : play(resumeAt ?? 0))}
-                  className="inline-flex h-11 items-center gap-2 rounded-lg bg-aksen px-4 text-[16px] font-bold text-white hover:brightness-110"
-                >
-                  {speech.speaking ? <Pause className="size-5" aria-hidden /> : <Play className="size-5" aria-hidden />}
-                  {speech.speaking ? "Jeda" : resumeAt !== null ? "Lanjutkan" : "Dengarkan"}
-                </button>
-              </div>
+              </>
             )}
           </div>
         </div>
       </div>
 
-      <main id="isi" className="mx-auto max-w-3xl px-5 pb-40 pt-6">
-        <p className="text-[15px] text-[var(--reader-soft)]">
-          {[lesson.subject, lesson.className].filter(Boolean).join(", ")}
-        </p>
-        <div
-          className="mt-3"
-          lang={VERSION_HTML_LANG[prefs.versi]}
-        >
-          <ReaderText text={text} glossary={glossary} activeSentence={answerMode ? -1 : speech.current} onTerm={setTerm} />
+      <main id="isi" className="mx-auto max-w-4xl px-0 pb-40 pt-0 sm:px-4 sm:pt-6">
+        <article className="bg-[var(--reader-bg)] px-5 py-6 sm:rounded-[1.75rem] sm:border sm:border-[var(--reader-line)] sm:px-10 sm:py-10 sm:shadow-kartu">
+          <header className="mb-6 border-b border-[var(--reader-line)] pb-5">
+            <div className="flex flex-wrap items-center gap-2 text-[15px]">
+              {[lesson.subject, lesson.className].filter(Boolean).map((t) => (
+                <span key={t} className="font-bold text-[var(--reader-soft)]">
+                  {t}
+                </span>
+              ))}
+              {prefs.versi !== "asli" && (
+                <span className={cx("rounded-full px-2.5 py-0.5 text-[14px] font-bold", versionTone.chip)}>
+                  {VERSION_LABEL[prefs.versi]}
+                </span>
+              )}
+            </div>
+            <h1 className="mt-2 font-display text-[calc(var(--reader-size)*1.6)] font-extrabold leading-tight">
+              {lesson.title}
+            </h1>
+          </header>
+          <div lang={VERSION_HTML_LANG[prefs.versi]}>
+            <ReaderText
+              text={text}
+              glossary={glossary}
+              figures={lesson.figures}
+              activeSentence={answerMode ? -1 : speech.current}
+              onTerm={setTerm}
+              onSpeak={speech.supported ? speakOne : undefined}
+            />
+          </div>
+          {glossary.length > 0 && (
+            <p className="no-print mt-6 text-[15px] text-[var(--reader-soft)]">
+              Kata bergaris titik-titik bisa diketuk untuk melihat artinya.
+            </p>
+          )}
+          {glossary.length > 0 && <GlossaryList items={glossary} />}
+        </article>
+
+        <div className="mx-5 sm:mx-0">
+          <AskTutor
+            code={lesson.code}
+            versi={prefs.versi}
+            canSpeak={speech.supported}
+            answerSpeaking={answerMode && speech.speaking}
+            onSpeak={speakAnswer}
+            onStopSpeak={() => speech.stop()}
+          />
         </div>
-        {glossary.length > 0 && (
-          <p className="no-print mt-2 text-[15px] text-[var(--reader-soft)]">
-            Kata bergaris titik-titik bisa diketuk untuk melihat artinya.
-          </p>
-        )}
 
-        <AskTutor
-          code={lesson.code}
-          versi={prefs.versi}
-          canSpeak={speech.supported}
-          answerSpeaking={answerMode && speech.speaking}
-          onSpeak={speakAnswer}
-          onStopSpeak={() => speech.stop()}
-        />
-
-        <div className="no-print mt-10 flex flex-col gap-3 sm:flex-row">
+        <div className="no-print mx-5 mt-8 sm:mx-0">
           {lesson.quiz.length > 0 && (
+            <div className="flex flex-col items-start gap-4 rounded-[1.5rem] border border-papan/20 bg-papan-50 p-5 sm:flex-row sm:items-center sm:justify-between">
+              <div className="text-tinta">
+                <p className="font-display text-[19px] font-extrabold">Sudah selesai membaca?</p>
+                <p className="text-[16px] text-tinta-2">Coba {lesson.quiz.length} soal untuk mengecek pemahamanmu.</p>
+              </div>
+              <button
+                type="button"
+                onClick={onQuiz}
+                className="flex h-14 w-full shrink-0 items-center justify-center gap-2 rounded-2xl bg-papan px-6 text-[18px] font-bold text-white shadow-kartu hover:bg-papan-600 sm:w-auto"
+              >
+                <ListChecks className="size-6" aria-hidden />
+                Kerjakan kuis
+              </button>
+            </div>
+          )}
+          <div className="mt-3 flex flex-wrap gap-2">
             <button
               type="button"
-              onClick={onQuiz}
-              className="flex h-14 items-center justify-center gap-2 rounded-xl bg-papan px-5 text-[18px] font-bold text-white hover:bg-papan-600 sm:flex-1"
+              onClick={onChangeMode}
+              className="flex h-12 items-center justify-center gap-2 rounded-xl border-2 border-[var(--reader-line)] bg-white px-4 text-[16px] font-bold text-tinta hover:border-batas"
             >
-              <ListChecks className="size-6" aria-hidden />
-              Kerjakan kuis ({lesson.quiz.length} soal)
+              <Settings2 className="size-5" aria-hidden />
+              Ganti cara belajar
             </button>
-          )}
-          <button
-            type="button"
-            onClick={onChangeMode}
-            className="flex h-14 items-center justify-center gap-2 rounded-xl border-2 border-[var(--reader-line)] bg-white px-5 text-[17px] font-bold text-tinta hover:border-papan"
-          >
-            <Settings2 className="size-5" aria-hidden />
-            Ganti cara belajar
-          </button>
-          <button
-            type="button"
-            onClick={() => window.print()}
-            className="flex h-14 items-center justify-center gap-2 rounded-xl px-5 text-[17px] font-bold text-[var(--reader-ink)] hover:bg-black/5"
-          >
-            <Printer className="size-5" aria-hidden />
-            Cetak
-          </button>
+            <button
+              type="button"
+              onClick={() => window.print()}
+              className="flex h-12 items-center justify-center gap-2 rounded-xl px-4 text-[16px] font-bold text-[var(--reader-ink)] hover:bg-black/5"
+            >
+              <Printer className="size-5" aria-hidden />
+              Cetak
+            </button>
+          </div>
         </div>
       </main>
 
       {speech.speaking && !term && (
         <div className="no-print fixed inset-x-0 bottom-0 z-40 p-3">
-          <div className="mx-auto flex max-w-2xl items-center justify-between gap-3 rounded-2xl bg-tinta px-4 py-3 text-white shadow-2xl">
+          <div className="mx-auto flex max-w-2xl items-center justify-between gap-3 rounded-2xl bg-tinta px-4 py-3 text-white shadow-angkat">
             <span className="flex items-center gap-2 text-[16px] font-bold" role="status">
               <Volume2 className="size-5" aria-hidden />
               Sedang membacakan
@@ -674,7 +895,7 @@ function Reader({
             <button
               type="button"
               onClick={answerMode ? () => speech.stop() : pause}
-              className="inline-flex h-11 items-center gap-2 rounded-lg bg-white px-4 text-[16px] font-bold text-tinta"
+              className="inline-flex h-11 items-center gap-2 rounded-xl bg-white px-4 text-[16px] font-bold text-tinta"
             >
               <Pause className="size-5" aria-hidden />
               {answerMode ? "Berhenti" : "Jeda"}
@@ -690,9 +911,10 @@ function Reader({
           aria-modal="false"
           aria-labelledby="arti-judul"
         >
-          <div className="mx-auto max-w-2xl rounded-2xl border-2 border-papan bg-white p-5 text-tinta shadow-2xl">
+          <div className="muncul mx-auto max-w-2xl rounded-[1.5rem] border-2 border-papan bg-white p-5 text-tinta shadow-angkat">
             <div className="flex items-start justify-between gap-3">
-              <p id="arti-judul" className="font-display text-[22px] font-extrabold text-papan">
+              <p id="arti-judul" className="flex items-center gap-2 font-display text-[22px] font-extrabold text-papan">
+                <BookA className="size-6 shrink-0" aria-hidden />
                 {term.kata}
               </p>
               <button
@@ -710,7 +932,7 @@ function Reader({
               <button
                 type="button"
                 onClick={() => speech.speak([`${term.kata}.`, term.arti], { lang: speechLang, rate })}
-                className="mt-3 inline-flex h-11 items-center gap-2 rounded-lg px-3 font-bold text-papan hover:bg-papan-50"
+                className="mt-3 inline-flex h-11 items-center gap-2 rounded-xl px-3 font-bold text-papan hover:bg-papan-50"
               >
                 <Volume2 className="size-5" aria-hidden />
                 Dengarkan artinya
@@ -723,241 +945,38 @@ function Reader({
   );
 }
 
-// ---------------------------------------------------------------------------
-
-const LETTERS = ["A", "B", "C", "D", "E", "F"];
-
-function Quiz({
-  lesson,
-  speech,
-  rate,
-  onFinish,
-  onBack,
-}: {
-  lesson: StudentLesson;
-  speech: ReturnType<typeof useSpeech>;
-  rate: SpeechRate;
-  /** durasi = lama pengerjaan dalam detik, dari soal pertama sampai "Lihat hasil". */
-  onFinish: (score: number, total: number, durasi: number) => void;
-  onBack: () => void;
-}) {
-  const questions = lesson.quiz;
-  const [index, setIndex] = useState(0);
-  const [answers, setAnswers] = useState<(number | null)[]>(() => questions.map(() => null));
-  const [done, setDone] = useState(false);
-  const headingRef = useRef<HTMLHeadingElement>(null);
-  const startedAt = useRef(0);
-
-  useEffect(() => {
-    startedAt.current = Date.now();
-  }, []);
-
-  useEffect(() => {
-    headingRef.current?.focus();
-  }, [index, done]);
-
-  const score = answers.filter((a, i) => a === questions[i].answer).length;
-
-  if (done) {
-    return (
-      <main id="isi" className="mx-auto max-w-2xl px-5 py-10">
-        <h1
-          ref={headingRef}
-          tabIndex={-1}
-          className="font-display text-[2rem] font-extrabold leading-tight outline-none"
-        >
-          {score === questions.length
-            ? "Hebat, semua benar!"
-            : `Kamu menjawab ${score} dari ${questions.length} soal dengan benar.`}
-        </h1>
-        <p className="mt-2 text-[18px] text-[var(--reader-soft)]">
-          {score === questions.length
-            ? `${score} dari ${questions.length} soal benar.`
-            : "Lihat pembahasan di bawah, lalu coba lagi kalau mau."}
-        </p>
-        <ol className="mt-8 space-y-4">
-          {questions.map((q, i) => {
-            const right = answers[i] === q.answer;
-            return (
-              <li key={i} className="rounded-2xl border-2 border-[var(--reader-line)] bg-white p-4 text-tinta">
-                <p className="text-[17px] font-bold">
-                  {i + 1}. {q.q}
-                </p>
-                <p className={cx("mt-2 flex items-center gap-2 font-bold", right ? "text-berhasil" : "text-galat")}>
-                  {right ? <Check className="size-5" aria-hidden /> : <X className="size-5" aria-hidden />}
-                  {right ? "Benar" : `Jawabanmu: ${answers[i] === null ? "kosong" : q.options[answers[i]!]}`}
-                </p>
-                {!right && (
-                  <p className="mt-1">
-                    Jawaban yang benar: <strong>{q.options[q.answer]}</strong>
-                  </p>
-                )}
-                {q.explain && <p className="mt-1 text-tinta-2">{q.explain}</p>}
-              </li>
-            );
-          })}
-        </ol>
-        <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-          <button
-            type="button"
-            onClick={onBack}
-            className="flex h-14 items-center justify-center gap-2 rounded-xl bg-papan px-5 text-[18px] font-bold text-white hover:bg-papan-600 sm:flex-1"
-          >
-            <BookOpen className="size-5" aria-hidden />
-            Baca materi lagi
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setAnswers(questions.map(() => null));
-              setIndex(0);
-              setDone(false);
-              startedAt.current = Date.now();
-            }}
-            className="flex h-14 items-center justify-center gap-2 rounded-xl border-2 border-[var(--reader-line)] bg-white px-5 text-[17px] font-bold text-tinta hover:border-papan"
-          >
-            <RotateCcw className="size-5" aria-hidden />
-            Ulangi kuis
-          </button>
-        </div>
-      </main>
-    );
-  }
-
-  const q = questions[index];
-  const chosen = answers[index];
-  const revealed = chosen !== null;
-  const last = index === questions.length - 1;
-
+/** Daftar kata penting di akhir bacaan (bisa dibuka-tutup). */
+function GlossaryList({ items }: { items: GlossaryItem[] }) {
+  const [open, setOpen] = useState(false);
+  const unique = items.filter(
+    (g, i) =>
+      g.kata.trim() && g.arti.trim() && items.findIndex((x) => x.kata.toLowerCase() === g.kata.toLowerCase()) === i,
+  );
+  if (!unique.length) return null;
   return (
-    <main id="isi" className="mx-auto max-w-2xl px-5 py-8">
-      <div className="flex items-center justify-between gap-3">
-        <button
-          type="button"
-          onClick={onBack}
-          className="inline-flex h-11 items-center gap-1 rounded-lg px-2 font-bold text-[var(--reader-ink)] hover:bg-black/5"
-        >
-          <X className="size-5" aria-hidden />
-          Kembali ke materi
-        </button>
-        <p className="text-[16px] font-bold text-[var(--reader-soft)]" aria-live="polite">
-          Soal {index + 1} dari {questions.length}
-        </p>
-      </div>
-      <div className="mt-3 h-2 rounded-full bg-black/10" aria-hidden>
-        <div
-          className="h-2 rounded-full bg-papan transition-all"
-          style={{ width: `${((index + (revealed ? 1 : 0)) / questions.length) * 100}%` }}
-        />
-      </div>
-
-      <fieldset className="mt-8">
-        <legend>
-          <h1
-            ref={headingRef}
-            tabIndex={-1}
-            className="reader-text font-display font-extrabold outline-none"
-            style={{ fontSize: "calc(var(--reader-size) * 1.15)" }}
-          >
-            {q.q}
-          </h1>
-        </legend>
-        {speech.supported && (
-          <button
-            type="button"
-            onClick={() =>
-              speech.speak([q.q, ...q.options.map((o, i) => `Pilihan ${LETTERS[i]}: ${o}.`)], { lang: "id-ID", rate })
-            }
-            className="mt-2 inline-flex h-11 items-center gap-2 rounded-lg px-2 font-bold text-[var(--reader-ink)] hover:bg-black/5"
-          >
-            <Volume2 className="size-5" aria-hidden />
-            Dengarkan soal
-          </button>
-        )}
-        <div className="mt-5 space-y-3">
-          {q.options.map((opt, i) => {
-            const isChosen = chosen === i;
-            const isAnswer = q.answer === i;
-            return (
-              <label
-                key={i}
-                className={cx(
-                  "flex min-h-16 cursor-pointer items-center gap-4 rounded-2xl border-2 bg-white px-4 py-3 text-tinta transition-colors",
-                  !revealed && "border-[var(--reader-line)] hover:border-papan",
-                  revealed && isAnswer && "border-berhasil bg-green-50",
-                  revealed && isChosen && !isAnswer && "border-galat bg-red-50",
-                  revealed && !isChosen && !isAnswer && "border-[var(--reader-line)] opacity-70",
-                )}
-              >
-                <input
-                  type="radio"
-                  name={`soal-${index}`}
-                  className="sr-only"
-                  checked={isChosen}
-                  disabled={revealed}
-                  onChange={() => {
-                    speech.stop();
-                    setAnswers((a) => a.map((x, j) => (j === index ? i : x)));
-                  }}
-                />
-                <span
-                  className={cx(
-                    "flex size-10 shrink-0 items-center justify-center rounded-full border-2 text-[17px] font-bold",
-                    revealed && isAnswer
-                      ? "border-berhasil bg-berhasil text-white"
-                      : revealed && isChosen
-                        ? "border-galat bg-galat text-white"
-                        : "border-batas",
-                  )}
-                  aria-hidden
-                >
-                  {revealed && isAnswer ? (
-                    <Check className="size-5" />
-                  ) : revealed && isChosen ? (
-                    <X className="size-5" />
-                  ) : (
-                    LETTERS[i]
-                  )}
-                </span>
-                <span className="reader-text" style={{ fontSize: "var(--reader-size)" }}>
-                  {opt}
-                </span>
-              </label>
-            );
-          })}
-        </div>
-      </fieldset>
-
-      {revealed && (
-        <div className="mt-6 rounded-2xl border-2 border-[var(--reader-line)] bg-white p-4 text-tinta" role="status">
-          <p
-            className={cx(
-              "flex items-center gap-2 text-[19px] font-bold",
-              chosen === q.answer ? "text-berhasil" : "text-galat",
-            )}
-          >
-            {chosen === q.answer ? <Check className="size-6" aria-hidden /> : <X className="size-6" aria-hidden />}
-            {chosen === q.answer ? "Benar!" : `Belum tepat. Jawabannya ${LETTERS[q.answer]}: ${q.options[q.answer]}.`}
-          </p>
-          {q.explain && <p className="mt-1 text-[17px]">{q.explain}</p>}
-          <button
-            type="button"
-            onClick={() => {
-              if (last) {
-                setDone(true);
-                const durasi = Math.min(10_800, Math.round((Date.now() - startedAt.current) / 1000));
-                onFinish(answers.filter((a, i) => a === questions[i].answer).length, questions.length, durasi);
-              } else {
-                setIndex(index + 1);
-              }
-            }}
-            className="mt-4 flex h-14 w-full items-center justify-center gap-2 rounded-xl bg-papan text-[18px] font-bold text-white hover:bg-papan-600"
-          >
-            {last ? "Lihat hasil" : "Soal berikutnya"}
-            <ChevronRight className="size-5" aria-hidden />
-          </button>
-        </div>
+    <section className="mt-6 rounded-2xl border border-[var(--reader-line)]">
+      <button
+        type="button"
+        aria-expanded={open}
+        onClick={() => setOpen((o) => !o)}
+        className="flex min-h-14 w-full items-center justify-between gap-3 px-4 text-left font-display text-[calc(var(--reader-size)*0.95)] font-extrabold"
+      >
+        <span className="flex items-center gap-2">
+          <BookA className="size-5 text-[var(--reader-accent)]" aria-hidden />
+          Kata penting ({unique.length})
+        </span>
+        <ChevronDown className={cx("size-5 transition-transform", open && "rotate-180")} aria-hidden />
+      </button>
+      {open && (
+        <dl className="grid gap-3 border-t border-[var(--reader-line)] p-4 sm:grid-cols-2">
+          {unique.map((g) => (
+            <div key={g.kata} className="rounded-xl bg-[color-mix(in_srgb,var(--reader-line)_30%,transparent)] p-3">
+              <dt className="font-bold">{g.kata}</dt>
+              <dd className="text-[0.95em]">{g.arti}</dd>
+            </div>
+          ))}
+        </dl>
       )}
-    </main>
+    </section>
   );
 }

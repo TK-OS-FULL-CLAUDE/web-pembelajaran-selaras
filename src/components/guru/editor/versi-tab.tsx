@@ -2,7 +2,20 @@
 
 // Peran 2: draf versi dari AI + review guru.
 
-import { Check, Languages, PenLine, RefreshCw, Sparkles, Trash2, TriangleAlert } from "lucide-react";
+import {
+  BookOpen,
+  Check,
+  Eye,
+  Languages,
+  PenLine,
+  RefreshCw,
+  ScrollText,
+  Sparkles,
+  SquarePen,
+  Trash2,
+  TriangleAlert,
+  type LucideIcon,
+} from "lucide-react";
 import { useState } from "react";
 import { api } from "@/lib/client";
 import { fingerprint, wordCount } from "@/lib/text";
@@ -15,10 +28,13 @@ import {
   type LessonVersion,
   type VersionKey,
 } from "@/lib/types";
-import { Badge, Button, Notice, Spinner, Textarea, cx } from "../../ui";
+import { MODE_TONE, TONES } from "@/lib/modes";
+import { ReaderText } from "../../reader-text";
+import { Badge, Button, IconChip, Notice, Spinner, Textarea, cx } from "../../ui";
 import { useToast } from "../../toast";
 import { GlossaryEditor } from "./glossary-editor";
 import type { EditableLesson, TabKey, UpdateLesson } from "./lesson-editor";
+import { VersionComparison } from "./version-comparison";
 
 type Cls = { id: string; name: string; grade: string; needs: ClassNeeds } | null;
 
@@ -43,6 +59,8 @@ const INFO: Record<VersionKey, { title: string; text: string }> = {
 
 const NO_BUSY: Record<VersionKey, boolean> = { mudah: false, ringkasan: false, jawa: false, sunda: false };
 
+const ICON: Record<VersionKey, LucideIcon> = { mudah: BookOpen, ringkasan: ScrollText, jawa: Languages, sunda: Languages };
+
 export function VersiTab({
   lessonId,
   lesson,
@@ -60,6 +78,7 @@ export function VersiTab({
 }) {
   const toast = useToast();
   const [busy, setBusy] = useState<Record<VersionKey, boolean>>(NO_BUSY);
+  const [preview, setPreview] = useState<Record<VersionKey, boolean>>(NO_BUSY);
   const bodyPrint = fingerprint(lesson.body);
   const needs = cls?.needs;
   const regional = !!needs && needs.bahasaDaerah > 0;
@@ -74,7 +93,11 @@ export function VersiTab({
   const setVersion = (key: VersionKey, version: LessonVersion | undefined) =>
     update((l) => {
       const versions = { ...l.versions };
-      if (version) versions[key] = version;
+      if (version) {
+        const before = l.versions[key];
+        const changed = before && (before.text !== version.text || JSON.stringify(before.glossary) !== JSON.stringify(version.glossary));
+        versions[key] = changed ? { ...version, checked: false } : version;
+      }
       else delete versions[key];
       return { versions };
     });
@@ -153,6 +176,7 @@ export function VersiTab({
         )
       )}
 
+      <VersionComparison body={lesson.body} versions={lesson.versions} />
       <div className="grid gap-6 xl:grid-cols-2">
         {VERSION_KEYS.map((key) => {
           const v = lesson.versions[key];
@@ -162,16 +186,21 @@ export function VersiTab({
               key={key}
               aria-labelledby={`versi-${key}`}
               className={cx(
-                "flex flex-col rounded-2xl border bg-white p-5",
+                "flex flex-col overflow-hidden rounded-2xl border bg-white shadow-kartu",
                 v && !v.checked && v.text.trim() ? "border-aksen/60" : "border-garis",
               )}
             >
-              <div className="flex flex-wrap items-start justify-between gap-2">
-                <div>
-                  <h2 id={`versi-${key}`} className="font-display text-lg font-bold">
-                    {INFO[key].title}
-                  </h2>
-                  <p className="mt-0.5 text-[14px] text-tinta-2">{INFO[key].text}</p>
+              <div className={cx("h-1.5", TONES[MODE_TONE[key]].bar)} aria-hidden />
+              <div className="flex flex-1 flex-col p-5">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div className="flex min-w-0 items-start gap-3">
+                  <IconChip icon={ICON[key]} tone={MODE_TONE[key]} />
+                  <div className="min-w-0">
+                    <h2 id={`versi-${key}`} className="font-display text-lg font-bold">
+                      {INFO[key].title}
+                    </h2>
+                    <p className="mt-0.5 text-[14px] text-tinta-2">{INFO[key].text}</p>
+                  </div>
                 </div>
                 <div className="flex flex-wrap gap-1.5">
                   {recommended[key] && <Badge tone="papan">Disarankan untuk kelas ini</Badge>}
@@ -192,7 +221,7 @@ export function VersiTab({
               </div>
 
               {isRegionalVersion(key) && v?.text.trim() && (
-                <p className="mt-4 flex gap-2 rounded-lg bg-blue-50 px-3 py-2 text-[14px] text-info">
+                <p className="mt-4 flex gap-2 rounded-xl bg-biru-50 px-3 py-2 text-[14px] text-info">
                   <Languages className="mt-0.5 size-4 shrink-0" aria-hidden />
                   Terjemahan {v.origin === "ai" ? "AI" : "ini"} bisa keliru dalam ragam bahasa atau istilah. Minta penutur
                   asli, misalnya guru bahasa daerah atau orang tua siswa, membacanya sebelum Anda menandai sudah dicek.
@@ -200,7 +229,7 @@ export function VersiTab({
               )}
 
               {stale && (
-                <p className="mt-4 flex gap-2 rounded-lg bg-aksen-50 px-3 py-2 text-[14px] text-aksen">
+                <p className="mt-4 flex gap-2 rounded-xl bg-aksen-50 px-3 py-2 text-[14px] text-aksen">
                   <TriangleAlert className="mt-0.5 size-4 shrink-0" aria-hidden />
                   Materi asli berubah setelah versi ini dibuat. Perbarui versinya atau sesuaikan manual.
                 </p>
@@ -208,19 +237,63 @@ export function VersiTab({
 
               {v ? (
                 <>
-                  <label htmlFor={`teks-${key}`} className="sr-only">
-                    Teks versi {INFO[key].title}
-                  </label>
-                  <Textarea
-                    id={`teks-${key}`}
-                    rows={14}
-                    className="mt-4"
-                    value={v.text}
-                    lang={VERSION_HTML_LANG[key]}
-                    onChange={(e) =>
-                      setVersion(key, { ...v, text: e.target.value, updatedAt: new Date().toISOString() })
-                    }
-                  />
+                  <div className="mt-4 flex items-center justify-between gap-2">
+                    <label htmlFor={`teks-${key}`} className="text-[14px] font-bold">
+                      Teks versi {INFO[key].title}
+                    </label>
+                    <div className="flex rounded-lg bg-slate-100 p-0.5" role="group" aria-label={`Tampilan ${INFO[key].title}`}>
+                      {(
+                        [
+                          [false, "Ubah", SquarePen],
+                          [true, "Lihat hasil", Eye],
+                        ] as const
+                      ).map(([on, label, Icon]) => (
+                        <button
+                          key={label}
+                          type="button"
+                          aria-pressed={preview[key] === on}
+                          onClick={() => setPreview((p) => ({ ...p, [key]: on }))}
+                          className={cx(
+                            "inline-flex h-8 items-center gap-1 rounded-md px-2.5 text-[13px] font-bold",
+                            preview[key] === on ? "bg-white text-papan shadow-kartu" : "text-tinta-2",
+                          )}
+                        >
+                          <Icon className="size-3.5" aria-hidden />
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  {preview[key] ? (
+                    <div
+                      className="reader mt-2 max-h-[26rem] overflow-y-auto rounded-xl border border-garis px-4 py-4"
+                      style={{ background: "#fff" }}
+                      lang={VERSION_HTML_LANG[key]}
+                    >
+                      {v.text.trim() ? (
+                        <div className="[&_.reader-text]:text-[17px]">
+                          <ReaderText
+                            text={v.text}
+                            glossary={isRegionalVersion(key) ? v.glossary : [...v.glossary, ...lesson.glossary]}
+                            figures={lesson.figures}
+                          />
+                        </div>
+                      ) : (
+                        <p className="text-tinta-2">Masih kosong.</p>
+                      )}
+                    </div>
+                  ) : (
+                    <Textarea
+                      id={`teks-${key}`}
+                      rows={14}
+                      className="mt-2"
+                      value={v.text}
+                      lang={VERSION_HTML_LANG[key]}
+                      onChange={(e) =>
+                        setVersion(key, { ...v, text: e.target.value, updatedAt: new Date().toISOString() })
+                      }
+                    />
+                  )}
                   <p className="mt-1 text-[14px] text-tinta-2">
                     {wordCount(v.text)} kata, materi asli {wordCount(lesson.body)} kata.
                   </p>
@@ -291,6 +364,7 @@ export function VersiTab({
                   </Button>
                 </div>
               )}
+              </div>
             </section>
           );
         })}

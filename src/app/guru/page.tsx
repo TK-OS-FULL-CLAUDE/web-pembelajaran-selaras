@@ -1,15 +1,18 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Plus, Users } from "lucide-react";
+import { ArrowRight, BookOpen, PenLine, Plus, School, Send, Users } from "lucide-react";
 import { LessonList } from "@/components/guru/lesson-list";
 import { NeedsSummary } from "@/components/guru/needs-summary";
 import { ResetDemoButton } from "@/components/guru/reset-demo-button";
-import { ButtonLink, EmptyState, Notice } from "@/components/ui";
+import { ButtonLink, EmptyState, IconChip, Notice, SectionTitle, StatCard } from "@/components/ui";
 import { requireTeacher } from "@/lib/auth";
 import { getTeacherOverview, listClasses, listLessons } from "@/lib/data";
 import { aiEnabled } from "@/lib/claude";
+import type { ToneKey } from "@/lib/modes";
 
 export const metadata: Metadata = { title: "Beranda guru" };
+
+const CLASS_TONES: ToneKey[] = ["papan", "biru", "ungu", "mawar", "jingga", "sian"];
 
 export default async function GuruHome() {
   const teacher = await requireTeacher();
@@ -22,18 +25,28 @@ export default async function GuruHome() {
 
   return (
     <div className="space-y-10">
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h1 className="font-display text-3xl font-extrabold text-papan">Halo, {firstName}</h1>
-          <p className="mt-1 text-tinta-2">
-            {overview.published} materi terbit, {overview.drafts} draf, {overview.sessions} sesi siswa.
-          </p>
+      <section className="latar-titik relative overflow-hidden rounded-[1.75rem] border border-garis bg-white p-6 shadow-kartu sm:p-8">
+        <div className="flex flex-wrap items-end justify-between gap-5">
+          <div>
+            <p className="text-[15px] font-bold text-papan">Beranda guru</p>
+            <h1 className="mt-1 font-display text-[2rem] font-extrabold leading-tight">Halo, {firstName}</h1>
+            <p className="mt-1 max-w-xl text-tinta-2">
+              Tulis materi sekali, siapkan versinya, lalu bagikan satu link. Setiap siswa memilih cara belajarnya
+              sendiri.
+            </p>
+          </div>
+          <ButtonLink size="lg" href={classes[0] ? `/guru/materi/baru?kelas=${classes[0].id}` : "/guru/kelas/baru"}>
+            <Plus className="size-5" aria-hidden />
+            Materi baru
+          </ButtonLink>
         </div>
-        <ButtonLink href={classes[0] ? `/guru/materi/baru?kelas=${classes[0].id}` : "/guru/kelas/baru"}>
-          <Plus className="size-5" aria-hidden />
-          Materi baru
-        </ButtonLink>
-      </div>
+        <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <StatCard icon={School} tone="biru" label="Kelas" value={classes.length} />
+          <StatCard icon={Send} tone="hijau" label="Materi terbit" value={overview.published} />
+          <StatCard icon={PenLine} tone="jingga" label="Draf" value={overview.drafts} />
+          <StatCard icon={Users} tone="papan" label="Sesi siswa" value={overview.sessions} />
+        </div>
+      </section>
 
       {teacher.is_demo && (
         <Notice tone="warn" title="Ini akun demo bersama">
@@ -46,43 +59,48 @@ export default async function GuruHome() {
 
       {!aiEnabled() && (
         <Notice tone="info" title="Fitur AI belum aktif">
-          Isi <code className="rounded bg-white px-1">ANTHROPIC_API_KEY</code> dan/atau{" "}
-          <code className="rounded bg-white px-1">GEMINI_API_KEY</code> di environment variables untuk memakai foto buku →
-          teks dan draf versi otomatis. Semua fitur lain tetap jalan.
+          Isi <code>ANTHROPIC_API_KEY</code> dan/atau <code>GEMINI_API_KEY</code> di environment variables untuk memakai
+          foto buku → teks, deskripsi gambar, dan draf versi otomatis. Semua fitur lain tetap jalan (termasuk impor PDF
+          dan Word).
         </Notice>
       )}
 
       <section aria-labelledby="judul-kelas">
-        <div className="mb-3 flex items-center justify-between">
-          <h2 id="judul-kelas" className="font-display text-xl font-extrabold">
-            Kelas
-          </h2>
-          <Link
-            href="/guru/kelas/baru"
-            className="inline-flex items-center gap-1 rounded-lg px-2 py-1 font-bold text-papan-600 hover:bg-papan-50"
-          >
-            <Plus className="size-4" aria-hidden />
-            Kelas baru
-          </Link>
-        </div>
+        <SectionTitle
+          id="judul-kelas"
+          action={
+            <Link
+              href="/guru/kelas/baru"
+              className="inline-flex h-10 items-center gap-1 rounded-xl px-3 font-bold text-papan-600 hover:bg-papan-50"
+            >
+              <Plus className="size-4" aria-hidden />
+              Kelas baru
+            </Link>
+          }
+        >
+          Kelas
+        </SectionTitle>
         {classes.length === 0 ? (
           <EmptyState
             title="Mulai dengan membuat kelas"
+            icon={School}
+            tone="biru"
             action={<ButtonLink href="/guru/kelas/baru">Buat kelas</ButtonLink>}
           >
             Catat jumlah siswa per kebutuhan. Selaras memakai profil ini untuk menyarankan versi materi dan akomodasi.
           </EmptyState>
         ) : (
-          <ul className="grid gap-3 md:grid-cols-2">
-            {classes.map((c) => (
+          <ul className="grid gap-4 md:grid-cols-2">
+            {classes.map((c, i) => (
               <li key={c.id}>
                 <Link
                   href={`/guru/kelas/${c.id}`}
-                  className="block h-full rounded-2xl border border-garis bg-white p-5 transition-colors hover:border-papan"
+                  className="group flex h-full flex-col rounded-2xl border border-garis bg-white p-5 shadow-kartu transition-[box-shadow,border-color,transform] hover:-translate-y-0.5 hover:border-papan/40 hover:shadow-angkat"
                 >
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <p className="font-display text-lg font-bold">{c.name}</p>
+                  <div className="flex items-start gap-4">
+                    <IconChip icon={Users} tone={CLASS_TONES[i % CLASS_TONES.length]} size="lg" />
+                    <div className="min-w-0 flex-1">
+                      <p className="font-display text-lg font-extrabold">{c.name}</p>
                       <p className="text-[14px] text-tinta-2">
                         {[
                           c.grade,
@@ -90,12 +108,15 @@ export default async function GuruHome() {
                           `${c.lesson_count} materi`,
                         ]
                           .filter(Boolean)
-                          .join(", ")}
+                          .join(" · ")}
                       </p>
                     </div>
-                    <Users className="size-5 text-papan" aria-hidden />
+                    <ArrowRight
+                      className="mt-1 size-5 shrink-0 text-batas transition-transform group-hover:translate-x-0.5 group-hover:text-papan"
+                      aria-hidden
+                    />
                   </div>
-                  <div className="mt-3">
+                  <div className="mt-4 border-t border-garis pt-3">
                     <NeedsSummary needs={c.needs} compact />
                   </div>
                 </Link>
@@ -106,11 +127,11 @@ export default async function GuruHome() {
       </section>
 
       <section aria-labelledby="judul-materi">
-        <h2 id="judul-materi" className="mb-3 font-display text-xl font-extrabold">
-          Materi terbaru
-        </h2>
+        <SectionTitle id="judul-materi">Materi terbaru</SectionTitle>
         {lessons.length === 0 ? (
-          <EmptyState title="Belum ada materi">Buat kelas dulu, lalu tambahkan materi pertama Anda.</EmptyState>
+          <EmptyState title="Belum ada materi" icon={BookOpen}>
+            Buat kelas dulu, lalu tambahkan materi pertama Anda.
+          </EmptyState>
         ) : (
           <LessonList lessons={lessons.slice(0, 8)} />
         )}

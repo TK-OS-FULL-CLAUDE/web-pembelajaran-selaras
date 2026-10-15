@@ -84,13 +84,52 @@ await test("Foto → teks: Gemini dulu, gambar dikirim sebagai inlineData, bagia
   assert.ok(c.body.generationConfig.responseJsonSchema, "skema JSON dikirim");
   assert.deepEqual(c.body.generationConfig.thinkingConfig, { thinkingLevel: "LOW" });
   assert.match(JSON.stringify(c.body.contents), /\[Gambar: \.\.\.\]/, "minta keterangan gambar untuk low vision");
+  assert.match(JSON.stringify(c.body.contents), /\[\[GAMBAR n\]\]/, "minta penanda posisi gambar");
+  assert.equal(r.gambar.length, 1, "gambar di halaman ikut dikembalikan");
+  assert.deepEqual(r.gambar[0].kotak, [300, 100, 700, 900]);
 });
 
-await test("Kuis: Gemini dulu", async () => {
+await test("Deskripsi gambar (alt text): Gemini dulu, gambar dikirim, konteks materi ikut", async () => {
+  await setMode();
+  const r = await tasks.describeImage(IMG, { caption: "Daun", title: "Fotosintesis", nearby: "Daun membuat makanan." });
+  assert.match(r.alt, /Diagram daun/);
+  assert.equal(r.caption, "Diagram daun");
+  const [c] = await calls();
+  assert.equal(c.provider, "gemini");
+  assert.deepEqual(c.body.contents[0].parts[0], { inlineData: { mimeType: IMG.mimeType, data: IMG.base64 } });
+  assert.match(JSON.stringify(c.body.contents), /tunanetra/);
+  assert.match(JSON.stringify(c.body.contents), /Daun membuat makanan/);
+});
+
+await test("Kuis: Gemini dulu; tanpa pilihan jenis = pilihan ganda saja, soal rusak dibuang", async () => {
   await setMode();
   const r = await tasks.makeQuizDraft({ body: BODY, grade: "", count: 3 });
-  assert.equal(r.questions.length, 3);
+  assert.deepEqual(r.questions.map((q) => q.type), ["pg"]);
   assert.deepEqual(route(await calls()), ["gemini:gemini-3.6-flash"]);
+});
+
+await test("Kuis campuran: lima jenis soal diubah ke format Selaras", async () => {
+  await setMode();
+  const r = await tasks.makeQuizDraft({ body: BODY, grade: "", count: 5, types: ["pg", "pgk", "bs", "isian", "jodoh"] });
+  assert.deepEqual(r.questions.map((q) => q.type), ["pg", "bs", "pgk", "isian", "jodoh"]);
+  const [pg, bs, pgk, isian, jodoh] = r.questions;
+  assert.equal(pg.answer, 0);
+  assert.deepEqual(bs.options, ["Benar", "Salah"]);
+  assert.deepEqual(pgk.answers, [0, 2, 3]);
+  assert.deepEqual(isian.accepted, ["hujan"]);
+  assert.equal(jodoh.pairs?.length, 3);
+  assert.ok(r.questions.every((q) => q.origin === "ai"));
+});
+
+await test("Versi teks: baris gambar yang dihapus AI dikembalikan, ID asing dibuang", async () => {
+  const src = "## A\n\nParagraf satu.\n\n![Daun](gambar:aaaaaaaa-1111)\n\nParagraf dua.";
+  const out = tasks.restoreFigureLines(src, "## A\n\nSatu.\n\n![X](gambar:bbbbbbbb-9999)\n\nDua.");
+  assert.match(out, /!\[Daun\]\(gambar:aaaaaaaa-1111\)/);
+  assert.doesNotMatch(out, /bbbbbbbb-9999/);
+  await setMode();
+  const r = await tasks.makeSimpleVersion({ body: src, grade: "", subject: "" });
+  assert.match(r.text, /gambar:aaaaaaaa-1111/, "draf teks mudah tetap memuat gambar");
+  assert.match(JSON.stringify((await calls())[0].body.messages), /WAJIB disalin persis/);
 });
 
 await test("Kredit Claude habis (402) → langsung pindah ke Gemini", async () => {
@@ -137,8 +176,8 @@ await test("Kuota Gemini habis (429) saat baca foto → Flash-Lite → Claude", 
 
 await test("Gemini menolak skema JSON (400) → ulang tanpa skema di model yang sama", async () => {
   await setMode({ gemini: "400schema" });
-  const r = await tasks.makeQuizDraft({ body: BODY, grade: "", count: 3 });
-  assert.equal(r.questions.length, 3);
+  const r = await tasks.makeQuizDraft({ body: BODY, grade: "", count: 3, types: ["pg", "bs"] });
+  assert.deepEqual(r.questions.map((q) => q.type), ["pg", "bs"]);
   const cs = await calls();
   assert.deepEqual(route(cs), ["gemini:gemini-3.6-flash", "gemini:gemini-3.6-flash"]);
   assert.equal(cs[1].body.generationConfig.responseJsonSchema, undefined);

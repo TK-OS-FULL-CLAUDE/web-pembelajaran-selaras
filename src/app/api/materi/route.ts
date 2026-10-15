@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { fail, ok, readJson, withTeacher } from "@/lib/api";
+import { figuresInput, fail, ok, readJson, withTeacher } from "@/lib/api";
 import { createLesson, getClass } from "@/lib/data";
 
 const schema = z.object({
@@ -7,6 +7,7 @@ const schema = z.object({
   title: z.string().trim().min(1, "Judul wajib diisi").max(160),
   subject: z.string().trim().max(80).default(""),
   body: z.string().max(30_000).default(""),
+  figures: figuresInput.optional(),
 });
 
 export async function POST(req: Request) {

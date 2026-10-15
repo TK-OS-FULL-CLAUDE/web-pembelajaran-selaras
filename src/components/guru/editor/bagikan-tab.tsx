@@ -6,9 +6,12 @@ import { Check, Copy, Download, ExternalLink, Maximize2, Send, Undo2, X } from "
 import QRCode from "qrcode";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/client";
-import { Button, Card, Notice, Spinner } from "../../ui";
+import { questionProblem } from "@/lib/quiz";
+import { figureIds } from "@/lib/text";
+import { Button, Card, Notice, Spinner, buttonClass } from "../../ui";
 import { useToast } from "../../toast";
 import type { EditableLesson, TabKey } from "./lesson-editor";
+import { AccessibilityCheck } from "./accessibility-check";
 
 export function BagikanTab({
   lessonId,
@@ -53,6 +56,11 @@ export function BagikanTab({
 
   const versions = Object.entries(lesson.versions).filter(([, v]) => v && v.text.trim());
   const unchecked = versions.filter(([, v]) => v && !v.checked).length;
+  const figIds = [...new Set([lesson.body, ...versions.map(([, v]) => (v?.checked ? v.text : ""))].flatMap(figureIds))];
+  const figUnchecked = figIds.filter(
+    (id) => !lesson.figures[id]?.alt?.trim() || !lesson.figures[id]?.altChecked,
+  ).length;
+  const incomplete = lesson.quiz.filter((q) => questionProblem(q) !== null).length;
   const checks = [
     {
       ok: lesson.body.trim().length >= 20,
@@ -72,8 +80,24 @@ export function BagikanTab({
       required: true,
     },
     {
-      ok: lesson.quiz.length > 0,
-      label: lesson.quiz.length > 0 ? `${lesson.quiz.length} soal kuis` : "Belum ada kuis (boleh menyusul)",
+      ok: figUnchecked === 0,
+      label:
+        figIds.length === 0
+          ? "Tidak ada gambar"
+          : figUnchecked === 0
+            ? `${figIds.length} gambar punya deskripsi yang sudah dicek`
+            : `${figUnchecked} gambar belum punya deskripsi yang dicek (untuk siswa tunanetra & low vision)`,
+      fix: () => goTo("materi"),
+      required: true,
+    },
+    {
+      ok: lesson.quiz.length > 0 && incomplete === 0,
+      label:
+        lesson.quiz.length === 0
+          ? "Belum ada kuis (boleh menyusul)"
+          : incomplete
+            ? `${incomplete} dari ${lesson.quiz.length} soal belum lengkap (tidak ditampilkan ke siswa)`
+            : `${lesson.quiz.length} soal kuis`,
       fix: () => goTo("kuis"),
       required: false,
     },
@@ -133,6 +157,7 @@ export function BagikanTab({
             </li>
           ))}
         </ul>
+        <AccessibilityCheck lesson={lesson} goTo={goTo} />
         {status === "draft" ? (
           <div className="mt-6">
             <Button size="lg" onClick={publish} disabled={!ready || busy}>
@@ -152,16 +177,16 @@ export function BagikanTab({
         <h2 className="font-display text-lg font-bold">Bagikan ke siswa</h2>
         {status === "published" && shareCode ? (
           <div className="mt-4 space-y-4">
-            <div className="flex flex-col items-center gap-3 rounded-2xl bg-kertas p-4 sm:flex-row sm:items-start">
+            <div className="latar-titik flex flex-col items-center gap-4 rounded-2xl border border-garis bg-papan-50/50 p-4 sm:flex-row sm:items-start">
               {qr ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={qr} alt={`Kode QR menuju ${link}`} className="size-44 rounded-lg bg-white" />
+                <img src={qr} alt={`Kode QR menuju ${link}`} className="size-44 rounded-xl bg-white shadow-kartu" />
               ) : (
                 <div className="size-44 animate-pulse rounded-lg bg-slate-200" />
               )}
               <div className="min-w-0 flex-1 space-y-2 text-center sm:text-left">
                 <p className="text-[14px] text-tinta-2">Kode materi</p>
-                <p className="font-display text-4xl font-extrabold tracking-[0.12em] text-papan">{shareCode}</p>
+                <p className="font-display text-4xl font-extrabold tracking-[0.14em] text-papan">{shareCode}</p>
                 <p className="break-all text-[15px]">{link}</p>
               </div>
             </div>
@@ -186,21 +211,12 @@ export function BagikanTab({
                 Tampilkan QR besar
               </Button>
               {qr && (
-                <a
-                  href={qr}
-                  download={`selaras-${shareCode}.png`}
-                  className="inline-flex h-11 items-center gap-2 rounded-lg border border-batas bg-white px-4 text-[15px] font-bold hover:bg-papan-50"
-                >
+                <a href={qr} download={`selaras-${shareCode}.png`} className={buttonClass("secondary")}>
                   <Download className="size-4" aria-hidden />
                   Unduh QR
                 </a>
               )}
-              <a
-                href={`/s/${shareCode}`}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex h-11 items-center gap-2 rounded-lg px-4 text-[15px] font-bold text-papan hover:bg-papan-50"
-              >
+              <a href={`/s/${shareCode}`} target="_blank" rel="noreferrer" className={buttonClass("ghost")}>
                 <ExternalLink className="size-4" aria-hidden />
                 Buka sebagai siswa
               </a>
