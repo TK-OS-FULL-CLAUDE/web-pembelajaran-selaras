@@ -1,181 +1,253 @@
 import Link from "next/link";
-import { BookOpen, Camera, ClipboardCheck, QrCode } from "lucide-react";
+import {
+  ALargeSmall,
+  BarChart3,
+  BookOpen,
+  Check,
+  ClipboardCheck,
+  Contrast,
+  FileUp,
+  ImageIcon,
+  Languages,
+  ListChecks,
+  QrCode,
+  Ruler,
+  ScrollText,
+  SpaceIcon,
+  Volume2,
+} from "lucide-react";
 import { DemoLoginButton } from "@/components/demo-login-button";
 import { HeroDemo } from "@/components/hero-demo";
-import { Logo } from "@/components/ui";
-import { Paperclip, Ring, Sparkle, Triangle } from "@/components/hero-decor";
+import { IconChip, Logo, buttonClass } from "@/components/ui";
+import { Ring, Sparkle, Triangle } from "@/components/hero-decor";
 import { DEMO_SHARE_CODE } from "@/lib/demo-content";
+import type { ToneKey } from "@/lib/modes";
 
 const STEPS = [
   {
-    icon: Camera,
-    title: "Tulis atau potret materi",
-    text: "Tempel teks, atau potret halaman buku dan biarkan Selaras menyalinnya.",
+    icon: FileUp,
+    tone: "papan" as ToneKey,
+    title: "Tulis atau ambil materi",
+    text: "Tempel teks, potret halaman buku, atau unggah PDF dan Word. Gambar dan diagram ikut terbawa.",
   },
   {
     icon: ClipboardCheck,
+    tone: "biru" as ToneKey,
     title: "Cek versi untuk kelas Anda",
-    text: "AI menyiapkan draf teks mudah, ringkasan, Basa Jawa, dan Basa Sunda. Anda membaca dan menyetujuinya.",
+    text: "AI menyiapkan draf teks mudah, ringkasan, Basa Jawa, Basa Sunda, dan deskripsi gambar. Anda membaca dan menyetujuinya.",
   },
   {
     icon: QrCode,
+    tone: "ungu" as ToneKey,
     title: "Bagikan satu link",
     text: "Siswa memindai QR, memilih cara belajarnya, lalu mengerjakan kuis. Hasilnya masuk ke rekap Anda.",
   },
 ];
 
-/** Sorotan penanda di headline: garis stabilo hijau di bagian bawah teks. */
-const hlMint =
-  "rounded-sm px-1 -mx-1 bg-[linear-gradient(transparent_52%,#a9e0bb_52%,#a9e0bb_94%,transparent_94%)]";
-const hlSky =
-  "rounded-sm px-1 -mx-1 bg-[linear-gradient(transparent_52%,#a8dcf0_52%,#a8dcf0_94%,transparent_94%)]";
-const kuning = "rounded px-1 bg-[linear-gradient(transparent_45%,#ffe08a_45%)]";
-const peach = "rounded px-1 bg-[linear-gradient(transparent_45%,#ffcfb0_45%)]";
-const mint = "rounded px-1 bg-[linear-gradient(transparent_45%,#bfe9cb_45%)]";
-const sky = "rounded px-1 bg-[linear-gradient(transparent_45%,#bde4f5_45%)]";
-const lilac = "rounded px-1 bg-[linear-gradient(transparent_45%,#ddd3fa_45%)]";
+const MODES: { icon: typeof BookOpen; tone: ToneKey; title: string; text: string }[] = [
+  { icon: BookOpen, tone: "papan", title: "Teks mudah", text: "Kalimat pendek, kata sehari-hari." },
+  { icon: ScrollText, tone: "biru", title: "Ringkasan", text: "Poin penting untuk yang sulit fokus." },
+  { icon: Languages, tone: "ungu", title: "Basa Jawa", text: "Materi dalam bahasa rumah siswa." },
+  { icon: Languages, tone: "mawar", title: "Basa Sunda", text: "Lengkap dengan glosarium dua bahasa." },
+  { icon: Volume2, tone: "jingga", title: "Dibacakan", text: "Suara dengan sorotan per kalimat." },
+  { icon: ALargeSmall, tone: "nila", title: "Huruf besar", text: "Untuk siswa low vision." },
+  { icon: Contrast, tone: "abu", title: "Kontras tinggi", text: "Hitam tebal di latar krem." },
+  { icon: SpaceIcon, tone: "sian", title: "Spasi lega", text: "Jarak huruf dan baris lebih lebar." },
+  { icon: Ruler, tone: "hijau", title: "Garis bantu", text: "Pita baca untuk disleksia." },
+];
+
+const NEW = [
+  {
+    icon: ImageIcon,
+    tone: "biru" as ToneKey,
+    title: "Gambar buku ikut tampil",
+    text: "Diagram dari foto buku, PDF, atau Word dipotong otomatis. Deskripsinya ditulis AI, dicek guru, lalu dibacakan untuk siswa tunanetra. Siswa low vision bisa memperbesar gambar.",
+  },
+  {
+    icon: ListChecks,
+    tone: "mawar" as ToneKey,
+    title: "Lima jenis soal",
+    text: "Pilihan ganda, pilihan ganda kompleks, benar/salah, isian singkat, dan menjodohkan — semuanya bisa dibacakan dan dikerjakan dengan keyboard.",
+  },
+  {
+    icon: BarChart3,
+    tone: "hijau" as ToneKey,
+    title: "Rekap yang bisa ditindaklanjuti",
+    text: "Cara belajar yang dipilih siswa, skor per versi teks, dan soal mana yang paling sulit untuk dibahas ulang.",
+  },
+];
+
+/** Sorotan penanda di headline: garis stabilo di bagian bawah teks. */
+const hlTeal = "rounded-sm px-1 -mx-1 bg-[linear-gradient(transparent_55%,#99f6e4_55%,#99f6e4_92%,transparent_92%)]";
+const hlBlue = "rounded-sm px-1 -mx-1 bg-[linear-gradient(transparent_55%,#bfdbfe_55%,#bfdbfe_92%,transparent_92%)]";
 
 export default function Home() {
   return (
     <div className="min-h-dvh">
-      {/* Header + hero berbagi satu latar: krem di kiri, mint-biru muda di kanan */}
-      <div className="bg-[#fff9e8] bg-[radial-gradient(45%_55%_at_6%_8%,#ffe8a3_0%,rgba(255,232,163,0)_100%),radial-gradient(40%_45%_at_30%_95%,#d3f0dc_0%,rgba(211,240,220,0)_100%),radial-gradient(60%_75%_at_88%_40%,#b9e6f2_0%,#d6f1e6_45%,rgba(255,249,232,0)_78%)]">
+      <div className="bg-[radial-gradient(50%_60%_at_8%_10%,#fef3c7_0%,rgba(254,243,199,0)_100%),radial-gradient(55%_70%_at_92%_35%,#ccfbf1_0%,rgba(204,251,241,0)_100%),radial-gradient(40%_50%_at_60%_100%,#dbeafe_0%,rgba(219,234,254,0)_100%)]">
+        <div className="pita-warna" aria-hidden />
         <header className="mx-auto flex max-w-6xl items-center justify-between px-4 py-5 sm:px-6">
           <Logo />
-          <nav className="flex items-center gap-2 sm:gap-5" aria-label="Utama">
+          <nav className="flex items-center gap-2 sm:gap-4" aria-label="Utama">
             <Link
-              href={`/s/${DEMO_SHARE_CODE}`}
-              className="rounded-lg px-2 py-2 font-bold text-papan hover:underline"
+              href="/s"
+              className="hidden rounded-xl px-3 py-2 font-bold text-papan-600 hover:bg-white/70 sm:inline-flex"
             >
-              Coba sebagai siswa
+              Buka materi siswa
             </Link>
-            <Link
-              href="/masuk"
-              className="inline-flex h-11 items-center rounded-full bg-papan px-6 font-bold text-white transition-opacity hover:opacity-90"
-            >
+            <Link href="/masuk" className={buttonClass("primary", "md", "rounded-full px-6")}>
               Masuk guru
             </Link>
           </nav>
         </header>
 
         <main id="isi">
-          <section className="mx-auto grid max-w-6xl items-center gap-10 px-4 pb-16 pt-6 sm:px-6 lg:grid-cols-[1fr_1.15fr] lg:gap-10 lg:pt-12">
+          <section className="mx-auto grid max-w-6xl items-center gap-10 px-4 pb-16 pt-6 sm:px-6 lg:grid-cols-[1fr_1.15fr] lg:pt-12">
             <div className="relative">
-              <Sparkle className="pointer-events-none absolute -top-2 right-6 hidden w-7 text-[#f4b84b] lg:block" />
-              <Triangle className="pointer-events-none absolute bottom-6 right-4 hidden w-7 rotate-12 text-[#ee8f33] lg:block" />
-              <Ring className="pointer-events-none absolute bottom-28 right-14 hidden w-6 text-[#7bb095] lg:block" />
+              <Sparkle className="pointer-events-none absolute -top-2 right-6 hidden w-7 text-[#f59e0b] lg:block" />
+              <Triangle className="pointer-events-none absolute bottom-6 right-4 hidden w-7 rotate-12 text-[#ea580c] lg:block" />
+              <Ring className="pointer-events-none absolute bottom-28 right-14 hidden w-6 text-[#0d9488] lg:block" />
 
-              {/* 
-                PERUBAHAN 1: Menghapus dekorasi garis bergelombang di bawah kata "mengikuti." 
-                Teks sekarang tampil bersih.
-              */}
-              <h1 className="font-display text-[2.4rem] font-extrabold leading-[1.1] text-papan sm:text-[3.2rem]">
-                <span className={hlMint}>Satu materi</span> dari guru, setiap{" "}
-                <span className={hlSky}>siswa</span> bisa mengikuti.
+              <p className="inline-flex items-center gap-2 rounded-full border border-papan/20 bg-white/80 px-3 py-1 text-[14px] font-bold text-papan">
+                <span className="size-2 rounded-full bg-papan" aria-hidden />
+                Untuk kelas inklusif di Indonesia
+              </p>
+              <h1 className="mt-4 font-display text-[2.4rem] font-extrabold leading-[1.1] text-tinta sm:text-[3.2rem]">
+                <span className={hlTeal}>Satu materi</span> dari guru, setiap <span className={hlBlue}>siswa</span> bisa
+                mengikuti.
               </h1>
-
-              {/* 
-                PERUBAHAN 2: Menghapus semua highlight (stabilo) warna-warni pada deskripsi. 
-                Teks kembali menjadi paragraf standar berwarna abu-abu/tinta.
-              */}
               <p className="mt-5 max-w-xl text-[18px] text-tinta-2">
-                Guru menulis materi sekali. Siswa membukanya di HP dengan cara
-                yang cocok untuknya: kalimat lebih mudah, bahasa daerah, huruf
-                besar, kontras tinggi, spasi lega, atau dibacakan.
+                Guru menulis materi sekali. Siswa membukanya di HP dengan cara yang cocok untuknya: kalimat lebih mudah,
+                bahasa daerah, huruf besar, kontras tinggi, spasi lega, atau dibacakan — lengkap dengan gambar yang
+                dideskripsikan.
               </p>
 
-              <div className="mt-8 flex flex-col items-start gap-3">
-                {/* Bentuk pil untuk tombol demo; ikon panah ada di demo-login-button.tsx */}
-                <div className="[&_button]:!rounded-full">
+              <div className="mt-8 flex flex-wrap items-center gap-3">
+                <div className="[&_button]:rounded-full">
                   <DemoLoginButton />
                 </div>
-                <Link
-                  href={`/s/${DEMO_SHARE_CODE}`}
-                  className="inline-flex h-12 items-center gap-2 rounded-full bg-[#d5e3dc] px-6 text-[16px] font-bold text-papan transition-colors hover:bg-[#c6d9cf]"
-                >
-                  <BookOpen className="size-5" aria-hidden />
-                  Buka sebagai siswa
+                <Link href="/s" className={buttonClass("secondary", "lg", "rounded-full")}>
+                  <BookOpen className="size-5 text-papan" aria-hidden />
+                  Buka materi siswa
                 </Link>
               </div>
               <p className="mt-4 text-[14px] text-tinta-2">
                 Akun demo tidak perlu daftar. Semua data di dalamnya fiktif.
               </p>
+              <Link href={`/s/${DEMO_SHARE_CODE}`} className="mt-3 inline-block font-bold text-papan underline">Coba demo siswa — Fotosintesis</Link>
             </div>
             <HeroDemo />
           </section>
         </main>
       </div>
 
-      {/* ---- Mulai dari sini ke bawah: tidak diubah ---- */}
-      <div>
-        <section className="border-t border-garis bg-white">
-          <div className="mx-auto max-w-6xl px-4 py-14 sm:px-6">
-            <h2 className="font-display text-2xl font-extrabold text-tinta">
-              Cara kerjanya
-            </h2>
-            <ol className="mt-8 grid gap-8 md:grid-cols-3">
-              {STEPS.map((step, i) => (
-                <li
-                  key={step.title}
-                  className="border-l-4 border-papan-100 pl-5"
-                >
-                  <div className="flex items-center gap-3">
-                    <span className="flex size-9 items-center justify-center rounded-full bg-papan font-display font-extrabold text-white">
-                      {i + 1}
-                    </span>
-                    <step.icon className="size-6 text-papan" aria-hidden />
-                  </div>
-                  <h3 className="mt-4 text-lg font-bold">{step.title}</h3>
-                  <p className="mt-1 text-tinta-2">{step.text}</p>
-                </li>
-              ))}
-            </ol>
-          </div>
-        </section>
+      <section className="border-y border-garis bg-white" aria-labelledby="judul-cara">
+        <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
+          <p className="font-bold text-papan">Untuk siswa</p>
+          <h2 id="judul-cara" className="mt-1 font-display text-[1.9rem] font-extrabold">
+            Satu materi, banyak cara belajar
+          </h2>
+          <p className="mt-2 max-w-2xl text-tinta-2">
+            Siswa memilih sendiri tanpa akun dan tanpa install. Pilihannya diingat di HP mereka dan bisa diganti kapan
+            saja.
+          </p>
+          <ul className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {MODES.map((m) => (
+              <li
+                key={m.title}
+                className="flex items-center gap-4 rounded-2xl border border-garis bg-white p-4 shadow-kartu"
+              >
+                <IconChip icon={m.icon} tone={m.tone} size="lg" />
+                <div>
+                  <p className="font-bold">{m.title}</p>
+                  <p className="text-[15px] text-tinta-2">{m.text}</p>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </section>
 
-        <section className="mx-auto max-w-6xl px-4 py-14 sm:px-6">
-          <div className="grid gap-10 md:grid-cols-2">
-            <div>
-              <h2 className="font-display text-2xl font-extrabold">
-                Untuk guru
-              </h2>
+      <section className="mx-auto max-w-6xl px-4 py-16 sm:px-6" aria-labelledby="judul-langkah">
+        <p className="font-bold text-papan">Untuk guru</p>
+        <h2 id="judul-langkah" className="mt-1 font-display text-[1.9rem] font-extrabold">
+          Cara kerjanya
+        </h2>
+        <ol className="mt-8 grid gap-5 md:grid-cols-3">
+          {STEPS.map((step, i) => (
+            <li key={step.title} className="relative rounded-2xl border border-garis bg-white p-6 shadow-kartu">
+              <div className="flex items-center justify-between">
+                <IconChip icon={step.icon} tone={step.tone} size="lg" />
+                <span className="font-display text-[2.6rem] font-extrabold leading-none text-slate-200" aria-hidden>
+                  {i + 1}
+                </span>
+              </div>
+              <h3 className="mt-4 text-lg font-bold">
+                <span className="sr-only">Langkah {i + 1}: </span>
+                {step.title}
+              </h3>
+              <p className="mt-1 text-tinta-2">{step.text}</p>
+            </li>
+          ))}
+        </ol>
+
+        <div className="mt-12 grid gap-5 md:grid-cols-3">
+          {NEW.map((f) => (
+            <div key={f.title} className="rounded-2xl border border-garis bg-white p-6 shadow-kartu">
+              <IconChip icon={f.icon} tone={f.tone} />
+              <h3 className="mt-4 text-lg font-bold">{f.title}</h3>
+              <p className="mt-1 text-tinta-2">{f.text}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="border-t border-garis bg-white">
+        <div className="mx-auto grid max-w-6xl gap-10 px-4 py-14 sm:px-6 md:grid-cols-2">
+          {[
+            {
+              title: "Untuk guru",
+              items: [
+                "Profil kebutuhan kelas tanpa data pribadi siswa.",
+                "Panduan akomodasi praktis untuk low vision, tuli, disleksia, sulit fokus, dan bahasa ibu daerah.",
+                "Draf AI (versi teks, deskripsi gambar, soal) selalu dicek guru sebelum siswa melihatnya.",
+                "Impor dari foto buku, PDF, dan Word — teks, tabel, dan gambar ikut rapi.",
+              ],
+            },
+            {
+              title: "Untuk siswa",
+              items: [
+                "Tanpa install dan tanpa akun: cukup pindai QR.",
+                "Materi tampil rapi seperti buku: judul, kotak catatan, tabel, dan gambar.",
+                "Kata sulit bisa diketuk untuk melihat artinya.",
+                "Kuis satu soal per layar dengan pembahasan.",
+              ],
+            },
+          ].map((col) => (
+            <div key={col.title}>
+              <h2 className="font-display text-2xl font-extrabold">{col.title}</h2>
               <ul className="mt-4 space-y-3 text-[17px]">
-                <li>Profil kebutuhan kelas tanpa data pribadi siswa.</li>
-                <li>
-                  Panduan akomodasi praktis untuk low vision, tuli, disleksia,
-                  sulit fokus, dan bahasa ibu daerah.
-                </li>
-                <li>
-                  Draf versi dari AI selalu dicek guru sebelum siswa melihatnya.
-                </li>
-                <li>
-                  Rekap: cara belajar yang dipilih siswa dan skor kuis per cara
-                  belajar.
-                </li>
+                {col.items.map((item) => (
+                  <li key={item} className="flex gap-3">
+                    <span
+                      className="mt-1 flex size-6 shrink-0 items-center justify-center rounded-full bg-papan-100 text-papan"
+                      aria-hidden
+                    >
+                      <Check className="size-4" />
+                    </span>
+                    {item}
+                  </li>
+                ))}
               </ul>
             </div>
-            <div>
-              <h2 className="font-display text-2xl font-extrabold">
-                Untuk siswa
-              </h2>
-              <ul className="mt-4 space-y-3 text-[17px]">
-                <li>Tanpa install dan tanpa akun: cukup pindai QR.</li>
-                <li>
-                  Memilih sendiri cara belajar, dan bisa menggantinya kapan
-                  saja.
-                </li>
-                <li>Kata sulit bisa diketuk untuk melihat artinya.</li>
-                <li>Kuis satu soal per layar dengan pembahasan.</li>
-              </ul>
-            </div>
-          </div>
-        </section>
-      </div>
+          ))}
+        </div>
+      </section>
 
       <footer className="border-t border-garis">
-        <div className="mx-auto max-w-6xl px-4 py-6 text-[14px] text-tinta-2 sm:px-6">
-          Selaras — prototipe untuk hackathon 2026. Materi demo ditulis tim;
-          data siswa demo fiktif.
+        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-6 text-[14px] text-tinta-2 sm:px-6">
+          <span>Selaras — prototipe untuk hackathon 2026. Materi demo ditulis tim; data siswa demo fiktif.</span>
+          <Logo className="scale-75" />
         </div>
       </footer>
     </div>

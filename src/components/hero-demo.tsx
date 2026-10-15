@@ -42,18 +42,18 @@ const VERSIONS: {
   icon?: LucideIcon;
   active: string;
 }[] = [
-  { key: "asli", label: "Teks asli", active: "bg-papan text-white" },
+  { key: "asli", label: "Teks asli", active: "bg-tinta text-white" },
   {
     key: "mudah",
     label: "Teks mudah",
     icon: AlignLeft,
-    active: "bg-[#7fae8b] text-white",
+    active: "bg-papan text-white",
   },
   {
     key: "jawa",
     label: "Basa Jawa",
     icon: Languages,
-    active: "bg-[#f6b445] text-[#3b2a10]",
+    active: "bg-ungu text-white",
   },
 ];
 
@@ -127,7 +127,7 @@ export function HeroDemo() {
     <div className="relative mx-auto w-full max-w-[36rem] pt-20 pb-6 lg:max-w-none lg:pl-6">
       <Doodles />
 
-      <div className="relative z-10 rounded-[1.75rem] border border-white/80 bg-white/55 p-3 shadow-[0_30px_70px_-35px_rgba(11,92,92,0.45)] backdrop-blur-md">
+      <div className="relative z-10 rounded-[1.75rem] border border-white/80 bg-white/55 p-3 shadow-[0_30px_70px_-35px_rgba(15,118,110,0.45)] backdrop-blur-md">
         <div className="space-y-2">
           <div
             className="flex flex-wrap gap-2"
@@ -177,7 +177,7 @@ export function HeroDemo() {
                     pillBase,
                     "border shadow-sm",
                     t.on
-                      ? "border-papan bg-papan-50 text-papan"
+                      ? "border-nila bg-nila-50 text-nila"
                       : "border-white bg-white/80 text-tinta hover:bg-white",
                   )}
                 >
@@ -207,7 +207,7 @@ export function HeroDemo() {
                 pillBase,
                 "border shadow-sm disabled:opacity-50",
                 speech.speaking
-                  ? "border-papan bg-papan-50 text-papan"
+                  ? "border-jingga bg-jingga-50 text-jingga"
                   : "border-white bg-white/80 text-tinta hover:bg-white",
               )}
             >
