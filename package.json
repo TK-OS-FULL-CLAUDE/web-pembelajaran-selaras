@@ -12,7 +12,7 @@
     "cek": "node scripts/cek-deploy.mjs",
     "test:format": "npx --yes tsx@4.23.15 tests/format.test.mts",
     "test:fitur": "npx --yes tsx@4.23.15 tests/student-teacher.test.mts",
-    "test:mtk": "npx --yes tsx@4.23.15 tests/matematika.test.mts",
+    "test:mtk": "npx --yes tsx@4.23.15 tests/matematika.test.mts && npx --yes tsx@4.23.15 tests/latex.test.mts",
     "test:data": "npx --yes tsx@4.23.15 --conditions=react-server tests/data-features.test.mts",
     "test": "npm run test:format && npm run test:mtk && npm run test:ai && npm run test:fitur"
   },
@@ -22,8 +22,9 @@
   "dependencies": {
     "@fontsource-variable/plus-jakarta-sans": "5.3.0",
     "@fontsource/atkinson-hyperlegible": "5.3.0",
+    "katex": "^0.19.0",
     "lucide-react": "1.57.0",
-    "mammoth": "1.12.3",
+    "mammoth": "^1.13.0",
     "next": "16.3.8",
     "pdfjs-dist": "6.3.289",
     "postgres": "3.4.9",

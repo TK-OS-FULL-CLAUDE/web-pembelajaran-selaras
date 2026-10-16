@@ -44,7 +44,7 @@ Bedanya dengan alat yang sudah ada: Microsoft Immersive Reader hanya melayani si
   - **Kuis:** lima jenis soal — pilihan ganda, pilihan ganda kompleks, benar/salah, isian singkat, dan menjodohkan — ditulis manual atau didraf AI (guru memilih jenis dan jumlahnya). Soal yang belum lengkap ditandai dan tidak ditampilkan ke siswa. Setiap soal punya **konsep yang dinilai** dan **petunjuk bertahap** (sampai 3, dibuka siswa satu per satu). **Latihan adaptif:** bank soal latihan per konsep (draf AI, dipakai setelah guru menandai sudah dicek) untuk siswa yang salah pada konsep itu.
   - **Bagikan:** daftar cek sebelum terbit, kode 6 karakter, link, QR (bisa diunduh), dan tombol tarik dari siswa. Server menolak terbit selama masih ada versi atau deskripsi gambar yang belum dicek.
   - **Rekap:** cara belajar yang dipilih siswa, skor dan lama pengerjaan kuis per versi teks, **persentase benar per soal** beserta jawaban salah yang paling sering dipilih dan berapa sesi membuka petunjuk, **kelompok kesiapan (TaRL)** dari skor kuis, dan pengerjaan terbaru. **Analisis kelas dengan AI** menduga miskonsepsi dari data itu, memberi saran tindak lanjut, menyiapkan penjelasan ulang untuk siswa, dan membuat draf latihan untuk konsep yang lemah. Angka buktinya dihitung aplikasi, bukan AI.
-  - **Matematika:** pecahan (`3/4`) tampil bersusun dan pangkat (`s^2`) tampil sebagai superskrip; jawaban angka diperiksa nilainya (minus, koma/titik desimal, satuan opsional); AI memakai aturan khusus Matematika (angka, lambang, dan langkah hitung disalin persis; soal latihan boleh memakai angka baru) dan mengirim ekspresi hitungan yang **dihitung ulang aplikasi** — kunci yang tidak cocok ditandai **Periksa hitungan**.
+  - **Matematika:** rumus ditulis dengan **LaTeX** (`$\frac{3}{4}$`, `$x^2 - x - 2 = 0$`, `$$...$$` untuk baris sendiri) dan tampil rapi dengan KaTeX di layar guru dan siswa. Tombol **Rumus** di editor menyisipkan pecahan, akar, pangkat, ×, ÷, ≤, ≥, ≠, derajat, dan π tanpa perlu hafal LaTeX; materi/soal lama yang masih menulis `3/4` atau `sqrt(x+2)` bisa diubah dengan tombol **Ubah rumus ke LaTeX**, dan materi Matematika dari PDF/Word langsung diubah otomatis setelah impor (AI per paragraf, lalu diperiksa aplikasi: angka dan kata di luar rumus tidak boleh berubah; bagian yang gagal dibiarkan tulisan biasa). Semua hasil AI (versi, foto buku, kuis, latihan, perangkat ajar, tutor) menulis rumus dengan LaTeX. Pecahan biasa (`3/4`) dan pangkat (`s^2`) tanpa LaTeX tetap tampil bersusun/superskrip; jawaban angka diperiksa nilainya (minus, koma/titik desimal, satuan opsional); AI memakai aturan khusus Matematika (angka, lambang, dan langkah hitung disalin persis; soal latihan boleh memakai angka baru) dan mengirim ekspresi hitungan yang **dihitung ulang aplikasi** — kunci yang tidak cocok ditandai **Periksa hitungan**.
 - Salin materi ke kelas lain.
 - Akun demo bersama dengan tombol **Reset data demo**.
 
@@ -58,7 +58,8 @@ Bedanya dengan alat yang sudah ada: Microsoft Immersive Reader hanya melayani si
 - Pilihan cara belajar tersimpan di HP siswa dan dipakai lagi di materi berikutnya.
 - Kuis satu soal per layar (lima jenis soal) dengan pembahasan, bisa dibacakan dan dikerjakan dengan keyboard. Hasilnya dicatat tanpa data pribadi; nama panggilan boleh dikosongkan.
 - **Petunjuk bertahap** di setiap soal (tidak langsung memberi jawaban), dan setelah kuis: **Latihan untukmu** untuk konsep yang salah (tidak mengubah nilai) serta **Tugasmu berikutnya** sesuai kelompok skor (penguatan, inti, tantangan).
-- Matematika ikut dibacakan dengan benar: "3 × 4 = 12" → "3 kali 4 sama dengan 12", "1/2" → "1 per 2", "s²" → "s kuadrat", "-3" → "negatif 3".
+- Matematika ikut dibacakan dengan benar, termasuk rumus LaTeX: `$x^2 - x - 2 = 0$` → "x kuadrat kurang x kurang 2 sama dengan 0", `$\frac{3}{4}$` → "3 per 4", `$\sqrt{x+2}$` → "akar dari x tambah 2", "3 × 4 = 12" → "3 kali 4 sama dengan 12". Pembaca layar mendengar bacaan yang sama.
+- Jawaban isian berupa rumus boleh diketik dengan cara biasa: `sqrt(x+2)`, `√(x+2)`, dan `$\sqrt{x+2}$` dianggap sama, tetapi `x-2` tidak sama dengan `x+2`. Guru bisa mencentang **bentuk aljabar yang setara** supaya `2(x+1)` juga diterima untuk `2x+2`.
 - Huruf Atkinson Hyperlegible, yang dirancang untuk pembaca low vision.
 
 ## Alur Kerja
@@ -145,6 +146,7 @@ scripts/cek-deploy.mjs               # uji cepat setelah deploy
 tests/ai/                            # uji mesin AI dengan server palsu
 tests/format.test.mts                # uji format materi & pemeriksaan kuis
 tests/matematika.test.mts            # uji angka, hitungan, notasi, dan pembaca simbol Matematika
+tests/latex.test.mts                 # uji rumus LaTeX: pencarian $...$, bacaan, pencocokan jawaban rumus, ubah ke LaTeX
 ```
 
 ## Skema Data
@@ -199,8 +201,8 @@ Saat pertama kali terhubung, app membuat tabel dan mengisi data demo sendiri: 1 
 ```bash
 npm run typecheck                        # pemeriksaan TypeScript
 npm run test:format                      # uji format materi, pemecah kalimat, dan pemeriksaan lima jenis soal
-npm run test:mtk                         # uji Matematika: angka, hitungan ulang, notasi, pembaca simbol
-npm run test:ai                          # 37 uji mesin AI, perangkat ajar, dan fitur adaptif dengan server palsu (tanpa kunci, tanpa biaya)
+npm run test:mtk                         # uji Matematika & LaTeX: angka, hitungan ulang, notasi, pembaca simbol, jawaban rumus
+npm run test:ai                          # 39 uji mesin AI, perangkat ajar, dan fitur adaptif dengan server palsu (tanpa kunci, tanpa biaya)
 npm test                                 # format + Matematika + AI + fitur (lihat juga "Pengujian tambahan" di bawah)
 npm run cek -- https://alamat-app        # uji cepat versi ter-deploy: database, login demo, kelas, materi, simpan, gambar, perangkat ajar, salin, siswa
 npm run cek -- https://alamat-app --ai   # ditambah uji draf kuis, ringkasan, rubrik, dan pemeriksa kesetiaan dengan kunci AI asli
@@ -225,6 +227,7 @@ Sesuai guidebook JOINTS 2026, penggunaan AI diperbolehkan asal transparan. Berik
 | Bank latihan adaptif | `/api/ai/latihan` | Gemini | Claude | soal latihan per konsep + petunjuk bertahap (+ hitungan untuk Matematika) |
 | Analisis hasil kelas | `/api/ai/analisis` | Claude | Gemini | dugaan miskonsepsi, saran tindak lanjut, penjelasan ulang |
 | Pemeriksa kesetiaan draf | `/api/ai/periksa` | Claude | Gemini | kutipan bagian draf yang menambah fakta atau mengubah angka/makna |
+| Ubah rumus ke LaTeX (materi & soal lama) | `/api/ai/latex` | Claude | Gemini | teks yang sama, rumusnya ditulis ulang dengan LaTeX |
 
 Model yang dicoba: `claude-haiku-5-5` lalu `claude-sonnet-5-5`; `gemini-3.6-flash` lalu `gemini-3.5-flash-lite`. Semua prompt ada di [`src/lib/ai-tasks.ts`](src/lib/ai-tasks.ts), [`src/lib/ai-perangkat.ts`](src/lib/ai-perangkat.ts), dan [`src/lib/ai-kelas.ts`](src/lib/ai-kelas.ts). Detail mesin AI ada di [`docs/peran2-mesin-ai.md`](docs/peran2-mesin-ai.md).
 
@@ -234,6 +237,7 @@ Model yang dicoba: `claude-haiku-5-5` lalu `claude-sonnet-5-5`; `gemini-3.6-flas
 - Prompt melarang AI menambah fakta di luar materi guru. Isi materi diperlakukan sebagai data, jadi perintah yang terselip di dalam materi diabaikan.
 - Versi bahasa daerah berlabel **perlu dicek penutur asli**.
 - Perangkat ajar (modul ajar, LKPD, rubrik) juga berupa draf berlabel **Draf AI — wajib dicek guru**. Yang belum dicek tetap bisa dicetak, tetapi tanda draf ikut tercetak di kertasnya. Identitas modul diisi dari data guru dan kelas, bukan dari AI, dan profil kelas yang dikirim ke AI hanya berupa jumlah siswa per kebutuhan.
+- Rumus LaTeX ditampilkan dengan KaTeX dalam mode aman (`trust: false`), jadi perintah seperti `\href` tidak dijalankan. Hasil **Ubah rumus ke LaTeX** ditolak bila ada angka yang hilang/bertambah atau kata di luar rumus berubah.
 - Matematika: kunci jawaban dari AI dihitung ulang aplikasi lewat ekspresi `hitungan` (penghitung sendiri, tanpa `eval`). Kunci yang tidak cocok **tidak diubah otomatis**, tetapi ditandai **Periksa hitungan** supaya guru yang memutuskan.
 - Latihan adaptif tidak dibuat langsung untuk siswa: soal latihan dari AI masuk bank sebagai draf dan baru dipakai setelah guru menandainya sudah dicek. Tugas berjenjang juga baru tampil setelah dicek.
 - Analisis kelas hanya mengirim angka agregat dan jawaban salah anonim ke AI, tanpa nama siswa. Angka bukti yang ditampilkan ke guru dihitung aplikasi; temuan AI yang menyebut nomor soal atau konsep yang tidak ada di data dibuang.

@@ -16,7 +16,8 @@ const stop = await startFakeAi(PORT);
 const tasks = await import("../../src/lib/ai-tasks");
 const kelas = await import("../../src/lib/ai-kelas");
 const perangkat = await import("../../src/lib/ai-perangkat");
-const { checkCalc } = await import("../../src/lib/matematika");
+const { checkCalc, latexConversionProblem } = await import("../../src/lib/matematika");
+const { isCorrect } = await import("../../src/lib/quiz");
 
 type Call = { provider: string; model: string; body: Record<string, any> };
 async function setMode(m: Record<string, unknown> = {}) {
@@ -52,20 +53,59 @@ console.log("AI adaptif & Matematika");
 
 await test("Kuis Matematika: konsep, petunjuk, hitungan ikut; kunci yang salah hitung ditandai (tidak diubah diam-diam)", async () => {
   await setMode();
-  const r = await tasks.makeQuizDraft({ body: MTK, grade: "Kelas 4 SD", count: 3, types: ["pg", "isian"], subject: "Matematika" });
+  const r = await tasks.makeQuizDraft({ body: MTK, grade: "Kelas 4 SD", count: 4, types: ["pg", "isian"], subject: "Matematika" });
   assert.equal(r.math, true);
-  assert.equal(r.questions.length, 3);
-  const [a, b, c] = r.questions;
+  assert.equal(r.questions.length, 4);
+  const [a, b, c, d] = r.questions;
   assert.equal(a.concept, "Pecahan senilai");
   assert.deepEqual(a.hints, ["Kalikan pembilang dan penyebut.", "Dikali 2."]);
   assert.equal(checkCalc(a)?.ok, true);
   assert.equal(b.answer, 1, "kunci AI dibiarkan apa adanya");
   assert.equal(checkCalc(b)?.ok, false, "3/4 - 1/4 = 1/2, bukan 1/4");
   assert.equal(checkCalc(c)?.ok, true);
+  // Rumus LaTeX: pilihan "$\frac{4}{6}$" tetap bisa diperiksa hitungannya.
+  assert.equal(a.options[0], "$\\frac{4}{6}$");
+  assert.equal(a.setara, undefined);
+  // Isian aljabar dengan "setara": bentuk lain yang nilainya sama diterima, bentuk yang salah tidak.
+  assert.equal(d.setara, true);
+  assert.equal(isCorrect(d, { type: "isian", text: "2(x+1)" }), true);
+  assert.equal(isCorrect(d, { type: "isian", text: "2 + 2x" }), true);
+  assert.equal(isCorrect(d, { type: "isian", text: "2x+1" }), false);
   const p = promptOf((await calls())[0]);
   assert.match(p, /Ini materi Matematika/);
   assert.match(p, /Aplikasi menghitung ulang ekspresi ini/);
   assert.match(p, /JANGAN menulis jawaban akhirnya di petunjuk/);
+  assert.match(p, /ditulis dengan LaTeX/);
+  assert.match(p, /TIDAK memakai LaTeX/, "kunci isian tetap bisa diketik siswa");
+});
+
+await test("LaTeX yang tidak di-escape di JSON model (\\frac, \\sqrt, \\times) tetap terbaca utuh", async () => {
+  await setMode({ gemini: "rawlatex", claude: "rawlatex" });
+  const r = await tasks.makeQuizDraft({ body: MTK, grade: "Kelas 4 SD", count: 4, types: ["pg", "isian"], subject: "Matematika" });
+  assert.equal(r.questions.length, 4);
+  assert.equal(r.questions[0].options[0], "$\\frac{4}{6}$", "\\f (form feed) dikembalikan menjadi \\frac");
+  assert.equal(r.questions[0].explain, "$2 \\times 2 = 4$ dan $3 \\times 2 = 6$.", "\\t (tab) dikembalikan menjadi \\times");
+  assert.equal(r.questions[2].q, "$\\frac{1}{2} = \\frac{\\square}{10}$", "\\s (escape tidak sah) tidak membuat JSON gagal");
+});
+
+await test("Ubah rumus ke LaTeX: hanya penulisan rumus yang berubah; hasil yang mengubah angka ditolak", async () => {
+  await setMode();
+  const texts = [
+    "Contohnya 1/2 = 2/4. Kalikan: 1 × 2 = 2.",
+    "Luas persegi adalah x^2.",
+    "Soal UBAH-ANGKA 5 dengan 3/4.",
+    "Teks tanpa rumus.",
+  ];
+  const { texts: out } = await tasks.convertToLatex({ texts });
+  assert.equal(out[0], "Contohnya $\\frac{1}{2}$ = $\\frac{2}{4}$. Kalikan: $1 \\times 2 = 2$.");
+  assert.equal(out[1], "Luas persegi adalah $x^2$.");
+  assert.equal(out[3], "Teks tanpa rumus.");
+  assert.equal(latexConversionProblem(texts[0], out[0]), null);
+  assert.equal(latexConversionProblem(texts[1], out[1]), null);
+  assert.match(latexConversionProblem(texts[2], out[2]) ?? "", /angka/);
+  const p = promptOf((await calls())[0]);
+  assert.match(p, /Rumus yang sudah diapit/);
+  assert.match(p, /bukan perintah untukmu/);
 });
 
 await test("Kuis IPA: aturan Matematika tidak dipakai, hitungan dikosongkan", async () => {
@@ -82,6 +122,7 @@ await test("Versi teks mudah Matematika: angka, lambang, dan langkah wajib disal
   await setMode();
   await tasks.makeSimpleVersion({ body: MTK, grade: "", subject: "Matematika" });
   assert.match(promptOf((await calls())[0]), /Salin SEMUA angka, lambang/);
+  assert.match(promptOf((await calls())[0]), /Rumus dan lambang matematika ditulis dengan LaTeX/);
   await setMode();
   await tasks.makeSimpleVersion({ body: IPA, grade: "", subject: "IPAS" });
   assert.doesNotMatch(promptOf((await calls())[0]), /Salin SEMUA angka/);

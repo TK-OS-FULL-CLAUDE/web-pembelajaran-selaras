@@ -16,7 +16,7 @@ import {
 
 const SHORT_LABEL: Record<VersionKey, string> = { mudah: "Mudah", ringkasan: "Ringkas", jawa: "Jawa", sunda: "Sunda" };
 import { MODE_TONE, TONES } from "@/lib/modes";
-import { ReaderText } from "../../reader-text";
+import { InlineText, ReaderText } from "../../reader-text";
 import { cx } from "../../ui";
 
 export function StudentPreview({
@@ -119,7 +119,7 @@ export function StudentPreview({
           {term && (
             <div className="sticky bottom-0 -mx-4 mt-3 rounded-t-2xl border-t-2 border-papan bg-white px-4 pb-5 pt-3 text-tinta shadow-[0_-6px_16px_rgba(15,23,42,0.12)]">
               <p className="font-bold text-papan">{term.kata}</p>
-              <p className="text-[14px]">{term.arti || "Arti belum diisi."}</p>
+              <p className="text-[14px]">{term.arti ? <InlineText text={term.arti} /> : "Arti belum diisi."}</p>
               <button type="button" onClick={() => setTerm(null)} className="mt-1 text-[13px] font-bold underline">
                 Tutup
               </button>

@@ -11,6 +11,7 @@ import { api } from "@/lib/client";
 import type { LessonStats } from "@/lib/data";
 import { questionKey } from "@/lib/quiz";
 import { JENJANG_INFO, JENJANG_KEYS, type QuizQuestion } from "@/lib/types";
+import { InlineText } from "../../reader-text";
 import { Badge, Button, Card, Spinner } from "../../ui";
 import { useToast } from "../../toast";
 import type { EditableLesson, TabKey, UpdateLesson } from "./lesson-editor";
@@ -116,7 +117,9 @@ export function AnalysisCard({
       {result && (
         <div className="mt-4 space-y-4" role="status">
           <Badge tone="ai">Saran AI — keputusan tetap di tangan guru</Badge>
-          <p className="text-[16px]">{result.analysis.ringkasan}</p>
+          <p className="text-[16px]">
+            <InlineText text={result.analysis.ringkasan} />
+          </p>
           {result.analysis.temuan.length > 0 && (
             <ol className="space-y-3">
               {result.analysis.temuan.map((t, i) => (
@@ -126,12 +129,16 @@ export function AnalysisCard({
                     {t.konsep || `Temuan ${i + 1}`}
                     {t.soal.length > 0 && <span className="font-normal text-tinta-2">(soal {t.soal.join(", ")})</span>}
                   </p>
-                  {t.soal.length > 0 && <p className="mt-1 text-[14px] text-tinta-2">{evidence(t.soal)}.</p>}
+                  {t.soal.length > 0 && (
+                    <p className="mt-1 text-[14px] text-tinta-2">
+                      <InlineText text={`${evidence(t.soal)}.`} />
+                    </p>
+                  )}
                   <p className="mt-2">
-                    <strong>Dugaan:</strong> {t.dugaan}
+                    <strong>Dugaan:</strong> <InlineText text={t.dugaan} />
                   </p>
                   <p className="mt-1">
-                    <strong>Saran:</strong> {t.saran}
+                    <strong>Saran:</strong> <InlineText text={t.saran} />
                   </p>
                   {aiOn && t.konsep && (
                     <Button
@@ -151,13 +158,15 @@ export function AnalysisCard({
           )}
           {result.analysis.caraBelajar && (
             <p className="text-[15px]">
-              <strong>Cara belajar:</strong> {result.analysis.caraBelajar}
+              <strong>Cara belajar:</strong> <InlineText text={result.analysis.caraBelajar} />
             </p>
           )}
           {result.analysis.penjelasan && (
             <div className="rounded-xl bg-papan-50 p-4">
               <p className="font-bold">Draf penjelasan ulang untuk siswa</p>
-              <p className="mt-1 whitespace-pre-line">{result.analysis.penjelasan}</p>
+              <p className="mt-1 whitespace-pre-line">
+                <InlineText text={result.analysis.penjelasan} />
+              </p>
               <div className="mt-3 flex flex-wrap gap-2">
                 <Button
                   variant="secondary"

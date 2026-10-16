@@ -1,6 +1,16 @@
 // Dukungan Matematika (server & browser): membaca angka gaya Indonesia, mencocokkan jawaban angka,
 // menghitung ulang ekspresi dari AI, dan mengubah simbol matematika menjadi kata untuk dibacakan.
-// Semuanya tanpa AI, jadi hasilnya pasti dan bisa diuji.
+// Semuanya tanpa AI, jadi hasilnya pasti dan bisa diuji. Jawaban/kunci yang ditulis dengan LaTeX ($\frac{1}{2}$)
+// lebih dulu diubah ke bentuk hitung biasa (1/2) oleh plainMath.
+
+import { hasMath, latexToPlain, mathToPlain, mathToSpeech } from "./latex";
+
+/** Teks yang mungkin memuat LaTeX ($\frac{1}{2}$, \sqrt{x}) → bentuk hitung biasa (1/2, sqrt(x)). */
+export function plainMath(raw: string): string {
+  if (hasMath(raw)) return mathToPlain(raw);
+  if (/\\[A-Za-z]/.test(raw)) return latexToPlain(raw);
+  return raw;
+}
 
 /** Mata pelajaran yang dianggap Matematika (prompt AI memakai aturan khusus). */
 export function isMathSubject(subject: string | null | undefined): boolean {
@@ -71,7 +81,7 @@ function parseNumeral(raw: string): number | null {
  * null bila jawabannya bukan angka (misalnya kata).
  */
 export function parseAnswerNumber(raw: string): ParsedNumber | null {
-  const s = raw
+  const s = plainMath(raw)
     .normalize("NFKC")
     .replace(/[−–—]/g, "-")
     .replace(/⁄/g, "/")
@@ -84,6 +94,8 @@ export function parseAnswerNumber(raw: string): ParsedNumber | null {
   const unit = m[2].trim().toLowerCase().replace(/[.]$/, "");
   // Satuan = satu kata pendek (cm, kg, %, °c, km/jam, cm²). Sisa lain berarti jawabannya kalimat, bukan angka.
   if (unit && !/^[\p{L}%°]{1,10}(?:\/[\p{L}]{1,6})?[²³23]?$/u.test(unit)) return null;
+  // Satu huruf selain satuan (m, g, l, s) adalah variabel: "2x" bukan "2 satuan x".
+  if (/^[a-z]$/.test(unit) && !"mgls".includes(unit)) return null;
   return { value, unit: unit.replace("²", "2").replace("³", "3") };
 }
 
@@ -110,7 +122,7 @@ export function sameNumber(expected: string, given: string): boolean | null {
 
 /** "1 / 2", "½", "-3/4", "1 1/2" → bentuk baku "1/2", "-3/4", "1 1/2"; null bila bukan pecahan. */
 function fractionForm(raw: string): string | null {
-  const s = raw.normalize("NFKC").replace(/[−–—]/g, "-").replace(/⁄/g, "/").trim();
+  const s = plainMath(raw).normalize("NFKC").replace(/[−–—]/g, "-").replace(/⁄/g, "/").trim();
   const m = s.match(/^(-?)\s*(?:(\d+)\s+)?(\d+)\s*\/\s*(\d+)/);
   if (!m) return null;
   return `${m[1]}${m[2] ? `${Number(m[2])} ` : ""}${Number(m[3])}/${Number(m[4])}`;
@@ -119,16 +131,28 @@ function fractionForm(raw: string): string | null {
 // ---------------------------------------------------------------------------
 // Menghitung ulang ekspresi (untuk memeriksa kunci jawaban buatan AI)
 
-type Token = { t: "num"; v: number } | { t: "op"; v: string } | { t: "fn"; v: string };
+type Token = { t: "num"; v: number } | { t: "op"; v: string } | { t: "fn"; v: string } | { t: "var"; v: string };
 
-function tokenize(expr: string): Token[] | null {
-  const s = expr
+/**
+ * Pecah ekspresi menjadi token. Tanpa `withVars`, huruf x/X berarti kali (hitungan AI: "3 x 4");
+ * dengan `withVars`, setiap huruf adalah variabel ("2x^2 - 3x") dan x hanya berarti kali di antara dua angka.
+ */
+/** Pangkat huruf kecil ditulis ulang dengan "^" sebelum NFKC (NFKC mengubah "x²" menjadi "x2"). */
+function supToCaret(s: string): string {
+  return s.replace(/[⁰¹²³⁴⁵⁶⁷⁸⁹]+/g, (e) => `^${[...e].map((c) => SUPERSCRIPT[c]).join("")}`);
+}
+
+function tokenize(expr: string, withVars = false): Token[] | null {
+  let s = supToCaret(plainMath(expr))
     .normalize("NFKC")
     .replace(/[−–—]/g, "-")
-    .replace(/[×xX·⋅]/g, "*")
+    .replace(/[·⋅×]/g, "*")
     .replace(/[÷:]/g, "/")
+    .replace(/\*\*/g, "^")
     .replace(/√/g, "sqrt")
+    .replace(/π/g, "pi")
     .replace(/,/g, ".");
+  s = withVars ? s.replace(/(\d)\s*[xX]\s*(?=\d)/g, "$1*") : s.replace(/[xX]/g, "*");
   const out: Token[] = [];
   let i = 0;
   while (i < s.length) {
@@ -143,15 +167,24 @@ function tokenize(expr: string): Token[] | null {
       i += num[0].length;
       continue;
     }
-    if (s.startsWith("sqrt", i) || s.startsWith("akar", i)) {
-      out.push({ t: "fn", v: "sqrt" });
-      i += 4;
-      continue;
-    }
-    const sup = SUPERSCRIPT[c];
-    if (sup) {
-      out.push({ t: "op", v: "^" }, { t: "num", v: Number(sup) });
-      i++;
+    const word = s.slice(i).match(/^[A-Za-z]+/)?.[0];
+    if (word) {
+      // Satu rangkaian huruf: fungsi (sqrt/akar), konstanta pi, lalu variabel satu huruf ("xy" = x·y).
+      let j = 0;
+      while (j < word.length) {
+        const rest = word.slice(j).toLowerCase();
+        if (rest.startsWith("sqrt") || rest.startsWith("akar")) {
+          out.push({ t: "fn", v: "sqrt" });
+          j += 4;
+        } else if (rest.startsWith("pi")) {
+          out.push({ t: "var", v: "π" });
+          j += 2;
+        } else if (withVars) {
+          out.push({ t: "var", v: word[j] });
+          j++;
+        } else return null;
+      }
+      i += word.length;
       continue;
     }
     if ("+-*/^()%".includes(c)) {
@@ -164,15 +197,8 @@ function tokenize(expr: string): Token[] | null {
   return out;
 }
 
-/**
- * Hitung ekspresi aritmetika sederhana: + − × ÷ : / ^ % ( ) √. Angka desimal boleh pakai koma atau titik.
- * Tidak memakai eval. null bila tidak bisa dibaca.
- */
-export function evaluate(expr: string): number | null {
-  if (!expr || expr.length > 200) return null;
-  const parsed = tokenize(expr);
-  if (!parsed?.length) return null;
-  const tokens: Token[] = parsed;
+/** Hitung token dengan nilai variabel `vars`. null bila tidak bisa dibaca atau tidak terdefinisi (bagi 0, akar negatif). */
+function run(tokens: Token[], vars: Record<string, number> = {}): number | null {
   let pos = 0;
   const peek = () => tokens[pos];
   const isOp = (v: string) => peek()?.t === "op" && peek()!.v === v;
@@ -180,9 +206,10 @@ export function evaluate(expr: string): number | null {
   function primary(): number | null {
     const tok = peek();
     if (!tok) return null;
-    if (tok.t === "num") {
+    if (tok.t === "num" || tok.t === "var") {
       pos++;
-      let v = tok.v;
+      let v = tok.t === "num" ? tok.v : tok.v === "π" ? Math.PI : vars[tok.v];
+      if (v === undefined) return null;
       if (isOp("%")) {
         pos++;
         v /= 100;
@@ -227,8 +254,8 @@ export function evaluate(expr: string): number | null {
   }
   function term(): number | null {
     let v = unary();
-    while (v !== null && (isOp("*") || isOp("/") || peek()?.t === "fn" || isOp("("))) {
-      // Perkalian tanpa tanda: 2(3+4) atau 2√9
+    while (v !== null && (isOp("*") || isOp("/") || peek()?.t === "fn" || peek()?.t === "var" || isOp("("))) {
+      // Perkalian tanpa tanda: 2(3+4), 2√9, 3x
       const op = isOp("*") || isOp("/") ? tokens[pos++].v : "*";
       const r = unary();
       if (r === null) return null;
@@ -250,7 +277,78 @@ export function evaluate(expr: string): number | null {
 
   const result = expression();
   if (result === null || pos !== tokens.length || !Number.isFinite(result)) return null;
-  return Math.round(result * 1e9) / 1e9;
+  return result;
+}
+
+/**
+ * Hitung ekspresi aritmetika sederhana: + − × ÷ : / ^ % ( ) √ π, juga LaTeX ($\frac{3}{4} \times 8$).
+ * Angka desimal boleh pakai koma atau titik. Tidak memakai eval. null bila tidak bisa dibaca.
+ */
+export function evaluate(expr: string): number | null {
+  if (!expr || expr.length > 200) return null;
+  const tokens = tokenize(expr);
+  if (!tokens?.length) return null;
+  const result = run(tokens);
+  return result === null ? null : Math.round(result * 1e9) / 1e9;
+}
+
+/**
+ * Apakah dua ekspresi aljabar setara ("2(x+1)" dan "2x+2", "sqrt(x+2)" dan "(x+2)^(1/2)").
+ * Diperiksa dengan menghitung keduanya pada beberapa nilai variabel. null = tidak bisa diperiksa
+ * (bukan ekspresi, memuat "=", atau lebih dari 3 variabel).
+ */
+export function equivalent(a: string, b: string): boolean | null {
+  if (a.length > 200 || b.length > 200) return null;
+  const ta = tokenize(a, true);
+  const tb = tokenize(b, true);
+  if (!ta?.length || !tb?.length) return null;
+  const names = [...new Set([...ta, ...tb].flatMap((t) => (t.t === "var" && t.v !== "π" ? [t.v] : [])))];
+  if (names.length > 3) return null;
+  const samples = [0.37, 1.3, 2.1, 3.7, -0.6, 5.2, -2.3, 0.81, 7.9, -4.4];
+  let checked = 0;
+  for (let k = 0; k < samples.length; k++) {
+    const vars = Object.fromEntries(names.map((n, idx) => [n, samples[(k + idx * 3) % samples.length]]));
+    const va = run(ta, vars);
+    const vb = run(tb, vars);
+    if (va === null || vb === null) continue; // di luar daerah asal salah satunya
+    if (Math.abs(va - vb) > 1e-7 * Math.max(1, Math.abs(va), Math.abs(vb))) return false;
+    checked++;
+  }
+  return checked >= 4 ? true : null;
+}
+
+/**
+ * Bentuk baku ekspresi untuk dibandingkan apa adanya: LaTeX → hitung biasa, tanpa spasi, simbol diseragamkan.
+ * "$\sqrt{x+2}$", "√(x+2)", "sqrt( x + 2 )" → "sqrt(x+2)"; "2·x" → "2x"; "x²" → "x^2".
+ */
+export function mathCanon(raw: string): string {
+  return supToCaret(plainMath(raw))
+    .normalize("NFKC")
+    .toLowerCase()
+    .replace(/[−–—]/g, "-")
+    .replace(/[×·⋅]/g, "*")
+    .replace(/÷/g, "/")
+    .replace(/\*\*/g, "^")
+    .replace(/√/g, "sqrt")
+    .replace(/akar/g, "sqrt")
+    .replace(/π/g, "pi")
+    .replace(/\s+/g, "")
+    .replace(/[.]$/, "")
+    .replace(/sqrt([a-z0-9.]+)/g, "sqrt($1)")
+    .replace(/([\da-z)])\*(?=[a-z(])/g, "$1")
+    .replace(/\^\((-?[\w.]+)\)/g, "^$1");
+}
+
+/** Jawaban yang berupa rumus/ekspresi (bukan kata): memuat LaTeX, akar, pangkat, atau operasi di antara angka/variabel. */
+export function looksLikeExpression(s: string): boolean {
+  const t = s.normalize("NFKC");
+  return (
+    /[$\\√^²³×÷*=<>≤≥]/.test(t) ||
+    /\b(?:sqrt|akar)\s*\(/i.test(t) ||
+    /[\p{L}\d)]\s*\+\s*[\p{L}\d(]/u.test(t) ||
+    /\d\s*\/\s*[\p{L}\d(]|[\p{L})]\s*\/\s*\d/u.test(t) ||
+    /(?:\d|\b[a-z]|\))\s*[-−]\s*(?:\d|[a-z]\b|\()/i.test(t)
+  );
 }
 
 /** Angka dalam tulisan Indonesia: 3.5 → "3,5", 1500 → "1.500". */
@@ -280,7 +378,7 @@ const UNIT_WORD: Record<string, string> = {
  * "-3" → "negatif 3", "5 cm²" → "5 sentimeter persegi". Teks biasa tidak berubah.
  */
 export function spokenMath(text: string): string {
-  let s = text;
+  let s = hasMath(text) ? mathToSpeech(text) : text;
   // Satuan luas/volume dan satuan setelah angka.
   s = s.replace(/(\d)\s*(mm|cm|dm|km|m)(²|\^2)(?![\p{L}\d])/gu, (_, d, u) => `${d} ${UNIT_WORD[u]} persegi`);
   s = s.replace(/(\d)\s*(mm|cm|dm|km|m)(³|\^3)(?![\p{L}\d])/gu, (_, d, u) => `${d} ${UNIT_WORD[u]} kubik`);
@@ -336,8 +434,8 @@ export function checkCalc(q: {
   const type = q.type ?? "pg";
   if (type !== "pg" && type !== "isian") return null;
   const value = evaluate(calc);
-  if (value === null) return { ok: false, value: null, message: `Hitungan "${calc}" tidak bisa dibaca. Periksa kunci secara manual.` };
-  const key = type === "pg" ? (q.options[q.answer] ?? "") : (q.accepted?.[0] ?? "");
+  if (value === null) return { ok: false, value: null, message: `Hitungan "${plainMath(calc)}" tidak bisa dibaca. Periksa kunci secara manual.` };
+  const key = plainMath(type === "pg" ? (q.options[q.answer] ?? "") : (q.accepted?.[0] ?? ""));
   const parsed = parseAnswerNumber(key);
   if (!parsed) return { ok: false, value, message: `Kunci "${key}" bukan angka, padahal hitungannya ${formatNumber(value)}.` };
   if (!close(parsed.value, value)) {
@@ -353,7 +451,7 @@ export function checkCalc(q: {
       const form = fractionForm(o);
       return !(keyForm && form && form !== keyForm);
     });
-    if (twin >= 0) return { ok: false, value, message: `Pilihan "${q.options[twin]}" juga bernilai ${formatNumber(value)}.` };
+    if (twin >= 0) return { ok: false, value, message: `Pilihan "${plainMath(q.options[twin])}" juga bernilai ${formatNumber(value)}.` };
   }
   return { ok: true, value, message: `Hitungan cocok: ${calc} = ${formatNumber(value)}.` };
 }
@@ -363,7 +461,8 @@ export function checkCalc(q: {
 
 /** Angka di teks, tanpa nomor urut daftar ("1. ") dan tanpa ID gambar. */
 function numbersIn(text: string): { token: string; value: number }[] {
-  const cleaned = text
+  // Rumus LaTeX dibaca sebagai hitungan biasa dulu: \frac{3}{4} → 3/4, 1\,000 → 1000, 3{,}5 → 3,5.
+  const cleaned = (hasMath(text) ? mathToPlain(text) : text)
     .split("\n")
     .map((l) => l.replace(/^\s*(?:[-*•>]\s*)?\d{1,3}[.)]\s+/, " ").replace(/\(gambar:[^)]*\)/g, " "))
     .join("\n");
@@ -393,3 +492,65 @@ export function newNumbers(source: string, draft: string): string[] {
   }
   return out;
 }
+
+// ---------------------------------------------------------------------------
+// Pemeriksaan hasil "Ubah rumus ke LaTeX"
+
+/** Nama fungsi di rumus tulisan biasa (sqrt(x), akar(x), sin x) yang wajar hilang setelah ditulis dengan LaTeX. */
+const LATEX_WORDS = new Set("sqrt akar abs exp sin cos tan sec csc cot log lim max min".split(" "));
+
+/**
+ * Kata-kata (≥ 3 huruf) di teks, tanpa nama perintah LaTeX (\\frac, \\lim, \\varepsilon, \\begin{aligned} …)
+ * dan tanpa nama fungsi tulisan biasa (sqrt, akar). Isi \\text{…} tetap dihitung sebagai kata.
+ */
+function proseWords(t: string): Set<string> {
+  const flat = t
+    .replace(/\\(?:text|textbf|textit|mathrm|mathbf|mathit|operatorname|mbox)\s*\{([^{}]*)\}/g, " $1 ")
+    .replace(/\\[A-Za-z]+/g, " ")
+    .toLowerCase();
+  return new Set((flat.match(/\p{L}{3,}/gu) ?? []).filter((w) => !LATEX_WORDS.has(w)));
+}
+
+/**
+ * Bila hasil satu bagian ditolak, periksa baris demi baris (daftar, tabel, langkah bernomor): baris yang aman
+ * dipakai, baris yang angka/katanya berubah tetap seperti sumber. null bila jumlah barisnya berbeda.
+ */
+export function mergeLatexLines(source: string, output: string): { text: string; kept: number; changed: number } | null {
+  const src = source.split("\n");
+  const out = output.split("\n");
+  if (src.length < 2 || src.length !== out.length) return null;
+  let kept = 0;
+  let changed = 0;
+  const lines = src.map((s, i) => {
+    const o = out[i];
+    if (o.trim() === s.trim()) return s;
+    if (latexConversionProblem(s, o)) {
+      kept++;
+      return s;
+    }
+    changed++;
+    return o;
+  });
+  return { text: lines.join("\n"), kept, changed };
+}
+
+/**
+ * Hasil AI yang mengubah penulisan rumus ke LaTeX hanya boleh mengubah cara menulis rumusnya:
+ * tidak ada angka yang hilang atau bertambah, dan kata di luar rumus tetap. null = aman; selain itu alasannya.
+ */
+export function latexConversionProblem(source: string, output: string): string | null {
+  const src = supToCaret(source).normalize("NFKC");
+  const added = newNumbers(src, output);
+  if (added.length) return `angka baru: ${added.slice(0, 3).join(", ")}`;
+  const lost = newNumbers(output, src);
+  if (lost.length) return `angka hilang: ${lost.slice(0, 3).join(", ")}`;
+  const a = proseWords(src);
+  const b = proseWords(output);
+  const tolerance = Math.max(2, Math.ceil(a.size * 0.03));
+  const extra = [...b].filter((w) => !a.has(w));
+  if (extra.length > tolerance) return `kata baru: ${extra.slice(0, 3).join(", ")}`;
+  const missing = [...a].filter((w) => !b.has(w));
+  if (missing.length > tolerance) return `kata hilang: ${missing.slice(0, 3).join(", ")}`;
+  return null;
+}
+

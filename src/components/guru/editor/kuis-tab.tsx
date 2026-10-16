@@ -13,6 +13,7 @@ import {
   CircleAlert,
   Lightbulb,
   Plus,
+  Sigma,
   Sparkles,
   Target,
   Trash2,
@@ -20,15 +21,132 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { api } from "@/lib/client";
+import { hasMath, latexBatches, plainMathSpots } from "@/lib/latex";
 import { checkCalc, mathMode } from "@/lib/matematika";
 import { QUIZ_TONE, TONES } from "@/lib/modes";
 import { blankQuestion, convertQuestion, questionProblem, quizType } from "@/lib/quiz";
 import { QUIZ_TYPES, QUIZ_TYPE_LABEL, type QuizQuestion, type QuizType } from "@/lib/types";
+import { InlineText } from "../../reader-text";
 import { Badge, Button, EmptyState, Spinner, cx, inputClass } from "../../ui";
 import { useToast } from "../../toast";
 import type { EditableLesson, UpdateLesson } from "./lesson-editor";
 
 const LETTERS = ["A", "B", "C", "D", "E", "F"];
+
+/** Kolom soal yang dilihat siswa (bukan kunci isian dan hitungan pemeriksa), dalam urutan tetap. */
+function shownFields(q: QuizQuestion): string[] {
+  const type = quizType(q);
+  return [
+    q.q,
+    q.explain,
+    ...(type === "pg" || type === "pgk" ? q.options : []),
+    ...(q.hints ?? []),
+    ...(type === "jodoh" ? (q.pairs ?? []).flatMap((p) => [p.kiri, p.kanan]) : []),
+  ];
+}
+
+function withShownFields(q: QuizQuestion, f: string[]): QuizQuestion {
+  const type = quizType(q);
+  let k = 0;
+  const next = () => f[k++];
+  const out: QuizQuestion = { ...q, q: next(), explain: next() };
+  if (type === "pg" || type === "pgk") out.options = q.options.map(() => next());
+  if (q.hints) out.hints = q.hints.map(() => next());
+  if (type === "jodoh" && q.pairs) out.pairs = q.pairs.map(() => ({ kiri: next(), kanan: next() }));
+  return out;
+}
+
+/**
+ * "Ubah rumus ke LaTeX" untuk soal kuis dan bank latihan yang ditulis sebelum ada LaTeX.
+ * Hanya kolom yang memuat rumus tulisan biasa yang dikirim; kunci isian dan hitungan tidak diubah.
+ */
+function QuizLatexBanner({
+  lessonId,
+  lesson,
+  update,
+  aiOn,
+  math,
+}: {
+  lessonId: string;
+  lesson: EditableLesson;
+  update: UpdateLesson;
+  aiOn: boolean;
+  math: boolean;
+}) {
+  const toast = useToast();
+  const [busy, setBusy] = useState(false);
+  const all = [...lesson.quiz, ...(lesson.practice ?? [])];
+  const spots = all.reduce((n, q) => n + shownFields(q).reduce((m, f) => m + plainMathSpots(f), 0), 0);
+  if (!spots || !(math || spots >= 3)) return null;
+
+  async function convert() {
+    const snapshot = [...lesson.quiz, ...(lesson.practice ?? [])];
+    const slots: { qi: number; fi: number; text: string }[] = [];
+    snapshot.forEach((q, qi) =>
+      shownFields(q).forEach((text, fi) => {
+        if (plainMathSpots(text) > 0) slots.push({ qi, fi, text });
+      }),
+    );
+    setBusy(true);
+    try {
+      const fields = snapshot.map(shownFields);
+      const texts = slots.map((x) => x.text);
+      const res = { changed: 0, rejected: 0 };
+      // Beberapa permintaan kecil (paling banyak 20 kolom per permintaan) supaya cepat dan tidak melewati batas.
+      for (const batch of latexBatches(texts, texts.map((_, k) => k))) {
+        const part = await api<{ texts: string[]; changed: number; rejected: number }>("/api/ai/latex", {
+          method: "POST",
+          body: { lessonId, texts: batch.map((k) => texts[k]) },
+        });
+        batch.forEach((k, j) => (fields[slots[k].qi][slots[k].fi] = part.texts[j] ?? texts[k]));
+        res.changed += part.changed;
+        res.rejected += part.rejected;
+      }
+      const replaced = new Map(snapshot.map((q, i) => [q, withShownFields(q, fields[i])]));
+      // Soal yang disunting guru selama AI bekerja tidak ditimpa.
+      update((l) => ({
+        quiz: l.quiz.map((q) => replaced.get(q) ?? q),
+        practice: (l.practice ?? []).map((q) => replaced.get(q) ?? q),
+      }));
+      if (res.changed) {
+        toast.ok(
+          `Rumus di ${res.changed} bagian soal sudah ditulis dengan LaTeX${res.rejected ? `; ${res.rejected} bagian dibiarkan karena hasil AI mengubah angka/kata` : ""}. Periksa pratinjau rumusnya.`,
+        );
+      } else {
+        toast.error(
+          res.rejected
+            ? "AI ikut mengubah angka atau kata, jadi hasilnya tidak dipakai. Tekan lagi untuk mencoba ulang."
+            : "Tidak ada rumus yang perlu diubah.",
+        );
+      }
+    } catch (err) {
+      toast.error((err as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div
+      className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl border border-aksen/30 bg-aksen-50 px-3 py-2.5 text-[14px]"
+      role="status"
+    >
+      <Sigma className="size-4 shrink-0 text-aksen" aria-hidden />
+      <span className="min-w-0 flex-1">
+        Ada {spots} rumus di soal yang masih ditulis biasa (mis. 3/4, x^2, sqrt(x)). Dengan LaTeX rumusnya tampil rapi
+        di layar siswa dan dibacakan dengan benar.
+      </span>
+      {aiOn ? (
+        <Button variant="secondary" size="sm" disabled={busy} onClick={convert}>
+          {busy ? <Spinner /> : <Sparkles className="size-4" aria-hidden />}
+          Ubah rumus soal ke LaTeX
+        </Button>
+      ) : (
+        <span className="text-tinta-2">Tulis rumus di antara tanda $, misalnya $x^2$.</span>
+      )}
+    </div>
+  );
+}
 
 const TYPE_HINT: Record<QuizType, string> = {
   pg: "Satu jawaban benar.",
@@ -255,7 +373,9 @@ export function KuisTab({
       {aiPanel}
       <p className="text-[14px] text-tinta-2">
         Soal ditampilkan dalam Bahasa Indonesia untuk semua siswa dan bisa dibacakan suara.
+        {math && " Rumus ditulis dengan LaTeX di antara tanda $, misalnya $x^2 - 1$ atau $\\frac{3}{4}$."}
       </p>
+      <QuizLatexBanner lessonId={lessonId} lesson={lesson} update={update} aiOn={aiOn} math={math} />
 
       <ol className="space-y-4">
         {quiz.map((q, i) => (
@@ -418,7 +538,7 @@ function QuestionCard({
               </div>
             </fieldset>
           )}
-          {type === "isian" && <AcceptedEditor q={q} i={i} noun={noun} edit={edit} />}
+          {type === "isian" && <AcceptedEditor q={q} i={i} noun={noun} math={math} edit={edit} />}
           {type === "jodoh" && <PairsEditor q={q} i={i} noun={noun} edit={edit} />}
         </div>
 
@@ -458,6 +578,8 @@ function QuestionCard({
             ))}
           </div>
         </fieldset>
+
+        <MathPreview q={q} />
 
         {(math || q.calc) && (type === "pg" || type === "isian") && (
           <div className="mt-4">
@@ -592,15 +714,50 @@ function OptionsEditor({
   );
 }
 
+/** Tampilan rumus LaTeX seperti yang dilihat siswa, muncul bila soal memuat $...$. */
+function MathPreview({ q }: { q: QuizQuestion }) {
+  const type = quizType(q);
+  const options = type === "pg" || type === "pgk" ? q.options.filter((o) => o.trim()) : [];
+  const parts = [q.q, ...options, q.explain, ...(q.hints ?? [])];
+  if (!parts.some((t) => t && hasMath(t))) return null;
+  return (
+    <div className="mt-4 rounded-xl border border-garis bg-kertas p-4" role="group" aria-label="Pratinjau rumus untuk siswa">
+      <p className="text-[13px] font-bold uppercase tracking-wide text-tinta-2">Pratinjau rumus (tampilan siswa)</p>
+      <p className="mt-1.5 font-bold leading-relaxed">
+        <InlineText text={q.q} />
+      </p>
+      {options.length > 0 && (
+        <ul className="mt-2 space-y-1">
+          {options.map((o, k) => (
+            <li key={k} className="flex gap-2">
+              <span className="font-bold text-tinta-2">{LETTERS[k]}.</span>
+              <span>
+                <InlineText text={o} />
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+      {q.explain.trim() && (
+        <p className="mt-2 text-[14px] text-tinta-2">
+          <strong>Pembahasan:</strong> <InlineText text={q.explain} />
+        </p>
+      )}
+    </div>
+  );
+}
+
 function AcceptedEditor({
   q,
   i,
   noun,
+  math,
   edit,
 }: {
   q: QuizQuestion;
   i: number;
   noun: string;
+  math?: boolean;
   edit: (patch: Partial<QuizQuestion>) => void;
 }) {
   const accepted = q.accepted?.length ? q.accepted : [""];
@@ -608,6 +765,7 @@ function AcceptedEditor({
     <fieldset className="space-y-2">
       <legend className="mb-1 text-[14px] text-tinta-2">
         Jawaban yang diterima. Tambahkan bentuk lain yang juga benar (mis. sinonim atau ejaan lain).
+        {math && " Rumus ditulis biasa (sqrt(x+2), x^2, 3/4) atau LaTeX; spasi dan √/sqrt dianggap sama."}
       </legend>
       {accepted.map((a, k) => (
         <div key={k} className="flex items-center gap-2">
@@ -615,7 +773,7 @@ function AcceptedEditor({
             aria-label={`Jawaban diterima ${k + 1} ${noun.toLowerCase()} ${i + 1}`}
             className={cx(inputClass, "h-11")}
             value={a}
-            placeholder={k === 0 ? "Contoh: penguapan" : "Bentuk lain"}
+            placeholder={k === 0 ? (math ? "Contoh: sqrt(x+2)" : "Contoh: penguapan") : "Bentuk lain"}
             onChange={(e) => edit({ accepted: accepted.map((x, j) => (j === k ? e.target.value : x)) })}
           />
           <IconButton
@@ -633,6 +791,20 @@ function AcceptedEditor({
           <Plus className="size-4" aria-hidden />
           Tambah jawaban lain
         </Button>
+      )}
+      {(math || q.setara) && (
+        <label className="flex items-start gap-2 text-[14px]">
+          <input
+            type="checkbox"
+            className="mt-1 size-4 accent-papan"
+            checked={!!q.setara}
+            onChange={(e) => edit({ setara: e.target.checked || undefined })}
+          />
+          <span>
+            Terima bentuk aljabar lain yang setara, mis. <code>2(x+1)</code> untuk <code>2x+2</code>.{" "}
+            <span className="text-tinta-2">Jangan dicentang untuk soal &quot;sederhanakan&quot; atau &quot;faktorkan&quot;.</span>
+          </span>
+        </label>
       )}
     </fieldset>
   );

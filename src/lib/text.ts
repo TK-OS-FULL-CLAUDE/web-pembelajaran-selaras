@@ -7,11 +7,14 @@
 //   Paragraf biasa. Baris kosong memisahkan paragraf.
 //   - butir daftar             1. langkah bernomor
 //   **tebal**  *miring*  ==stabilo==   s^2 (pangkat)   3/4 (pecahan, tampil bersusun)
+//   $x^2 - 1$  rumus LaTeX di dalam kalimat;  $$\frac{a}{b}$$  rumus LaTeX di baris sendiri (src/lib/latex.ts)
 //   > Penting: kotak catatan   (label lain: Ingat, Catatan, Contoh, Tahukah kamu?, Info, Definisi …)
 //   | Kolom | Kolom |          tabel (baris kedua |---|---| menandai baris judul)
 //   ![Keterangan gambar](gambar:ID)   gambar/diagram; deskripsinya (alt text) disimpan terpisah
 //   [Gambar: deskripsi]        gambar dari buku yang belum diunggah (hanya deskripsi)
 //   ---                        garis pemisah
+
+import { latexToSpeech, mathAt } from "./latex";
 
 /** Sidik pendek sebuah teks (djb2). Dipakai untuk tahu apakah materi asli berubah setelah versi dibuat. */
 export function fingerprint(text: string): string {
@@ -37,6 +40,7 @@ export type TextBlock =
   | { type: "callout"; kind: CalloutKind; title: string | null; lines: CalloutLine[] }
   | { type: "table"; header: string[] | null; rows: string[][] }
   | { type: "figure"; id: string | null; caption: string; description: string | null }
+  | { type: "math"; tex: string }
   | { type: "divider" };
 
 const CALLOUT_LABELS: [RegExp, CalloutKind][] = [
@@ -115,11 +119,46 @@ export function parseBlocks(text: string): TextBlock[] {
     flushTable();
   };
 
+  // Rumus LaTeX di baris sendiri yang ditulis beberapa baris: $$ … $$ atau \[ … \].
+  let mathLines: { closer: string; lines: string[] } | null = null;
+
   for (const raw of text.replace(/\r\n?/g, "\n").split("\n")) {
     const line = raw.trim();
+    if (mathLines) {
+      if (!line) {
+        // Penutup tidak ditemukan sebelum baris kosong: tampilkan apa adanya sebagai paragraf.
+        para.push(...mathLines.lines);
+        mathLines = null;
+        flushAll();
+        continue;
+      }
+      mathLines.lines.push(line);
+      if (line.endsWith(mathLines.closer)) {
+        const all = mathLines.lines.join("\n");
+        const tex = all.slice(2, -2).trim();
+        if (tex) blocks.push({ type: "math", tex });
+        mathLines = null;
+      }
+      continue;
+    }
     if (!line) {
       flushAll();
       continue;
+    }
+
+    if (line.startsWith("$$") || line.startsWith("\\[")) {
+      const m = mathAt(line, 0);
+      if (m && m.display && m.end === line.length) {
+        flushAll();
+        blocks.push({ type: "math", tex: m.tex });
+        continue;
+      }
+      const closer = line.startsWith("$$") ? "$$" : "\\]";
+      if (!m && line.indexOf(closer, 2) < 0) {
+        flushAll();
+        mathLines = { closer, lines: [line] };
+        continue;
+      }
     }
 
     // Tabel
@@ -200,6 +239,7 @@ export function parseBlocks(text: string): TextBlock[] {
     flushList();
     para.push(line);
   }
+  if (mathLines) para.push(...mathLines.lines);
   flushAll();
   return blocks;
 }
@@ -212,8 +252,9 @@ function lineOf(content: string): CalloutLine {
 // ---------------------------------------------------------------------------
 // Format dalam baris: **tebal**, *miring*, ==stabilo==, dan notasi matematika: s^2 (pangkat), 3/4 (pecahan)
 
-export type MarkType = "b" | "i" | "m" | "sup" | "frac";
-export type InlineMark = { start: number; end: number; type: MarkType };
+export type MarkType = "b" | "i" | "m" | "sup" | "frac" | "math";
+/** Untuk "math": `tex` = sumber LaTeX; teks polosnya berisi bacaan rumus (untuk suara & pemecah kalimat). */
+export type InlineMark = { start: number; end: number; type: MarkType; tex?: string; display?: boolean };
 export type Inline = { plain: string; marks: InlineMark[] };
 
 const MARKERS: [string, MarkType][] = [
@@ -226,14 +267,25 @@ function walkInline(raw: string, acc: Inline) {
   let i = 0;
   while (i < raw.length) {
     const c = raw[i];
-    if (c === "\\" && /[*=\\|]/.test(raw[i + 1] ?? "")) {
+    if (c === "\\" && /[*=\\|$]/.test(raw[i + 1] ?? "")) {
       acc.plain += raw[i + 1];
       i += 2;
       continue;
     }
+    // Rumus LaTeX: $…$, $$…$$, \(…\), \[…\]. Teks polosnya = bacaan rumus, tampilannya KaTeX.
+    if (c === "$" || (c === "\\" && (raw[i + 1] === "(" || raw[i + 1] === "["))) {
+      const m = mathAt(raw, i);
+      if (m) {
+        const start = acc.plain.length;
+        acc.plain += latexToSpeech(m.tex) || m.tex;
+        acc.marks.push({ start, end: acc.plain.length, type: "math", tex: m.tex, display: m.display });
+        i = m.end;
+        continue;
+      }
+    }
     // Pangkat: s^2, 10^-3, x^(n+1) → angka/huruf pangkat ditulis tanpa "^" dan diberi tanda superskrip.
     if (c === "^" && i > 0 && !/\s/.test(raw[i - 1])) {
-      const exp = raw.slice(i + 1).match(/^\((-?[\p{L}\d+\-]{1,10})\)|^(-?[\p{L}\d]{1,4})/u);
+      const exp = raw.slice(i + 1).match(/^\((-?[\p{L}\d+\-/.,]{1,12})\)|^(-?[\p{L}\d]{1,4})/u);
       if (exp) {
         const start = acc.plain.length;
         acc.plain += exp[1] ?? exp[2];
@@ -280,7 +332,7 @@ export function parseInline(raw: string): Inline {
   for (const m of acc.plain.matchAll(FRACTION)) {
     const start = (m.index ?? 0) + m[1].length;
     const end = start + m[2].length + 1 + m[3].length;
-    if (!acc.marks.some((x) => x.type === "sup" && x.start < end && x.end > start)) {
+    if (!acc.marks.some((x) => (x.type === "sup" || x.type === "math") && x.start < end && x.end > start)) {
       acc.marks.push({ start, end, type: "frac" });
     }
   }
@@ -451,6 +503,8 @@ export function plainText(text: string): string {
           return b.description ? `Gambar: ${b.description}` : b.caption ? `Gambar: ${stripInline(b.caption)}` : "";
         case "divider":
           return "";
+        case "math":
+          return latexToSpeech(b.tex);
         default:
           return stripInline(b.text);
       }
