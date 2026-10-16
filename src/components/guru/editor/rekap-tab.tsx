@@ -10,6 +10,7 @@ import type { LessonStats } from "@/lib/data";
 import { MODE_TONE, QUIZ_TONE, TONES, type ModeKey } from "@/lib/modes";
 import { questionKey, quizType } from "@/lib/quiz";
 import { QUIZ_TYPE_LABEL, VERSION_LABEL, isRegionalVersion, type QuizQuestion, type VersionKey } from "@/lib/types";
+import { InlineText } from "../../reader-text";
 import { Badge, Button, Card, EmptyState, Spinner, StatCard, cx } from "../../ui";
 import type { EditableLesson, TabKey, UpdateLesson } from "./lesson-editor";
 import { AnalysisCard, GroupsCard } from "./rekap-ai";
@@ -261,14 +262,19 @@ export function RekapTab({
                 <li key={i} className="grid gap-2 py-3 sm:grid-cols-[1fr_14rem] sm:items-center">
                   <div className="min-w-0">
                     <p className="font-bold">
-                      {i + 1}. {q.q}
+                      {i + 1}. <InlineText text={q.q} />
                     </p>
                     <Badge tone={QUIZ_TONE[quizType(q)]} className="mt-1">
                       {QUIZ_TYPE_LABEL[quizType(q)]}
                     </Badge>
                     {wrong.length > 0 && (
                       <p className="mt-1 text-[14px] text-tinta-2">
-                        Jawaban salah yang sering: {wrong.map((w) => `“${w.text}” (${w.n})`).join(", ")}
+                        Jawaban salah yang sering:{" "}
+                        {wrong.map((w, k) => (
+                          <span key={k}>
+                            {k > 0 && ", "}“<InlineText text={w.text} />” ({w.n})
+                          </span>
+                        ))}
                       </p>
                     )}
                     {hints > 0 && <p className="text-[14px] text-tinta-2">Petunjuk dibuka di {hints} sesi.</p>}

@@ -97,7 +97,7 @@ Isi:
 Aturan:
 - Pakai HANYA angka dan fakta dari data dan materi di atas. Jangan mengarang angka, nama siswa, atau penyebab di luar data.
 - Jangan menyalahkan siswa atau guru. Bahasa netral dan mendukung.
-- Tanpa tebal, miring, atau emoji.
+- Tanpa tebal, miring, atau emoji. Rumus dan hitungan ditulis dengan LaTeX di antara $...$ (misalnya $\\frac{3}{4}$).
 
 ${DATA_RULE}
 
@@ -193,6 +193,7 @@ Aturan:
 - "kutipan" adalah potongan PERSIS dari draf (atau dari materi asli untuk jenis "hilang"), 3–25 kata.
 - "penjelasan" satu kalimat dalam Bahasa Indonesia: apa yang berbeda dari materi asli.
 - Penyederhanaan kata, perubahan susunan, dan terjemahan yang setia BUKAN masalah. Jangan menandai gaya bahasa.
+- Rumus yang sama nilainya tetapi ditulis dengan LaTeX (misalnya $\\frac{3}{4}$ untuk 3/4, $x^2$ untuk x^2) BUKAN masalah.
 ${input.allowActivities ? "- Ini perangkat ajar: kegiatan, pertanyaan, dan langkah belajar baru BUKAN masalah. Tandai hanya fakta materi yang keliru atau ditambah.\n" : ""}- Bila tidak ada masalah, "temuan" kosong. Maksimal 12 temuan, yang paling penting dulu.
 
 ${DATA_RULE}

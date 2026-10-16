@@ -5,6 +5,7 @@
 
 import { BookOpen, Check, ChevronRight, Lightbulb, ListChecks, RotateCcw, Target, Trophy, Volume2, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { mathToPlain } from "@/lib/latex";
 import { QUIZ_TONE, TONES } from "@/lib/modes";
 import {
   emptyResponse,
@@ -317,7 +318,9 @@ export function StudentQuiz({
                     </p>
                     {!right && (
                       <p className="mt-1">
-                        Jawaban yang benar: <strong>{correctText(q)}</strong>
+                        Jawaban yang benar: <strong>
+                          <InlineText text={correctText(q)} />
+                        </strong>
                       </p>
                     )}
                     {q.explain && (
@@ -531,7 +534,9 @@ export function StudentQuiz({
           </p>
           {!right && type !== "jodoh" && (
             <p className="mt-1 text-[17px]">
-              Jawaban yang benar: <strong>{correctText(q)}</strong>
+              Jawaban yang benar: <strong>
+                          <InlineText text={correctText(q)} />
+                        </strong>
             </p>
           )}
           {!right && type === "jodoh" && <p className="mt-1 text-[17px]">Lihat pasangan yang benar di setiap baris.</p>}
@@ -832,7 +837,9 @@ function Matching({
               >
                 {i + 1}
               </span>
-              {p.kiri}
+              <span>
+                <InlineText text={p.kiri} />
+              </span>
             </label>
             <div>
               <select
@@ -848,13 +855,17 @@ function Matching({
                 <option value="">Pilih pasangan…</option>
                 {order.map((j) => (
                   <option key={j} value={j}>
-                    {pairs[j].kanan}
+                    {/* <option> tidak bisa memuat KaTeX: rumus ditulis sebagai hitungan biasa (7/8, x^2). */}
+                    {mathToPlain(pairs[j].kanan)}
                   </option>
                 ))}
               </select>
               {revealed && !ok && (
                 <p className="mt-1 text-[15px]">
-                  Benar: <strong>{p.kanan}</strong>
+                  Benar:{" "}
+                  <strong>
+                    <InlineText text={p.kanan} />
+                  </strong>
                 </p>
               )}
             </div>

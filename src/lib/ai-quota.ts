@@ -12,7 +12,7 @@ export function aiLimitPerHour(): number {
   return Number.isFinite(n) && n > 0 ? Math.floor(n) : DEFAULT_LIMIT_PER_HOUR;
 }
 
-export type AiKind = "foto" | "versi" | "kuis" | "perangkat" | "latihan" | "analisis" | "periksa" | "alt";
+export type AiKind = "foto" | "versi" | "kuis" | "perangkat" | "latihan" | "analisis" | "periksa" | "alt" | "latex";
 
 /**
  * Catat satu permintaan AI untuk guru ini, atau tolak (HTTP 429) bila batas per jam sudah tercapai.

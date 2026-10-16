@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { Fragment, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { createPortal } from "react-dom";
+import { latexToSpeech } from "@/lib/latex";
 import {
   figureSpeech,
   inlineSpeech,
@@ -29,6 +30,8 @@ import {
   type Inline,
 } from "@/lib/text";
 import type { GlossaryItem, LessonFigures } from "@/lib/types";
+import { Tex } from "./tex";
+import { cx } from "./ui";
 
 type SentenceRef = { index: number; start: number; end: number };
 type Piece = { inline: Inline; sentences: SentenceRef[] };
@@ -46,6 +49,7 @@ type Group =
     }
   | { type: "table"; header: Piece[] | null; rows: Piece[][] }
   | { type: "figure"; id: string | null; caption: Inline; description: string | null; index: number }
+  | { type: "math"; tex: string; index: number }
   | { type: "divider" };
 
 /** Memecah materi menjadi blok + daftar kalimat bernomor (untuk dibacakan dan disorot). */
@@ -99,6 +103,8 @@ export function buildStructure(text: string, figures?: LessonFigures) {
           index: add(figureSpeech(block.caption, alt)),
         };
       }
+      case "math":
+        return { type: "math", tex: block.tex, index: add(`${latexToSpeech(block.tex)}.`) };
       default:
         return { type: "divider" };
     }
@@ -117,10 +123,19 @@ function escapeRegExp(s: string) {
 /** Potongan teks [s, e) dengan format tebal/miring/stabilo. */
 function renderMarked(inline: Inline, s: number, e: number, key: string): ReactNode[] {
   const cuts = new Set([s, e]);
+  // Tanda baca tepat setelah rumus ("$\frac{6}{8}$.") ikut menempel pada rumusnya supaya tidak terpisah ke baris baru.
+  const glued = new Map<number, number>();
   for (const m of inline.marks) {
     if (m.end > s && m.start < e) {
       cuts.add(Math.max(s, m.start));
       cuts.add(Math.min(e, m.end));
+    }
+    if (m.type === "math" && !m.display && m.start >= s && m.end < e) {
+      const punct = inline.plain.slice(m.end, e).match(/^[.,;:!?)\]”’"']+/)?.[0];
+      if (punct) {
+        glued.set(m.end, m.end + punct.length);
+        cuts.add(m.end + punct.length);
+      }
     }
   }
   const points = [...cuts].sort((a, b) => a - b);
@@ -129,11 +144,27 @@ function renderMarked(inline: Inline, s: number, e: number, key: string): ReactN
     const a = points[i];
     const b = points[i + 1];
     if (b <= a) continue;
+    if ([...glued].some(([from, to]) => a >= from && b <= to)) continue;
     let node: ReactNode = inline.plain.slice(a, b);
     const active = inline.marks.filter((m) => m.start <= a && m.end >= b);
+    // Rumus LaTeX: teks polosnya adalah bacaan rumus; yang tampil adalah KaTeX, sekali saja di awal rentangnya.
+    const math = active.find((m) => m.type === "math");
+    if (math) {
+      if (math.start !== a) continue;
+      const tex = <Tex tex={math.tex ?? ""} display={math.display} />;
+      const to = glued.get(math.end);
+      node = to ? (
+        <span className="whitespace-nowrap">
+          {tex}
+          {inline.plain.slice(math.end, to)}
+        </span>
+      ) : (
+        tex
+      );
+    }
     const frac = active.find((m) => m.type === "frac");
-    if (frac && frac.start === a && frac.end === b) node = <Fraction text={inline.plain.slice(a, b)} />;
-    if (active.some((m) => m.type === "sup")) node = <sup>{node}</sup>;
+    if (!math && frac && frac.start === a && frac.end === b) node = <Fraction text={inline.plain.slice(a, b)} />;
+    if (!math && active.some((m) => m.type === "sup")) node = <sup>{node}</sup>;
     if (active.some((m) => m.type === "i")) node = <em>{node}</em>;
     if (active.some((m) => m.type === "b")) node = <strong>{node}</strong>;
     if (active.some((m) => m.type === "m")) node = <mark>{node}</mark>;
@@ -223,6 +254,11 @@ export function ReaderText({
       seen.add(k);
       const a = s + match.index + match[1].length;
       const b = a + word.length;
+      // Kata di dalam bacaan rumus (mis. "akar") bukan istilah glosarium.
+      if (inline.marks.some((m) => m.type === "math" && m.start < b && m.end > a)) {
+        seen.delete(k);
+        continue;
+      }
       // Tanda baca setelah istilah ikut "ditempel" supaya tidak terpisah ke baris berikutnya.
       const punct = inline.plain.slice(b, e).match(/^[,.;:!?)\]”"'’]+/)?.[0] ?? "";
       nodes.push(...renderMarked(inline, last, a, `${key}-p${a}`));
@@ -343,6 +379,16 @@ export function ReaderText({
                 active={g.index === activeSentence}
                 onSpeak={onSpeak ? () => onSpeak(sentences[g.index]) : undefined}
               />
+            );
+          case "math":
+            return (
+              <div
+                key={key}
+                className={cx("rumus-blok", g.index === activeSentence && "sentence-active")}
+                data-sentence={g.index}
+              >
+                <Tex tex={g.tex} display />
+              </div>
             );
           default:
             return <hr key={key} />;

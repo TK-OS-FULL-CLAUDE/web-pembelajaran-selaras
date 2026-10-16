@@ -89,7 +89,7 @@ function answerFor(prompt, provider, m) {
 
 /** Teks prompt asli (prompt diterima dalam bentuk JSON.stringify). */
 function unescape(prompt) {
-  return prompt.replace(/\\n/g, "\n").replace(/\\"/g, '"');
+  return prompt.replace(/\\(["\\n])/g, (_, c) => (c === "n" ? "\n" : c));
 }
 
 /**
@@ -101,10 +101,12 @@ function adaptifAnswer(prompt, tag) {
   if (prompt.includes("Jenis soal yang dipakai") && prompt.includes("Ini materi Matematika")) {
     return {
       soal: [
-        { jenis: "pg", konsep: "Pecahan senilai", pertanyaan: `Pecahan yang senilai dengan 2/3 adalah … ${tag}`, pilihan: ["4/6", "3/4", "2/6", "4/3"], jawaban: [0], isian: [], pasangan: [], pembahasan: "2 × 2 = 4 dan 3 × 2 = 6.", petunjuk: ["Kalikan pembilang dan penyebut.", "Dikali 2."], hitungan: "2/3" },
+        // Rumus memakai LaTeX seperti yang diminta prompt; kunci isian & hitungan tulisan biasa.
+        { jenis: "pg", konsep: "Pecahan senilai", pertanyaan: `Pecahan yang senilai dengan $\\frac{2}{3}$ adalah … ${tag}`, pilihan: ["$\\frac{4}{6}$", "$\\frac{3}{4}$", "$\\frac{2}{6}$", "$\\frac{4}{3}$"], jawaban: [0], isian: [], pasangan: [], pembahasan: "$2 \\times 2 = 4$ dan $3 \\times 2 = 6$.", petunjuk: ["Kalikan pembilang dan penyebut.", "Dikali 2."], hitungan: "2/3", setara: false },
         // Kunci sengaja salah: 3/4 - 1/4 = 1/2, bukan 1/4 → harus bertanda "Periksa hitungan".
-        { jenis: "pg", konsep: "Pengurangan pecahan", pertanyaan: "3/4 - 1/4 = …", pilihan: ["1/2", "1/4", "2/8", "1"], jawaban: [1], isian: [], pasangan: [], pembahasan: "Kurangi pembilangnya.", petunjuk: ["Penyebutnya sudah sama."], hitungan: "3/4 - 1/4" },
-        { jenis: "isian", konsep: "Pecahan senilai", pertanyaan: "1/2 = …/10", pilihan: [], jawaban: [], isian: ["5"], pasangan: [], pembahasan: "1 × 5 = 5.", petunjuk: ["2 dikali berapa menjadi 10?"], hitungan: "10/2" },
+        { jenis: "pg", konsep: "Pengurangan pecahan", pertanyaan: "$\\frac{3}{4} - \\frac{1}{4} = \\ldots$", pilihan: ["$\\frac{1}{2}$", "$\\frac{1}{4}$", "$\\frac{2}{8}$", "$1$"], jawaban: [1], isian: [], pasangan: [], pembahasan: "Kurangi pembilangnya.", petunjuk: ["Penyebutnya sudah sama."], hitungan: "3/4 - 1/4", setara: false },
+        { jenis: "isian", konsep: "Pecahan senilai", pertanyaan: "$\\frac{1}{2} = \\frac{\\square}{10}$", pilihan: [], jawaban: [], isian: ["5"], pasangan: [], pembahasan: "$1 \\times 5 = 5$.", petunjuk: ["2 dikali berapa menjadi 10?"], hitungan: "10/2", setara: false },
+        { jenis: "isian", konsep: "Bentuk aljabar", pertanyaan: "Tulis $2(x+1)$ tanpa tanda kurung.", pilihan: [], jawaban: [], isian: ["2x+2"], pasangan: [], pembahasan: "$2 \\times x + 2 \\times 1$.", petunjuk: ["Kalikan 2 dengan setiap suku."], hitungan: "", setara: true },
       ],
     };
   }
@@ -115,9 +117,23 @@ function adaptifAnswer(prompt, tag) {
       soal: names.flatMap((konsep) => [
         { jenis: "bs", konsep, pertanyaan: `Latihan ${konsep}: pernyataan ini benar ${tag}.`, pilihan: [], jawaban: [0], isian: [], pasangan: [], pembahasan: "Benar, sesuai materi.", petunjuk: ["Baca lagi materinya.", "Perhatikan kata kuncinya."], hitungan: "" },
         math
-          ? { jenis: "isian", konsep, pertanyaan: "Sederhanakan 3/9.", pilihan: [], jawaban: [], isian: ["1/3"], pasangan: [], pembahasan: "3 : 3 = 1 dan 9 : 3 = 3.", petunjuk: ["Bagi dengan 3."], hitungan: "3/9" }
+          ? { jenis: "isian", konsep, pertanyaan: "Sederhanakan $\\frac{3}{9}$.", pilihan: [], jawaban: [], isian: ["1/3"], pasangan: [], pembahasan: "$3 : 3 = 1$ dan $9 : 3 = 3$.", petunjuk: ["Bagi dengan 3."], hitungan: "3/9", setara: false }
           : { jenis: "pg", konsep, pertanyaan: `Mana yang benar tentang ${konsep}?`, pilihan: ["Sesuai materi", "Tidak sesuai", "Tidak tahu", "Lainnya"], jawaban: [0], isian: [], pasangan: [], pembahasan: "Sesuai materi.", petunjuk: ["Ingat isi materi."], hitungan: "" },
       ]),
+    };
+  }
+  if (prompt.includes("Ubah setiap rumus")) {
+    // Ubah rumus tulisan biasa sederhana; teks berisi "UBAH-ANGKA" sengaja diberi angka yang salah.
+    const texts = [...text.matchAll(/Teks (\d+):\n"""\n([\s\S]*?)\n"""/g)].map((m) => ({ no: Number(m[1]), teks: m[2] }));
+    return {
+      hasil: texts.map(({ no, teks }) => ({
+        no,
+        teks: teks
+          .replace(/(\d+) × (\d+) = (\d+)/g, "$$$1 \\times $2 = $3$$")
+          .replace(/(^|[^\d/$])(\d{1,3})\/(\d{1,3})(?![\d/])/g, "$1$$\\frac{$2}{$3}$$")
+          .replace(/\bx\^2\b/g, "$$x^2$$")
+          .replace(/UBAH-ANGKA (\d+)/, (_, d) => `UBAH-ANGKA ${Number(d) + 1}`),
+      })),
     };
   }
   if (prompt.includes("Baca hasil kuis kelas")) {
@@ -231,7 +247,8 @@ const server = http.createServer(async (req, res) => {
 
   const prompt = JSON.stringify(isClaude ? body.messages : body.contents);
   const json = JSON.stringify(answerFor(prompt, provider, m));
-  const text = m === "badjson" ? "maaf, ini bukan JSON" : json;
+  // "rawlatex": model lupa menggandakan garis miring LaTeX di dalam JSON (\frac, \sqrt, \times).
+  const text = m === "badjson" ? "maaf, ini bukan JSON" : m === "rawlatex" ? json.replace(/\\\\/g, "\\") : json;
 
   if (isClaude) {
     return send(200, {
