@@ -399,7 +399,7 @@ function Figure({
   return (
     <figure className="figur" data-sentence={index} data-active={active}>
       {failed ? (
-        <div className="flex items-center gap-2 rounded-xl bg-slate-100 p-4 text-[0.9em] text-tinta-2">
+        <div className="flex items-center gap-2 rounded-xl bg-krem p-4 text-[0.9em] text-tinta-2">
           <ImageIcon className="size-5" aria-hidden />
           Gambar tidak bisa dimuat.
         </div>

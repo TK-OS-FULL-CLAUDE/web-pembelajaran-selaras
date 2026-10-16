@@ -110,11 +110,11 @@ export function ImportPanel({
           Foto halaman buku
         </Button>
         <Button variant="secondary" size="sm" onClick={() => pick("pdf")} disabled={busy !== null}>
-          {busy === "pdf" ? <Spinner /> : <FileText className="size-4 text-mawar" aria-hidden />}
+          {busy === "pdf" ? <Spinner /> : <FileText className="size-4 text-papan" aria-hidden />}
           PDF
         </Button>
         <Button variant="secondary" size="sm" onClick={() => pick("word")} disabled={busy !== null}>
-          {busy === "word" ? <Spinner /> : <FileType2 className="size-4 text-biru" aria-hidden />}
+          {busy === "word" ? <Spinner /> : <FileType2 className="size-4 text-papan" aria-hidden />}
           Word (.docx)
         </Button>
         <input
@@ -168,7 +168,7 @@ export function ImportPanel({
             <button
               type="button"
               onClick={() => setPdf(null)}
-              className="flex size-9 items-center justify-center rounded-lg hover:bg-slate-100"
+              className="flex size-9 items-center justify-center rounded-lg hover:bg-krem"
               aria-label="Batal"
             >
               <X className="size-5" aria-hidden />

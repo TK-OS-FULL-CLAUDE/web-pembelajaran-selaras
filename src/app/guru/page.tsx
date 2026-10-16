@@ -12,7 +12,7 @@ import type { ToneKey } from "@/lib/modes";
 
 export const metadata: Metadata = { title: "Beranda guru" };
 
-const CLASS_TONES: ToneKey[] = ["papan", "biru", "ungu", "mawar", "jingga", "sian"];
+const CLASS_TONES: ToneKey[] = ["papan"];
 
 export default async function GuruHome() {
   const teacher = await requireTeacher();
@@ -41,9 +41,9 @@ export default async function GuruHome() {
           </ButtonLink>
         </div>
         <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <StatCard icon={School} tone="biru" label="Kelas" value={classes.length} />
-          <StatCard icon={Send} tone="hijau" label="Materi terbit" value={overview.published} />
-          <StatCard icon={PenLine} tone="jingga" label="Draf" value={overview.drafts} />
+          <StatCard icon={School} tone="papan" label="Kelas" value={classes.length} />
+          <StatCard icon={Send} tone="papan" label="Materi terbit" value={overview.published} />
+          <StatCard icon={PenLine} tone="aksen" label="Draf" value={overview.drafts} />
           <StatCard icon={Users} tone="papan" label="Sesi siswa" value={overview.sessions} />
         </div>
       </section>
@@ -84,7 +84,7 @@ export default async function GuruHome() {
           <EmptyState
             title="Mulai dengan membuat kelas"
             icon={School}
-            tone="biru"
+            tone="papan"
             action={<ButtonLink href="/guru/kelas/baru">Buat kelas</ButtonLink>}
           >
             Catat jumlah siswa per kebutuhan. Selaras memakai profil ini untuk menyarankan versi materi dan akomodasi.

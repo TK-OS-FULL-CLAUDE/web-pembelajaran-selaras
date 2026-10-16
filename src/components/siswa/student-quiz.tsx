@@ -414,7 +414,7 @@ export function StudentQuiz({
           <button
             type="button"
             onClick={() => speech.speak(speechFor(q), { lang: "id-ID", rate })}
-            className="mt-2 inline-flex h-11 items-center gap-2 rounded-xl px-2 font-bold text-jingga hover:bg-jingga-50"
+            className="mt-2 inline-flex h-11 items-center gap-2 rounded-xl px-2 font-bold text-papan-600 hover:bg-papan-50"
           >
             <Volume2 className="size-5" aria-hidden />
             Dengarkan soal
@@ -561,7 +561,7 @@ function ScoreRing({ pct }: { pct: number }) {
   return (
     <div className="relative size-32 shrink-0" aria-hidden>
       <svg viewBox="0 0 100 100" className="size-32 -rotate-90">
-        <circle cx="50" cy="50" r={r} fill="none" stroke="#e2e8f0" strokeWidth="10" />
+        <circle cx="50" cy="50" r={r} fill="none" stroke="#e6decf" strokeWidth="10" />
         <circle
           cx="50"
           cy="50"
@@ -693,8 +693,8 @@ function MultiChoice({
               optionBase,
               !revealed &&
                 (isChosen
-                  ? "border-biru bg-biru-50"
-                  : "border-[var(--reader-line)] bg-white hover:border-biru has-[:focus-visible]:outline has-[:focus-visible]:outline-3 has-[:focus-visible]:outline-aksen"),
+                  ? "border-papan bg-papan-50"
+                  : "border-[var(--reader-line)] bg-white hover:border-papan has-[:focus-visible]:outline has-[:focus-visible]:outline-3 has-[:focus-visible]:outline-aksen"),
               revealed && isAnswer && "border-berhasil bg-hijau-50",
               revealed && isChosen && !isAnswer && "border-galat bg-red-50",
               revealed && !isChosen && !isAnswer && "border-[var(--reader-line)] bg-white opacity-70",
@@ -716,7 +716,7 @@ function MultiChoice({
                   : revealed && isChosen
                     ? "border-galat bg-galat text-white"
                     : isChosen
-                      ? "border-biru bg-biru text-white"
+                      ? "border-papan bg-papan text-white"
                       : "border-batas",
               )}
               aria-hidden
@@ -827,7 +827,7 @@ function Matching({
               style={{ fontSize: "var(--reader-size)" }}
             >
               <span
-                className="flex size-8 shrink-0 items-center justify-center rounded-full bg-mawar-100 text-[15px] text-mawar"
+                className="flex size-8 shrink-0 items-center justify-center rounded-full bg-papan-100 text-[15px] text-papan"
                 aria-hidden
               >
                 {i + 1}

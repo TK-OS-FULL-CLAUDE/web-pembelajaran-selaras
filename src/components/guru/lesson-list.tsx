@@ -15,9 +15,9 @@ function formatDate(value: string) {
   }).format(new Date(value));
 }
 
-const SUBJECT_TONES: ToneKey[] = ["papan", "biru", "ungu", "mawar", "jingga", "sian", "nila", "hijau"];
+const SUBJECT_TONES: ToneKey[] = ["papan"];
 
-/** Warna tetap per mata pelajaran (IPAS selalu sewarna di semua daftar). */
+/** Satu warna untuk semua mata pelajaran (desain ruang kelas: warna tidak dipakai sebagai hiasan). */
 function subjectTone(subject: string): ToneKey {
   let h = 0;
   for (const c of subject.toLowerCase()) h = (h * 31 + c.charCodeAt(0)) >>> 0;

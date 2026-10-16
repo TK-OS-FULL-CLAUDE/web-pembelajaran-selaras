@@ -1,5 +1,6 @@
-// Warna kategori untuk setiap cara belajar dan jenis soal. Satu sumber supaya guru dan siswa
-// melihat warna yang sama untuk hal yang sama (mis. Basa Jawa selalu ungu).
+// Warna untuk setiap cara belajar dan jenis soal. Satu sumber supaya guru dan siswa melihat warna yang sama.
+// Sejak desain "ruang kelas", semua cara belajar dan jenis soal memakai satu warna (hijau papan tulis);
+// yang membedakan adalah ikon dan namanya. Terlalu banyak warna membuat layar ramai dan warna kehilangan arti.
 // Kelas Tailwind ditulis utuh di sini supaya ikut terbaca saat build.
 
 import type { QuizType, VersionKey } from "./types";
@@ -105,12 +106,12 @@ export const TONES: Record<ToneKey, Tone> = {
   },
   abu: {
     text: "text-tinta",
-    soft: "bg-slate-50",
-    chip: "bg-slate-100 text-tinta",
+    soft: "bg-kertas",
+    chip: "bg-[#ece5d6] text-tinta",
     solid: "bg-tinta text-white",
     border: "border-tinta",
     ring: "ring-tinta",
-    bar: "bg-slate-500",
+    bar: "bg-tinta-2",
   },
 };
 
@@ -119,22 +120,22 @@ export type ModeKey = "asli" | VersionKey | "dengar" | "besar" | "kontras" | "sp
 export const MODE_TONE: Record<ModeKey, ToneKey> = {
   asli: "abu",
   mudah: "papan",
-  ringkasan: "biru",
-  jawa: "ungu",
-  sunda: "mawar",
-  dengar: "jingga",
-  besar: "nila",
+  ringkasan: "papan",
+  jawa: "papan",
+  sunda: "papan",
+  dengar: "papan",
+  besar: "papan",
   kontras: "abu",
-  spasi: "sian",
-  garis: "hijau",
+  spasi: "papan",
+  garis: "papan",
 };
 
 export const QUIZ_TONE: Record<QuizType, ToneKey> = {
   pg: "papan",
-  pgk: "biru",
-  bs: "jingga",
-  isian: "ungu",
-  jodoh: "mawar",
+  pgk: "papan",
+  bs: "papan",
+  isian: "papan",
+  jodoh: "papan",
 };
 
 export function modeTone(key: ModeKey): Tone {

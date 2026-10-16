@@ -9,7 +9,7 @@ function cx(...parts: (string | false | null | undefined)[]) {
 }
 export { cx };
 
-type Variant = "primary" | "secondary" | "ghost" | "danger" | "ai" | "soft";
+type Variant = "primary" | "secondary" | "ghost" | "danger" | "ai" | "soft" | "emas" | "kapur";
 type Size = "sm" | "md" | "lg";
 
 const VARIANT: Record<Variant, string> = {
@@ -21,6 +21,10 @@ const VARIANT: Record<Variant, string> = {
   ghost: "text-papan-600 hover:bg-papan-50 disabled:text-tinta-2",
   danger: "border border-galat/30 bg-white text-galat hover:bg-red-50",
   ai: "border border-aksen/35 bg-aksen-50 text-aksen hover:bg-aksen-100 disabled:opacity-60",
+  /** Di atas papan tulis: tombol emas pensil dengan teks gelap (7,7:1). */
+  emas: "bg-emas text-tinta shadow-[0_2px_0_rgb(0_0_0/0.18)] hover:bg-[#ecc461] disabled:opacity-60",
+  /** Di atas papan tulis: garis kapur. */
+  kapur: "border border-kapur/45 text-kapur hover:border-kapur hover:bg-white/10 disabled:opacity-60",
 };
 const SIZE: Record<Size, string> = {
   sm: "h-9 px-3 text-[14px] gap-1.5 rounded-lg",
@@ -57,7 +61,7 @@ export function ButtonLink({
 
 type BadgeTone = "neutral" | "ai" | "ok" | "info" | ToneKey;
 const BADGE: Record<"neutral" | "ai" | "ok" | "info", string> = {
-  neutral: "bg-slate-100 text-tinta-2",
+  neutral: "bg-[#ece5d6] text-tinta",
   ai: "bg-aksen-50 text-aksen ring-1 ring-aksen/30",
   ok: "bg-hijau-50 text-berhasil ring-1 ring-berhasil/25",
   info: "bg-biru-50 text-info ring-1 ring-info/20",
@@ -225,19 +229,33 @@ export function Spinner({ className }: { className?: string }) {
   );
 }
 
-export function Logo({ className, light = false }: { className?: string; light?: boolean }) {
+export function Logo({
+  className,
+  light = false,
+  compact = false,
+}: {
+  className?: string;
+  /** Untuk latar gelap (papan tulis). */
+  light?: boolean;
+  /** Sembunyikan tulisan "Selaras" di layar sempit (ikon tetap tampil). */
+  compact?: boolean;
+}) {
   return (
     <span className={cx("inline-flex items-center gap-2.5", className)}>
-      <svg viewBox="0 0 36 36" className="size-9" aria-hidden>
-        <rect width="36" height="36" rx="10" fill={light ? "#ffffff" : "#0F766E"} />
+      <svg viewBox="0 0 36 36" className="size-9 shrink-0" aria-hidden>
+        <rect width="36" height="36" rx="10" fill={light ? "#F7F3E8" : "#2D6A4F"} />
         <g strokeLinecap="round" strokeWidth="3.4">
-          <path d="M10 12.5h16" stroke={light ? "#0F766E" : "#ffffff"} />
-          <path d="M10 18h10" stroke={light ? "#1D4ED8" : "#99F6E4"} />
-          <path d="M10 23.5h13" stroke={light ? "#B45309" : "#FDE68A"} />
+          <path d="M10 12.5h16" stroke={light ? "#1B4332" : "#ffffff"} />
+          <path d="M10 18h10" stroke={light ? "#2D6A4F" : "#B9D6BF"} />
+          <path d="M10 23.5h13" stroke={light ? "#B98A1E" : "#E3B448"} />
         </g>
       </svg>
       <span
-        className={cx("font-display text-[22px] font-extrabold tracking-tight", light ? "text-white" : "text-tinta")}
+        className={cx(
+          "font-display text-[22px] font-extrabold tracking-tight",
+          light ? "text-kapur" : "text-tinta",
+          compact && "sr-only sm:not-sr-only",
+        )}
       >
         Selaras
       </span>

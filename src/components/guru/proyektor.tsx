@@ -206,11 +206,11 @@ export function ProjectorView({ lesson, backHref }: { lesson: ProjectorLesson; b
       <header className="flex flex-wrap items-center justify-between gap-x-8 gap-y-3 px-[4vw] pt-[2.4vh]">
         <div className="flex min-w-0 items-center gap-4">
           <svg viewBox="0 0 36 36" className="size-12 shrink-0" aria-hidden>
-            <rect width="36" height="36" rx="10" fill="#0F766E" />
+            <rect width="36" height="36" rx="10" fill="#2D6A4F" />
             <g strokeLinecap="round" strokeWidth="3.4">
               <path d="M10 12.5h16" stroke="#ffffff" />
-              <path d="M10 18h10" stroke="#99F6E4" />
-              <path d="M10 23.5h13" stroke="#FDE68A" />
+              <path d="M10 18h10" stroke="#B9D6BF" />
+              <path d="M10 23.5h13" stroke="#E3B448" />
             </g>
           </svg>
           <div className="min-w-0">
@@ -496,7 +496,7 @@ function QuizSlide({ q, reveal }: { q: QuizQuestion; reveal: boolean }) {
   const letterBox = (ok: boolean) =>
     cx(
       "flex size-[1.6em] shrink-0 items-center justify-center rounded-[0.45em] font-display font-extrabold",
-      reveal && ok ? "bg-berhasil text-white" : reveal ? "bg-slate-100 text-tinta-2" : tone.chip,
+      reveal && ok ? "bg-berhasil text-white" : reveal ? "bg-krem text-tinta-2" : tone.chip,
     );
 
   return (

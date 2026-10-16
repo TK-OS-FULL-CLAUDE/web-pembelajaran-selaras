@@ -80,7 +80,7 @@ export function StudentPreview({
             }}
             className={cx(
               "h-8 rounded-lg px-2.5 text-[13px] font-bold",
-              versi === o.key ? TONES[MODE_TONE[o.key]].solid : "bg-slate-100 text-tinta hover:bg-papan-50",
+              versi === o.key ? TONES[MODE_TONE[o.key]].solid : "bg-krem text-tinta hover:bg-papan-50",
             )}
           >
             {o.label}

@@ -156,7 +156,7 @@ export function BagikanTab({
             <li key={c.label} className="flex items-start gap-3">
               <span
                 className={`mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full ${
-                  c.ok ? "bg-berhasil text-white" : c.required ? "bg-aksen text-white" : "bg-slate-200 text-tinta-2"
+                  c.ok ? "bg-berhasil text-white" : c.required ? "bg-aksen text-white" : "bg-krem-2 text-tinta-2"
                 }`}
                 aria-hidden
               >
@@ -203,7 +203,7 @@ export function BagikanTab({
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={qr} alt={`Kode QR menuju ${link}`} className="size-44 rounded-xl bg-white shadow-kartu" />
               ) : (
-                <div className="size-44 animate-pulse rounded-lg bg-slate-200" />
+                <div className="size-44 animate-pulse rounded-lg bg-krem-2" />
               )}
               <div className="min-w-0 flex-1 space-y-2 text-center sm:text-left">
                 <p className="text-[14px] text-tinta-2">Kode materi</p>
@@ -290,7 +290,7 @@ export function BagikanTab({
             type="button"
             autoFocus
             onClick={() => setBigQr(false)}
-            className="absolute right-4 top-4 flex size-12 items-center justify-center rounded-full hover:bg-slate-100"
+            className="absolute right-4 top-4 flex size-12 items-center justify-center rounded-full hover:bg-krem"
             aria-label="Tutup QR besar"
           >
             <X className="size-6" aria-hidden />
