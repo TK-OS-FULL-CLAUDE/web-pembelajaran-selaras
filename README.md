@@ -216,7 +216,8 @@ npm run typecheck                        # pemeriksaan TypeScript
 npm run test:format                      # uji format materi, pemecah kalimat, dan pemeriksaan lima jenis soal
 npm run test:mtk                         # uji Matematika & LaTeX: angka, hitungan ulang, notasi, pembaca simbol, jawaban rumus
 npm run test:ai                          # 39 uji mesin AI, perangkat ajar, dan fitur adaptif dengan server palsu (tanpa kunci, tanpa biaya)
-npm test                                 # format + Matematika + AI + fitur (lihat juga "Pengujian tambahan" di bawah)
+npm run test:google                      # uji masuk dengan Google: PKCE, URL Google, dan pemeriksaan ID token
+npm test                                 # format + Matematika + AI + fitur + Google (lihat juga "Pengujian tambahan" di bawah)
 npm run cek -- https://alamat-app        # uji cepat versi ter-deploy: database, login demo, kelas, materi, simpan, gambar, perangkat ajar, salin, siswa
 npm run cek -- https://alamat-app --ai   # ditambah uji draf kuis, ringkasan, rubrik, dan pemeriksa kesetiaan dengan kunci AI asli
 ```

@@ -377,9 +377,11 @@ export function KuisTab({
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-[14px] text-tinta-2">
           Soal ditampilkan dalam Bahasa Indonesia untuk semua siswa dan bisa dibacakan suara.
+          {math && " Rumus ditulis dengan LaTeX di antara tanda $, misalnya $x^2 - 1$ atau $\\frac{3}{4}$."}
         </p>
         <LipatSemuaBar label="soal" onSet={setAll} />
       </div>
+      <QuizLatexBanner lessonId={lessonId} lesson={lesson} update={update} aiOn={aiOn} math={math} />
 
       <ol className="space-y-3">
         {quiz.map((q, i) => (

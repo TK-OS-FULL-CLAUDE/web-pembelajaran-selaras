@@ -11,6 +11,7 @@ import { MODE_TONE, QUIZ_TONE, TONES, type ModeKey } from "@/lib/modes";
 import { KartuLipatMandiri, LipatSemuaBar, type LipatSemua } from "../../lipat";
 import { questionKey, quizType } from "@/lib/quiz";
 import { QUIZ_TYPE_LABEL, VERSION_LABEL, isRegionalVersion, type QuizQuestion, type VersionKey } from "@/lib/types";
+import { InlineText } from "../../reader-text";
 import { Badge, Button, EmptyState, Spinner, StatCard, cx } from "../../ui";
 import type { EditableLesson, TabKey, UpdateLesson } from "./lesson-editor";
 import { AnalysisCard, GroupsCard } from "./rekap-ai";
