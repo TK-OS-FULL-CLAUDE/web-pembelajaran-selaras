@@ -102,7 +102,9 @@ flowchart LR
 
 ## Desain
 
-Nuansa ruang kelas yang berwarna: latar **putih** seperti dinding kelas, navbar dan footer berupa **papan tulis hijau**, dan **pita krayon** lima warna dari perabot kelas: hijau, merah, kuning, biru, dan coklat muda. Hijau papan tulis adalah warna utama (tombol dan tautan). Lima warna krayon dipakai dengan aturan tetap, selalu bersama ikon dan nama: setiap cara belajar (misalnya Teks mudah hijau, Ringkasan kuning, Basa Jawa merah, Basa Sunda biru), jenis soal, kebutuhan kelas, mata pelajaran (IPAS hijau, Matematika biru, Bahasa Indonesia merah), kelas, dan tab editor punya warnanya sendiri. Aturannya ada di `src/lib/modes.ts`, token warnanya di `src/app/globals.css`, dan semua pasangan teks/latar lolos WCAG AA.
+Nuansa ruang kelas yang berwarna: latar **putih** seperti dinding kelas, **navbar putih** dengan logo "Tiga Baris", footer berupa **papan tulis hijau** dengan **pita krayon** lima warna dari perabot kelas: hijau, merah, kuning, biru, dan coklat muda. Kartu memakai bayangan halus tanpa garis tepi. Halaman depan dan halaman **Buka materi siswa** bergaya papan tulis dengan ilustrasi kapur. Hijau papan tulis adalah warna utama (tombol dan tautan). Lima warna krayon dipakai dengan aturan tetap, selalu bersama ikon dan nama: setiap cara belajar (misalnya Teks mudah hijau, Ringkasan kuning, Basa Jawa merah, Basa Sunda biru), jenis soal, kebutuhan kelas, mata pelajaran (IPAS hijau, Matematika biru, Bahasa Indonesia merah), kelas, dan tab editor punya warnanya sendiri. Aturannya ada di `src/lib/modes.ts`, token warnanya di `src/app/globals.css`, dan semua pasangan teks/latar lolos WCAG AA.
+
+Logo Selaras "Tiga Baris" (huruf S dari tiga goresan kapur) beserta simbol, lockup, wordmark, ikon web, gambar Open Graph, dan pelat presentasi ada di [`brand/logo/`](brand/logo/README.md). Favicon, ikon aplikasi, manifest, dan gambar pratinjau link sudah dipasang di `src/app/` dan `public/`.
 
 Kartu panjang (versi teks, soal kuis dan latihan, perangkat ajar, kartu rekap, pembanding versi) bisa diciutkan; yang sudah dicek otomatis tertutup, yang perlu tindakan terbuka, dan ada tombol **Buka semua / Ciutkan semua**. Toolbar bacaan siswa satu baris dan menempel di atas: pilihan versi teks plus alat tampilan (di HP dibuka lewat tombol **Tampilan**).
 
@@ -131,7 +133,7 @@ src/
 │       ├── s/[kode]/catat/          # catat sesi & skor siswa (anonim)
 │       ├── demo/reset/
 │       └── status/                  # cek database & AI setelah deploy
-├── components/                      # ui.tsx (UI kit), site-header/footer (navbar papan tulis + pita krayon), lipat.tsx (kartu bisa diciutkan), guru/, siswa/, editor/
+├── components/                      # ui.tsx (UI kit), site-header/footer (navbar putih, footer papan tulis + pita krayon), chalk-lesson.tsx (ilustrasi kapur), lipat.tsx (kartu bisa diciutkan), guru/, siswa/, editor/
 └── lib/
     ├── ai-tasks.ts                  # prompt AI: foto, versi teks, kuis, deskripsi gambar
     ├── ai-perangkat.ts              # prompt AI: modul ajar, LKPD, rubrik, tugas berjenjang
