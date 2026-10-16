@@ -744,7 +744,7 @@ sup {
 .notebook-tabs button[aria-pressed="true"]:hover { background: white; }
 .notebook-page.reader { padding: 26px 32px 22px; background: transparent; --reader-size: 18px; --reader-bg: #234e3d; --reader-page: #234e3d; --reader-ink: #f7f3e8; --reader-soft: #d5dfd3; --reader-term: #edcf86; --reader-accent: #edcf86; --reader-mark: #516b42; }
 .notebook-page.reader[data-besar="true"] { --reader-size: 24px; }
-.notebook-page.reader[data-kontras="true"] { --reader-bg: #fffbe6; --reader-page: #fffbe6; --reader-ink: #000; --reader-soft: #222; --reader-term: #000; --reader-accent: #000; --reader-mark: #f5d867; background: var(--reader-bg); border-radius: 4px; }
+.notebook-page.reader[data-kontras="true"] { --reader-bg: #fffbe6; --reader-page: #fffbe6; --reader-ink: #000; --reader-soft: #222; --reader-term: #000; --reader-accent: #000; --reader-mark: #f5d867; background: var(--reader-bg); border-radius: 4px; margin: 16px 24px 0; }
 .notebook-page h2 { max-width: 540px; font-family: "Segoe Print", "Bradley Hand", "Comic Sans MS", cursive; font-size: 32px; font-weight: 700; letter-spacing: -.035em; line-height: 1.45; margin-bottom: 20px; color: var(--reader-ink); }
 .notebook-page .reader-text { min-height: 132px; }
 .notebook-page [role="status"] { background: var(--color-kapur); color: var(--color-tinta); border-radius: 4px; }
@@ -849,13 +849,14 @@ sup {
 .board-dust { position: absolute; right: 22px; bottom: 11px; width: 98px; height: 3px; background: rgb(247 243 232 / .25); filter: blur(2px); }
 @media (max-width: 760px) {
   .classroom-plane { top: 15px; right: 16px; width: 100px; }
-  .notebook-heading > :last-child { top: 37px; left: 16px; font-size: 11px; }
+  .notebook-heading > :last-child { font-size: 12px; }
   .lesson-board-frame { padding: 7px 7px 0; }
   .lesson-notebook { padding: 4px 0 22px; }
   .notebook-heading { padding-inline: 16px; font-size: 12px; }
   .notebook-tabs { gap: 2px; padding-inline: 9px; }
   .notebook-tabs button { font-size: 13px; }
   .notebook-page.reader { padding: 24px 18px 20px; }
+  .notebook-page.reader[data-kontras="true"] { margin: 14px 10px 0; }
   .notebook-page h2 { font-size: 25px; }
   .notebook-tools, .notebook-caption { padding-inline: 16px; }
   .board-tray { margin-inline: -12px; }
