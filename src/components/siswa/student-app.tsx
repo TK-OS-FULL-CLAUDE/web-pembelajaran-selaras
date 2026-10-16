@@ -236,15 +236,23 @@ export function StudentApp({ lesson }: { lesson: StudentLesson }) {
   const shell = (children: React.ReactNode) => (
     <div className="reader min-h-dvh" data-besar={prefs.besar} data-kontras={prefs.kontras} data-spasi={prefs.spasi}>
       {ready && (
-        <header className="papan-tulis krayon no-print">
-          <div className="mx-auto flex max-w-4xl items-center justify-between gap-3 px-4 py-2.5">
-            <div className="flex min-w-0 items-center gap-3">
-              <Logo light compact />
-              <div className="min-w-0 leading-snug">
+        <header className="site-navbar no-print">
+          {/* Halaman mulai (desktop): logo dan nama kelas/guru jadi satu kelompok di tengah, dipisah garis tipis.
+              Halaman lain tetap: logo di kiri, nama kelas/guru di tengah, Ganti siswa di kanan. */}
+          <div
+            className={cx(
+              "mx-auto flex max-w-4xl items-center justify-between gap-3 px-4 py-2.5 md:grid",
+              step === "mulai" ? "md:grid-cols-[1fr_minmax(0,auto)_1fr]" : "md:grid-cols-[1fr_2fr_1fr]",
+            )}
+          >
+            <div className={cx("flex min-w-0 items-center gap-3", step === "mulai" ? "md:col-start-2 md:gap-5" : "md:contents")}>
+              <Logo compact className={cx("shrink-0", step !== "mulai" && "md:justify-self-start")} />
+              {step === "mulai" && <span className="hidden h-9 w-px shrink-0 bg-garis md:block" aria-hidden />}
+              <div className={cx("min-w-0 leading-snug", step !== "mulai" && "md:text-center")}>
                 <p className="truncate font-bold">
                   {lesson.className || "Materi umum"} · {lesson.teacherName}
                 </p>
-                <p className="truncate text-[14px] text-papan-200">
+                <p className="truncate text-[14px] text-tinta-2">
                   {[lesson.schoolName, device === "shared" ? "Perangkat bersama" : "Perangkat pribadi", sessionId && alias ? alias : null]
                     .filter(Boolean)
                     .join(" · ")}
@@ -252,7 +260,7 @@ export function StudentApp({ lesson }: { lesson: StudentLesson }) {
               </div>
             </div>
             {sessionId && (
-              <button type="button" onClick={() => resetLearner()} className={buttonClass("kapur", "md", "shrink-0")}>
+              <button type="button" onClick={() => resetLearner()} className={buttonClass("secondary", "md", cx("shrink-0 md:justify-self-end", step === "mulai" && "md:col-start-3"))}>
                 <Users className="size-4" aria-hidden />
                 Ganti siswa
               </button>
@@ -408,8 +416,7 @@ function Welcome({
   const info = [lesson.className, lesson.teacherName].filter(Boolean);
   return (
     <main id="isi" className="flex justify-center px-4 py-8 sm:py-12">
-      <div className="muncul w-full max-w-xl overflow-hidden rounded-[1.75rem] border border-[var(--reader-line)] bg-[var(--reader-bg)] shadow-angkat">
-        <div className="pita-warna" aria-hidden />
+      <div className="muncul w-full max-w-xl overflow-hidden rounded-xl reader-surface bg-[var(--reader-bg)]">
         <div className="p-6 sm:p-8">
           <p className="flex flex-wrap gap-2 text-[15px]">
             {lesson.subject && (
@@ -826,7 +833,7 @@ function Reader({
       />
 
       <main id="isi" className="mx-auto max-w-4xl px-0 pb-40 pt-0 sm:px-4 sm:pt-6">
-        <article className="bg-[var(--reader-bg)] px-5 py-6 sm:rounded-[1.75rem] sm:border sm:border-[var(--reader-line)] sm:px-10 sm:py-10 sm:shadow-kartu">
+        <article className="bg-[var(--reader-bg)] px-5 py-6 sm:rounded-[1.75rem] reader-surface sm:px-10 sm:py-10 sm:shadow-kartu">
           <header className="mb-6 border-b border-[var(--reader-line)] pb-5">
             <div className="flex flex-wrap items-center gap-2 text-[15px]">
               {[lesson.subject, lesson.className].filter(Boolean).map((t) => (
@@ -983,7 +990,7 @@ function GlossaryList({ items }: { items: GlossaryItem[] }) {
   );
   if (!unique.length) return null;
   return (
-    <section className="mt-6 rounded-2xl border border-[var(--reader-line)]">
+    <section className="mt-6 rounded-2xl reader-surface">
       <button
         type="button"
         aria-expanded={open}

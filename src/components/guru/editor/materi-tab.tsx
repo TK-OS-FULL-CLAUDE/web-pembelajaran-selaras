@@ -843,7 +843,7 @@ function FormatGuide({ stats }: { stats: { words: number; sentences: number } })
         </button>
       </p>
       {open && (
-        <dl className="muncul mt-2 grid gap-x-6 gap-y-1.5 rounded-2xl border border-garis bg-white p-4 sm:grid-cols-2">
+        <dl className="muncul mt-2 grid gap-x-6 gap-y-1.5 rounded-2xl surface-card p-4 sm:grid-cols-2">
           {[
             ["## Judul", "judul bagian"],
             ["### Subjudul", "subjudul"],

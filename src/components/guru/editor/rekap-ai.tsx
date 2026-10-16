@@ -125,7 +125,7 @@ export function AnalysisCard({
           {result.analysis.temuan.length > 0 && (
             <ol className="space-y-3">
               {result.analysis.temuan.map((t, i) => (
-                <li key={i} className="rounded-xl border border-garis p-4">
+                <li key={i} className="rounded-xl surface-card p-4">
                   <p className="flex flex-wrap items-center gap-2 font-bold">
                     <Target className="size-4 text-aksen" aria-hidden />
                     {t.konsep || `Temuan ${i + 1}`}
@@ -236,7 +236,7 @@ export function GroupsCard({
       </div>
       <div className="mt-4 grid gap-3 md:grid-cols-3">
         {JENJANG_KEYS.map((k) => (
-          <section key={k} aria-labelledby={`kelompok-${k}`} className="rounded-xl border border-garis p-4">
+          <section key={k} aria-labelledby={`kelompok-${k}`} className="rounded-xl surface-card p-4">
             <h3 id={`kelompok-${k}`} className="font-bold">
               {JENJANG_INFO[k].label} · {stats.groups[k].length} sesi
             </h3>

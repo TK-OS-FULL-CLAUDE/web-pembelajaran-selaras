@@ -350,7 +350,7 @@ export function PerangkatTab({
                   {editing[key] ? (
                     <KitEditor kitKey={key} item={item} onChange={(data) => setData(key, data)} />
                   ) : (
-                    <div className="rounded-xl border border-garis bg-kertas/60 p-4 sm:p-6">
+                    <div className="rounded-xl surface-card bg-kertas/60 p-4 sm:p-6">
                       <KitDoc kitKey={key} item={item} level={3} />
                     </div>
                   )}
@@ -513,7 +513,7 @@ function LinesField({
 
 function Fieldset({ legend, children, onRemove }: { legend: string; children: ReactNode; onRemove?: () => void }) {
   return (
-    <fieldset className="rounded-xl border border-garis p-4">
+    <fieldset className="rounded-xl surface-card p-4">
       <legend className="px-1 font-bold">{legend}</legend>
       <div className="space-y-4">{children}</div>
       {onRemove && (

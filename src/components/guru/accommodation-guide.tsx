@@ -45,7 +45,7 @@ export function AccommodationGuide({ classId, needs }: { classId: string; needs:
         return (
           <section
             key={n.key}
-            className="relative overflow-hidden rounded-2xl border border-garis bg-white p-5 pl-6"
+            className="relative overflow-hidden rounded-2xl surface-card p-5 pl-6"
             aria-labelledby={`akm-${n.key}`}
           >
             <span className={cx("absolute inset-y-0 left-0 w-1.5", TONES[NEED_TONE[n.key]].bar)} aria-hidden />

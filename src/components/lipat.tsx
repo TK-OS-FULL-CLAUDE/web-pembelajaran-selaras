@@ -110,8 +110,8 @@ export function KartuLipat({
     <section
       aria-labelledby={`${id}-judul`}
       className={cx(
-        "overflow-hidden rounded-2xl border bg-white shadow-kartu",
-        highlight ? "border-aksen/50 border-l-[5px] border-l-aksen" : "border-garis",
+        "overflow-hidden rounded-2xl surface-card",
+        highlight ? "bg-aksen-50" : "border-garis",
       )}
     >
       <H id={`${id}-judul`} className="font-display text-lg font-bold">

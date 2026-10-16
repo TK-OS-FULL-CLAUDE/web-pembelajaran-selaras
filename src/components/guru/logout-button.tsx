@@ -14,7 +14,7 @@ export function LogoutButton() {
         router.push("/");
         router.refresh();
       }}
-      className="inline-flex h-11 min-w-11 items-center justify-center gap-2 rounded-xl border border-kapur/45 px-3 font-bold text-kapur hover:border-kapur hover:bg-white/10"
+      className="inline-flex h-11 min-w-11 items-center justify-center gap-2 rounded-lg bg-galat px-3 font-bold text-white transition-colors hover:bg-red-800"
     >
       <LogOut className="size-4" aria-hidden />
       <span className="sr-only sm:not-sr-only">Keluar</span>

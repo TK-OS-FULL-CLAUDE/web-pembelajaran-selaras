@@ -27,7 +27,7 @@ export function Library({ lessons, classes }: { lessons: LessonSummary[]; classe
     } catch (e) { setError((e as Error).message); setBusy(null); }
   }
   return <div className="space-y-5">
-    <div className="grid gap-4 rounded-2xl border border-garis bg-white p-5 sm:grid-cols-2 lg:grid-cols-4">
+    <div className="grid gap-4 rounded-2xl surface-card p-5 sm:grid-cols-2 lg:grid-cols-4">
       <Field label="Cari judul atau kata kunci" htmlFor="pustaka-cari"><Input id="pustaka-cari" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Cari materi…" /></Field>
       {([["Mapel", "subject", subject, setSubject], ["Jenjang / kelas", "grade", grade, setGrade], ["Topik", "topic", topic, setTopic]] as const).map(([label, key, value, setter]) =>
         <Field key={key} label={label} htmlFor={`pustaka-${key}`}><Select id={`pustaka-${key}`} value={value} onChange={(e) => setter(e.target.value)}>
@@ -40,8 +40,8 @@ export function Library({ lessons, classes }: { lessons: LessonSummary[]; classe
     </div>
     {error && <Notice tone="error">{error}</Notice>}
     <p role="status" className="text-sm text-tinta-2">{matches.length} materi ditemukan. Salinan dibuat sebagai draf baru tanpa membawa rekap siswa.</p>
-    {!matches.length && <p className="rounded-2xl border border-garis bg-white p-6">Belum ada materi yang cocok. Ubah filter atau buat materi baru.</p>}
-    <ul className="grid gap-4 md:grid-cols-2">{matches.map((l) => <li key={l.id} className="rounded-2xl border border-garis bg-white p-5 shadow-kartu">
+    {!matches.length && <p className="rounded-2xl surface-card p-6">Belum ada materi yang cocok. Ubah filter atau buat materi baru.</p>}
+    <ul className="grid gap-4 md:grid-cols-2">{matches.map((l) => <li key={l.id} className="rounded-2xl surface-card p-5 shadow-kartu">
       <div className="flex flex-wrap gap-2"><Badge>{l.status === "published" ? "Terbit" : "Draf"}</Badge>{l.is_template && <Badge tone="papan">Templat</Badge>}</div>
       <h2 className="mt-3 text-xl font-bold"><Link href={`/guru/materi/${l.id}`} className="hover:underline">{l.title}</Link></h2>
       <p className="mt-2 text-sm text-tinta-2">{[l.subject, l.grade, l.topic, l.class_name].filter(Boolean).join(" · ") || "Kategori belum diisi"}</p>

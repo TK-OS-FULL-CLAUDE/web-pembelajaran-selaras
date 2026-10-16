@@ -48,7 +48,7 @@ export function HistoryPanel({ lessonId, prepare, restored }: {
       {selected && <div><h3 className="font-bold">{selected.title}</h3>
         <p className="text-sm">{selected.subject} · {selected.quiz.length} soal · {Object.keys(selected.versions).length} versi</p>
         <pre className="my-3 max-h-72 overflow-auto whitespace-pre-wrap rounded-xl bg-kertas p-3 font-sans text-sm">{selected.body}</pre>
-        <details className="mb-4 rounded-xl border border-garis p-3"><summary className="cursor-pointer font-bold">Lihat versi, kuis, glosarium, dan kategori yang dipulihkan</summary>
+        <details className="mb-4 rounded-xl surface-card p-3"><summary className="cursor-pointer font-bold">Lihat versi, kuis, glosarium, dan kategori yang dipulihkan</summary>
           <div className="mt-3 max-h-80 space-y-4 overflow-auto text-sm">
             <p>Topik: {selected.topic || "Belum diisi"} · Jenjang: {selected.target_grade || "Mengikuti kelas"} · {selected.is_template ? "Templat" : "Materi biasa"}</p>
             {Object.entries(selected.versions).map(([key, version]) => <section key={key}><h4 className="font-bold">{VERSION_LABEL[key as VersionKey]}</h4><p className="whitespace-pre-wrap">{version?.text}</p></section>)}

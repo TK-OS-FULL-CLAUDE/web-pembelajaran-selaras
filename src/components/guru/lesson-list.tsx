@@ -17,7 +17,7 @@ function formatDate(value: string) {
 
 export function LessonList({ lessons, showClass = true }: { lessons: LessonSummary[]; showClass?: boolean }) {
   return (
-    <ul className="divide-y divide-garis overflow-hidden rounded-2xl border border-garis bg-white shadow-kartu">
+    <ul className="divide-y divide-garis overflow-hidden rounded-2xl surface-card shadow-kartu">
       {lessons.map((l) => {
         const versions = VERSION_KEYS.filter((k) => l.versions?.[k]?.text?.trim());
         const needsCheck = versions.some((k) => !l.versions[k]?.checked);

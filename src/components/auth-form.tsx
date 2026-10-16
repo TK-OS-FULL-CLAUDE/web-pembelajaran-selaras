@@ -41,16 +41,6 @@ export function AuthForm({
 
   return (
     <div className="space-y-6">
-      {mode === "masuk" && (
-        <div className="rounded-2xl bg-papan-50 p-5">
-          <p className="font-bold">Mencoba Selaras untuk penjurian atau latihan?</p>
-          <p className="mt-1 text-tinta-2">Akun demo sudah berisi kelas 4B dan materi Fotosintesis.</p>
-          <div className="mt-4">
-            <DemoLoginButton size="md" />
-          </div>
-        </div>
-      )}
-
       {google && (
         <div className="space-y-4">
           {/* Link biasa (bukan fetch): browser perlu berpindah ke halaman Google lalu kembali. */}
@@ -102,6 +92,16 @@ export function AuthForm({
           {mode === "masuk" ? "Masuk" : "Buat akun"}
         </Button>
       </form>
+
+      {mode === "masuk" && (
+        <div className="auth-demo">
+          <p className="font-bold">Ingin mencoba tanpa akun?</p>
+          <p className="mt-1 text-tinta-2">Demo berisi kelas 4B dan materi Fotosintesis.</p>
+          <div className="mt-3">
+            <DemoLoginButton size="md" variant="secondary" label="Coba akun guru demo" />
+          </div>
+        </div>
+      )}
 
       <p className="text-center text-tinta-2">
         {mode === "masuk" ? (

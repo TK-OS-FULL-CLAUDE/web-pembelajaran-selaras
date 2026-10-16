@@ -1,23 +1,39 @@
 import Link from "next/link";
+import { ArrowRight } from "lucide-react";
 import { OpenLesson } from "@/components/siswa/open-lesson";
+import { ChalkLesson } from "@/components/chalk-lesson";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { DEMO_SHARE_CODE } from "@/lib/demo-content";
+
 export const metadata = { title: "Buka materi siswa" };
+
 export default function StudentEntry() {
-  return <div className="flex min-h-dvh flex-col">
-    <SiteHeader current="siswa" />
-    <main id="isi" className="latar-buku flex-1">
-      <div className="mx-auto max-w-xl px-5 py-12">
-        <div className="rounded-3xl border border-garis bg-white p-6 shadow-kartu">
-          <h1 className="font-display text-3xl font-extrabold">Buka materi siswa</h1>
-          <p className="mt-3 text-tinta-2">Tidak perlu akun. Masukkan kode materi atau buka link/QR yang dibagikan gurumu.</p>
-          <OpenLesson />
-          <p className="mt-6 text-sm text-tinta-2">Belum menerima kode? Minta kode kepada gurumu.</p>
+  return (
+    <div className="flex min-h-dvh flex-col">
+      <SiteHeader />
+      <main id="isi" className="student-entry flex-1">
+        <div className="student-desk">
+          <section className="student-welcome papan-tulis">
+            <h1>Belajar dengan<br />caramu sendiri.</h1>
+            <p>Siapkan kode dari gurumu. Satu materi bisa kamu baca, dengarkan, dan sesuaikan agar lebih mudah dipahami.</p>
+            <ChalkLesson />
+            <p className="student-welcome-foot">Tidak perlu akun. Tidak perlu install.</p>
+          </section>
+          <section className="student-entry-paper" aria-labelledby="buka-materi">
+            <div className="paper-binding" aria-hidden><i /><i /><i /><i /><i /></div>
+            <h2 id="buka-materi">Buka materi siswa</h2>
+            <p>Masukkan kode materi dari gurumu, atau langsung buka link/QR yang dibagikan.</p>
+            <OpenLesson />
+            <p className="entry-help">Belum menerima kode? Minta kode kepada guru.</p>
+            <Link className="entry-demo" href={`/s/${DEMO_SHARE_CODE}`}>
+              <span>Ingin mencoba dulu?<strong>Demo siswa · Fotosintesis</strong></span>
+              <ArrowRight size={22} aria-hidden />
+            </Link>
+          </section>
         </div>
-        <Link className="mt-6 inline-flex min-h-11 items-center font-bold text-papan underline" href={`/s/${DEMO_SHARE_CODE}`}>Coba demo siswa — Fotosintesis</Link>
-      </div>
-    </main>
-    <SiteFooter compact />
-  </div>;
+      </main>
+      <SiteFooter compact />
+    </div>
+  );
 }

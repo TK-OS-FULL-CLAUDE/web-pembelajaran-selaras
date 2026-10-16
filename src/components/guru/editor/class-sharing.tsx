@@ -39,7 +39,7 @@ export function ClassSharing({ lessonId, classes, primaryClassId, selectedCode, 
       }
     } catch (e) { setError((e as Error).message); } finally { setBusy(false); }
   }
-  return <section className="mb-5 rounded-xl border border-garis p-4">
+  return <section className="mb-5 rounded-xl surface-card p-4">
     <h3 className="font-bold">Satu materi untuk beberapa kelas</h3>
     <p className="mt-1 text-sm text-tinta-2">Centang kelas tujuan. Setiap kelas mendapat kode sendiri dan rekap terpisah. Terbitkan perubahan sekali untuk memperbarui semua kelas.</p>
     <fieldset disabled={busy} className="mt-3 grid gap-2 sm:grid-cols-2">

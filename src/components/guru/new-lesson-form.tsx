@@ -108,7 +108,7 @@ export function NewLessonForm({
         </div>
         {preview && body.trim() ? (
           <div
-            className="reader mt-2 max-h-[34rem] overflow-y-auto rounded-2xl border border-garis px-5 py-5"
+            className="reader mt-2 max-h-[34rem] overflow-y-auto rounded-2xl surface-card px-5 py-5"
             style={{ background: "#fff" }}
           >
             <ReaderText text={body} glossary={[]} figures={figures} />

@@ -198,7 +198,7 @@ export function BagikanTab({
               selectedCode={activeCode} onSelect={setClassCode} onLoaded={onAudiences} />
             {!activeCode && <p>Pilih kelas tujuan untuk mengaktifkan link siswa.</p>}
             <div hidden={!activeCode} className="space-y-4">
-            <div className="latar-titik flex flex-col items-center gap-4 rounded-2xl border border-garis bg-papan-50/50 p-4 sm:flex-row sm:items-start">
+            <div className="latar-titik flex flex-col items-center gap-4 rounded-2xl surface-card bg-papan-50/50 p-4 sm:flex-row sm:items-start">
               {qr ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={qr} alt={`Kode QR menuju ${link}`} className="size-44 rounded-xl bg-white shadow-kartu" />

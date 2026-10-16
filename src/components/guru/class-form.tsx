@@ -115,7 +115,7 @@ export function ClassForm({
         <p className="text-tinta-2">
           Isi jumlah siswa saja, tanpa nama. Tidak perlu diagnosis resmi: cukup perkiraan dari pengamatan Anda.
         </p>
-        <div className="divide-y divide-garis rounded-2xl border border-garis bg-white">
+        <div className="divide-y divide-garis rounded-2xl surface-card">
           <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
             <label htmlFor="need-total" className="font-bold">
               Jumlah siswa di kelas
