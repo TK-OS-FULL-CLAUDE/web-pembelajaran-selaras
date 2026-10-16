@@ -1,4 +1,4 @@
-// Navbar halaman publik (depan, cara kerja, masuk/daftar, buka materi siswa): papan tulis dengan pita krayon.
+// Navbar halaman publik (depan, cara kerja, masuk/daftar, buka materi siswa): papan tulis dengan bingkai kayu.
 import Link from "next/link";
 import { LogIn } from "lucide-react";
 import { Logo, buttonClass } from "./ui";
@@ -14,18 +14,18 @@ export const SITE_LINKS: { key: SiteLinkKey; href: string; label: string }[] = [
 
 export function SiteHeader({ current, showLogin = true }: { current?: SiteLinkKey; showLogin?: boolean }) {
   return (
-    <header className="papan-tulis krayon no-print relative z-30">
+    <header className="site-navbar no-print relative z-30">
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
         <Link href="/" aria-label="Selaras, ke halaman depan" className="rounded-xl">
-          <Logo light />
+          <Logo />
         </Link>
-        <nav aria-label="Utama" className="hidden items-center gap-1 md:flex">
+        <nav aria-label="Utama" className="hidden items-center gap-1 lg:flex">
           {SITE_LINKS.map((l) => (
             <Link
               key={l.key}
               href={l.href}
               aria-current={current === l.key ? "page" : undefined}
-              className="tautan-kapur px-3.5 py-3 font-bold"
+              className="nav-link px-3.5 py-3 font-bold"
             >
               {l.label}
             </Link>
@@ -33,7 +33,7 @@ export function SiteHeader({ current, showLogin = true }: { current?: SiteLinkKe
         </nav>
         <div className="flex items-center gap-2">
           {showLogin && (
-            <Link href="/masuk" className={buttonClass("emas", "md", "rounded-full px-5 max-sm:h-10 max-sm:px-3.5 max-sm:text-[14px]")}>
+            <Link href="/masuk" className={buttonClass("primary", "md", "rounded-sm px-5 max-sm:h-10 max-sm:px-3.5 max-sm:text-[14px]")}>
               <LogIn className="size-4" aria-hidden />
               Masuk guru
             </Link>

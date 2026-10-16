@@ -20,7 +20,7 @@ export function VersionComparison({ body, versions }: { body: string; versions: 
     <div className="mt-4 grid gap-4 lg:grid-cols-2">
       {[["Materi asli", body, adapted, "id"], [VERSION_LABEL[key], adapted, body, VERSION_HTML_LANG[key]]].map(([label, text, other, lang]) => <div key={label}>
         <h3 className="mb-2 font-bold">{label}</h3>
-        <div lang={lang} tabIndex={0} role="region" aria-label={label} className="max-h-96 overflow-auto whitespace-pre-wrap rounded-xl border border-garis p-4 leading-relaxed">
+        <div lang={lang} tabIndex={0} role="region" aria-label={label} className="max-h-96 overflow-auto whitespace-pre-wrap rounded-xl surface-card p-4 leading-relaxed">
           {comparisonTokens(text, other).map((token, i) => token.changed ? <mark key={i} className="bg-amber-100 text-tinta underline decoration-dotted">{token.text}</mark> : token.text)}
         </div>
       </div>)}

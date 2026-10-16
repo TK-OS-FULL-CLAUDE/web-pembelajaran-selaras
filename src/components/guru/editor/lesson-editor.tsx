@@ -312,7 +312,7 @@ export function LessonEditor(props: EditorProps) {
         />
       )}
 
-      {manageOpen && <section className="mt-4 rounded-2xl border border-garis bg-white p-5">
+      {manageOpen && <section className="mt-4 rounded-2xl surface-card p-5">
         <h2 className="font-bold">Kategori dan templat</h2>
         <div className="mt-3 grid gap-4 sm:grid-cols-2">
           <label className="text-sm font-bold">Topik
@@ -349,7 +349,7 @@ export function LessonEditor(props: EditorProps) {
         <div
           role="tablist"
           aria-label="Bagian materi"
-          className="flex gap-1 overflow-x-auto rounded-2xl border border-garis bg-white p-1.5 shadow-kartu"
+          className="flex gap-1 overflow-x-auto rounded-2xl surface-card p-1.5 shadow-kartu"
         >
           {TABS.map((t, i) => {
             const active = tab === t.key;
@@ -530,7 +530,7 @@ function ManagePanel({
   return (
     <section
       aria-label="Kelola materi"
-      className="muncul no-print mt-4 grid gap-4 rounded-2xl border border-garis bg-white p-5 shadow-kartu md:grid-cols-2"
+      className="muncul no-print mt-4 grid gap-4 rounded-2xl surface-card p-5 shadow-kartu md:grid-cols-2"
     >
       <div>
         <h2 className="font-bold">Salin materi</h2>

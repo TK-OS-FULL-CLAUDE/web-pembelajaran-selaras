@@ -135,9 +135,9 @@ export default function CaraKerjaPage() {
             <h2 id="judul-langkah" className="mt-1 font-display text-[1.8rem] font-extrabold">
               Tiga langkah
             </h2>
-            <ol className="mt-8 grid gap-5 md:grid-cols-3">
+            <ol className="mt-8 grid gap-6 md:grid-cols-3">
               {STEPS.map((step, i) => (
-                <li key={step.title} className="relative rounded-2xl border border-garis bg-white p-6 shadow-kartu">
+                <li key={step.title} className="relative surface-card rounded-xl p-6">
                   <div className="flex items-center gap-3">
                     <span
                       className="papan-tulis flex size-11 shrink-0 items-center justify-center rounded-full font-display text-[1.2rem] font-extrabold"
@@ -188,9 +188,9 @@ export default function CaraKerjaPage() {
             <h2 id="judul-fitur" className="mt-1 font-display text-[1.8rem] font-extrabold">
               Yang membuat kelas lebih mudah diikuti
             </h2>
-            <div className="mt-8 grid gap-5 md:grid-cols-3">
+            <div className="mt-8 grid gap-6 md:grid-cols-3">
               {FEATURES.map((f) => (
-                <div key={f.title} className="rounded-2xl border border-garis bg-white p-6 shadow-kartu">
+                <div key={f.title} className="surface-card rounded-xl p-6">
                   <IconChip icon={f.icon} />
                   <h3 className="mt-4 text-lg font-bold">{f.title}</h3>
                   <p className="mt-1 text-tinta-2">{f.text}</p>

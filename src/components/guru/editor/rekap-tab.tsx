@@ -191,7 +191,7 @@ export function RekapTab({
       >
         <p className="text-sm text-tinta-2">Masukan dari tombol “Aku belum paham”. Ketukan berulang pada bagian dan versi yang sama dihitung satu kali per sesi. Bahas ulang bagian dengan laporan terbanyak.</p>
         {!stats.confusion.length ? <p className="mt-3">Belum ada laporan dari siswa.</p> : <ul className="mt-3 space-y-3">
-          {stats.confusion.map((f, i) => <li key={i} className="rounded-xl border border-garis p-3">
+          {stats.confusion.map((f, i) => <li key={i} className="rounded-xl surface-card p-3">
             <strong>{f.section}</strong><p>{f.sessions} sesi · {VERSION_LABEL[f.versi as keyof typeof VERSION_LABEL] || f.versi} · Revisi terbit {f.revision}</p>
           </li>)}
         </ul>}
@@ -209,7 +209,7 @@ export function RekapTab({
       >
         <p className="text-sm text-tinta-2">{stats.quizAttempts} sesi menyelesaikan kuis · {stats.totalQuizAttempts} percobaan seluruhnya. Persentase dihitung dari jawaban pada hasil terakhir setiap sesi, bukan persentase anak yang menguasai konsep.</p>
         <p className="mt-2 text-sm text-tinta-2">Rekap konsep mengikuti kuis terakhir yang diterbitkan. Atur konsep di tab Kuis, lalu terbitkan perubahan.</p>
-        <ul className="mt-4 space-y-3">{stats.byConcept.map((c) => <li key={c.concept} className="rounded-xl border border-garis p-4">
+        <ul className="mt-4 space-y-3">{stats.byConcept.map((c) => <li key={c.concept} className="rounded-xl surface-card p-4">
           <div className="flex flex-wrap justify-between gap-2"><strong>{c.concept}</strong><span className="font-bold">{c.pct === null ? "Belum ada hasil" : `${c.pct}% benar`}</span></div>
           <p className="mt-1 text-sm">{c.questions} soal · {c.sessions} sesi menjawab · {c.correct}/{c.answers} jawaban benar</p>
           {c.pct !== null && <p className="mt-2 text-sm font-bold text-papan">{c.pct < 50 ? "Bahas ulang dengan contoh konkret dan cek pemahaman." : c.pct < 75 ? "Berikan latihan penguatan pada konsep ini." : "Lanjutkan materi; tetap cek siswa yang membutuhkan bantuan."}</p>}

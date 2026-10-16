@@ -1,14 +1,6 @@
 @import "tailwindcss";
 
-/*
- * Design system Selaras (versi 4, "ruang kelas berwarna"): latar putih seperti dinding kelas, papan tulis hijau,
- * dan lima warna krayon dari perabot kelas (hijau, merah, kuning, biru, coklat muda).
- * - Hijau papan tulis = warna utama (tombol, tautan). Lima warna krayon dipakai dengan aturan tetap:
- *   setiap cara belajar, jenis soal, kebutuhan kelas, mata pelajaran, dan kelas punya warnanya sendiri
- *   (lihat src/lib/modes.ts), selalu bersama ikon dan nama sehingga warna bukan satu-satunya pembeda.
- * - Semua pasangan teks/latar dihitung dan lolos WCAG AA (>= 4,5:1 teks, >= 3:1 garis kontrol).
- * - Huruf isi Atkinson Hyperlegible (dirancang untuk pembaca low vision), judul Plus Jakarta Sans.
- */
+/* Selaras: papan hijau, kertas hangat, dan aksen kayu. Warna semantik tetap dipakai untuk status dan aksesibilitas. */
 @theme {
   --color-papan: #2d6a4f; /* hijau papan tulis · 6,39:1 di putih */
   --color-papan-600: #24573f; /* hover/teks tautan · 8,37:1 */
@@ -18,14 +10,14 @@
   --color-papan-100: #dcebdf;
   --color-papan-200: #b9d6bf; /* sage */
   --color-kapur: #f7f3e8; /* teks di atas papan tulis · 9,99:1 */
-  --color-emas: #f2c230; /* kuning krayon: tombol di atas papan tulis, garis aktif · teks tinta 9,3:1 */
+  --color-emas: #e6c98d; /* kapur oker: aksen di papan tulis */
   --color-tinta: #1e2a23; /* 14,6:1 di putih */
   --color-tinta-2: #4a5850; /* 7,4:1 di putih */
   --color-batas: #7a857c; /* garis input · 3,8:1 di putih */
-  --color-garis: #e3e8e3; /* garis dekoratif */
-  --color-krem: #eef2ee; /* latar netral muda (chip, hover) */
-  --color-krem-2: #e1e7e1;
-  --color-kertas: #f6f8f6; /* latar lembut di dalam kartu putih */
+  --color-garis: #dfd4c3; /* garis dekoratif */
+  --color-krem: #efe9de; /* latar netral muda (chip, hover) */
+  --color-krem-2: #e4dacb;
+  --color-kertas: #ffffff; /* latar lembut di dalam kartu putih */
   --color-aksen: #7a5b0f; /* emas tua: draf AI & cincin fokus · 6,3:1 */
   --color-aksen-50: #fbf5e4;
   --color-aksen-100: #f6e7bd;
@@ -52,14 +44,14 @@
   --color-coklat: #875225; /* 6,4:1 */
   --color-coklat-50: #fbf6ee;
   --color-coklat-100: #f3e7d3;
-  --color-tan: #d8bf94; /* coklat muda meja (hiasan) */
+  --color-tan: #b88a57; /* coklat muda meja (hiasan) */
   /* Warna krayon cerah, khusus hiasan (garis pita, bukan teks) */
   --color-krayon-hijau: #3fae5a;
   --color-krayon-merah: #d64045;
   --color-krayon-biru: #2f62c4;
 
-  --shadow-kartu: 0 1px 2px rgb(30 42 35 / 0.05), 0 2px 10px -2px rgb(30 42 35 / 0.07);
-  --shadow-angkat: 0 2px 4px rgb(30 42 35 / 0.05), 0 14px 32px -10px rgb(30 42 35 / 0.18);
+  --shadow-kartu: 0 5px 20px rgb(28 40 52 / 0.08), 0 1px 4px rgb(28 40 52 / 0.04);
+  --shadow-angkat: 0 4px 0 rgb(135 82 37 / 0.12);
 
   --font-sans: "Atkinson Hyperlegible", ui-sans-serif, system-ui, sans-serif;
   --font-display:
@@ -72,7 +64,7 @@
     -webkit-text-size-adjust: 100%;
   }
   body {
-    background: #ffffff;
+    background: var(--color-kertas);
     color: var(--color-tinta);
     font-family: var(--font-sans);
     font-size: 16px;
@@ -103,58 +95,23 @@
   }
 }
 
-/* Pita krayon: lima warna perabot kelas (hijau, merah, kuning, biru, coklat muda). Ciri khas Selaras. */
-.pita-warna {
-  height: 6px;
-  background: var(--krayon-pita);
-}
-:root {
-  --krayon-pita: linear-gradient(
-    90deg,
-    var(--color-krayon-hijau) 0 20%,
-    var(--color-krayon-merah) 20% 40%,
-    var(--color-kuning) 40% 60%,
-    var(--color-krayon-biru) 60% 80%,
-    var(--color-tan) 80% 100%
-  );
-}
+/* Nama kelas lama dipertahankan agar semua pita di aplikasi ikut memakai kayu. */
+:root { --krayon-pita: var(--color-coklat); }
 
-/* Latar halus bertitik untuk area kosong */
-.latar-titik {
-  background-image: radial-gradient(rgb(45 106 79 / 0.09) 1px, transparent 1px);
-  background-size: 18px 18px;
-}
-
-/* Kertas buku tulis: putih dengan garis biru tipis seperti buku sekolah (hero halaman depan) */
+.latar-titik { background-color: var(--color-kertas); }
 .latar-buku {
-  background-color: #ffffff;
-  background-image: repeating-linear-gradient(
-    to bottom,
-    transparent 0 35px,
-    rgb(36 83 166 / 0.07) 35px 36px
-  );
+  background-color: var(--color-kertas);
+  background-image: none;
 }
-
-/* Papan tulis: navbar, footer, dan kepala halaman siswa (hijau polos dengan sedikit kilau, tanpa tekstur) */
 .papan-tulis {
   background-color: var(--color-papan-700);
-  background-image: linear-gradient(180deg, rgb(255 255 255 / 0.05), transparent 70%);
+  background-image: url("/chalk-grain.svg");
   color: var(--color-kapur);
 }
-.papan-tulis :focus-visible {
-  outline-color: var(--color-emas);
-}
-/* Pita krayon di bawah navbar dan di atas footer */
-.krayon {
-  border-bottom: 5px solid transparent;
-  border-image: var(--krayon-pita) 1;
-  box-shadow: 0 6px 14px -10px rgb(30 42 35 / 0.35);
-}
-.krayon-atas {
-  border-top: 5px solid transparent;
-  border-image: var(--krayon-pita) 1;
-}
-/* Tautan di papan tulis: garis kapur emas di bawah yang aktif */
+.papan-tulis :focus-visible { outline-color: var(--color-emas); }
+.krayon { border-bottom: 5px solid var(--color-coklat); }
+.krayon-atas { border-top: 5px solid var(--color-coklat); }
+/* Tautan aktif: garis cokelat muda yang terbaca di papan. */
 .tautan-kapur {
   position: relative;
   border-radius: 10px;
@@ -171,7 +128,7 @@
   bottom: 0.3rem;
   height: 3px;
   border-radius: 3px;
-  background: var(--color-emas);
+  background: var(--color-tan);
 }
 
 /* Tautan lewati navigasi untuk pengguna keyboard dan pembaca layar */
@@ -724,3 +681,184 @@ sup {
     break-inside: avoid;
   }
 }
+
+
+/* Halaman publik terang; hijau difokuskan pada navigasi dan aksi utama.
+   Kartu putih dengan bayangan lembut mengikuti revisi visual pengguna. */
+:root {
+  --public-ground: #ffffff;
+  --public-surface: #ffffff;
+  --public-soft: #f0f2f4;
+  --public-footer: #1b4332;
+  --public-shadow: 0 14px 44px -12px rgb(28 40 52 / 0.17), 0 2px 6px rgb(28 40 52 / 0.04);
+}
+.classroom-home { background: var(--public-surface); }
+.auth-page { display: grid; place-items: center; padding: 48px 24px; background: var(--public-ground); }
+.auth-card { width: 100%; max-width: 480px; padding: 36px; background: var(--public-surface); border-radius: 14px; box-shadow: var(--public-shadow); border: 0; }
+.auth-card h1 { text-align: center; }
+.auth-card input { background: var(--public-surface); border-radius: 6px; min-height: 48px; }
+.auth-card button, .auth-card a.inline-flex { border-radius: 6px; }
+.auth-demo { padding: 20px; background: white; border-radius: 8px; box-shadow: var(--shadow-kartu); }
+.auth-demo button { width: 100%; }
+.site-footer { background-color: var(--public-footer); color: var(--color-kapur); }
+.footer-link { color: var(--color-kapur); border-radius: 4px; }
+.footer-link:hover { text-decoration: underline; text-underline-offset: 4px; }
+
+.classroom-board { position: relative; color: var(--color-tinta); background: var(--public-surface); }
+.classroom-hero {
+  max-width: 1360px;
+  margin: auto;
+  padding: 64px 40px 88px;
+  display: grid;
+  grid-template-columns: minmax(0, .85fr) minmax(0, 1.6fr);
+  gap: 56px;
+  align-items: center;
+}
+.classroom-copy h1 {
+  font-size: clamp(36px, 3.6vw, 52px);
+  font-weight: 800;
+  letter-spacing: -.045em;
+  line-height: 1.08;
+  text-wrap: initial;
+}
+.classroom-intro { max-width: 430px; margin-top: 25px; font-size: 20px; line-height: 1.6; }
+.classroom-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 22px; margin-top: 30px; }
+.classroom-actions button { background: var(--color-papan); color: white; border: 0; border-radius: 6px; }
+.classroom-actions button:hover { background: var(--color-papan-600); }
+.classroom-actions a { display: inline-flex; gap: 10px; align-items: center; min-height: 48px; font-weight: 700; }
+.classroom-actions a:hover { text-decoration: underline; text-underline-offset: 6px; }
+.classroom-note { margin-top: 13px; font-size: 15px; color: var(--color-tinta-2); }
+.chalk-lesson { max-width: 430px; margin-top: 37px; color: var(--color-kapur); }
+.chalk-lesson svg { width: 100%; height: auto; }
+.chalk-lesson figcaption { margin-top: 3px; font-size: 15px; }
+.chalk-sun { color: var(--color-emas); }
+.lesson-board-frame { position: relative; min-width: 0; padding: 10px 10px 0; background: #986637; border-radius: 5px; box-shadow: inset 0 2px 0 #c19769, 0 18px 40px -14px rgb(36 47 39 / .3); }
+.lesson-notebook { position: relative; color: var(--color-kapur); background: #234e3d url("/chalk-grain.svg"); border-radius: 1px; border: 0; box-shadow: inset 0 2px 9px rgb(0 0 0 / .22); padding: 10px 8px 22px; }
+.notebook-heading { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; padding: 14px 24px; color: #e1e7d8; font-size: 14px; }
+.notebook-heading > :first-child { font-family: "Segoe Print", "Bradley Hand", "Comic Sans MS", cursive; }
+.notebook-heading > :last-child { position: absolute; top: 46px; left: 32px; font-size: 12px; line-height: 16px; }
+.notebook-tabs { display: flex; padding: 12px 24px 0; gap: 8px; }
+.notebook-tabs button { padding: 10px 16px; min-height: 44px; font-weight: 700; color: var(--color-kapur); border-radius: 5px; transition: background-color .18s; }
+.notebook-tabs button[aria-pressed="true"] { background: var(--color-kapur); color: #234e3d; }
+.notebook-tabs button:hover { background: rgb(255 255 255 / .16); }
+.notebook-tabs button[aria-pressed="true"]:hover { background: white; }
+.notebook-page.reader { padding: 26px 32px 22px; background: transparent; --reader-size: 18px; --reader-bg: #234e3d; --reader-page: #234e3d; --reader-ink: #f7f3e8; --reader-soft: #d5dfd3; --reader-term: #edcf86; --reader-accent: #edcf86; --reader-mark: #516b42; }
+.notebook-page.reader[data-besar="true"] { --reader-size: 24px; }
+.notebook-page.reader[data-kontras="true"] { --reader-bg: #fffbe6; --reader-page: #fffbe6; --reader-ink: #000; --reader-soft: #222; --reader-term: #000; --reader-accent: #000; --reader-mark: #f5d867; background: var(--reader-bg); border-radius: 4px; }
+.notebook-page h2 { max-width: 540px; font-family: "Segoe Print", "Bradley Hand", "Comic Sans MS", cursive; font-size: 32px; font-weight: 700; letter-spacing: -.035em; line-height: 1.45; margin-bottom: 20px; color: var(--reader-ink); }
+.notebook-page .reader-text { min-height: 132px; }
+.notebook-page [role="status"] { background: var(--color-kapur); color: var(--color-tinta); border-radius: 4px; }
+.notebook-hint { margin-top: 18px; color: var(--reader-soft); font-size: 14px; }
+.notebook-tools { display: grid; grid-template-columns: repeat(4, 1fr); gap: 7px; padding: 14px 28px 20px; }
+.notebook-tools button { min-height: 44px; display: flex; align-items: center; justify-content: center; gap: 7px; background: rgb(255 255 255 / .09); color: var(--color-kapur); font-size: 13px; border-radius: 4px; transition: background-color .2s; }
+.notebook-tools button:hover { background: rgb(255 255 255 / .18); }
+.notebook-tools button[aria-pressed="true"] { background: var(--color-kapur); color: #234e3d; }
+.notebook-tools button:disabled { opacity: .5; cursor: not-allowed; }
+.notebook-caption { padding: 0 28px 10px; font-size: 13px; color: #d5dfd3; }
+.notebook-caption a { display: inline-flex; align-items: center; gap: 10px; min-height: 44px; font-size: 15px; font-weight: 700; color: #f0d396; text-decoration: underline; text-underline-offset: 4px; }
+.student-entry { background: var(--public-ground); padding: 64px 24px; display: grid; place-items: center; }
+.student-desk { display: grid; grid-template-columns: 1fr 1.1fr; width: 100%; max-width: 1080px; align-items: stretch; box-shadow: var(--public-shadow); border-radius: 12px; overflow: hidden; }
+.student-welcome { padding: 48px 40px 36px; border: 0; }
+.student-welcome h1 { font-size: clamp(32px, 3.2vw, 43px); font-weight: 800; line-height: 1.15; letter-spacing: -.045em; text-wrap: initial; }
+.student-welcome > p { margin-top: 24px; font-size: 18px; }
+.student-welcome .chalk-lesson { margin-top: 40px; }
+.student-welcome .student-welcome-foot { margin-top: 28px; font-size: 15px; }
+.student-entry-paper { position: relative; padding: 58px 44px 32px; background: var(--public-surface); }
+.paper-binding { position: absolute; top: 17px; left: 44px; right: 44px; display: flex; justify-content: space-between; }
+.paper-binding i { width: 7px; height: 7px; background: var(--color-krem-2); border-radius: 50%; }
+.student-entry-paper h2 { font-size: 30px; font-weight: 800; letter-spacing: -.04em; }
+.student-entry-paper > p { margin-top: 15px; font-size: 17px; }
+.student-entry-paper form { margin-top: 28px; }
+.student-entry-paper input { height: 60px; background: white; border-radius: 3px; font-size: 21px; letter-spacing: .06em; }
+.student-entry-paper button[type="submit"] { width: 100%; border-radius: 3px; margin-top: 6px; min-height: 52px; }
+.student-entry-paper .entry-help { font-size: 15px; margin: 20px 0 28px; }
+.entry-demo { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 20px 22px; background: white; box-shadow: var(--shadow-kartu); border-radius: 8px; font-size: 15px; transition: background-color .2s; }
+.entry-demo:hover { background: var(--color-krem-2); }
+.entry-demo strong { display: block; color: var(--color-papan-600); font-size: 17px; margin-top: 3px; }
+.paper-panel { border: 0; border-radius: 12px; background: white; box-shadow: var(--shadow-kartu); }
+.class-folder { border: 0; border-radius: 12px; box-shadow: var(--shadow-kartu); background: var(--color-kertas); }
+.classroom-board :focus-visible { outline-color: var(--color-papan); }
+.lesson-notebook :focus-visible { outline-color: #f0d396; }
+.notebook-page[data-kontras="true"] :focus-visible { outline-color: #234e3d; }
+@keyframes classroom-enter { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes lesson-change { from { opacity: .4; } to { opacity: 1; } }
+.classroom-copy > *, .notebook-heading, .notebook-tabs, .notebook-page, .notebook-tools, .notebook-caption, .student-welcome > *, .student-entry-paper > * { animation: classroom-enter .65s both; }
+.classroom-copy > :nth-child(2), .notebook-tabs { animation-delay: .07s; }
+.classroom-copy > :nth-child(3), .notebook-page { animation-delay: .14s; }
+.classroom-copy > :nth-child(4), .notebook-tools { animation-delay: .21s; }
+.classroom-copy > :nth-child(5), .notebook-caption { animation-delay: .28s; }
+.lesson-text-change { animation: lesson-change .3s ease-out; }
+@media (max-width: 1000px) {
+  .classroom-hero { gap: 28px; padding: 44px 28px 64px; grid-template-columns: minmax(0, .8fr) minmax(0, 1.2fr); }
+  .classroom-copy h1 { font-size: 36px; }
+  .classroom-intro { font-size: 18px; }
+  .notebook-page.reader { padding: 25px 24px 20px; }
+  .notebook-page h2 { font-size: 24px; }
+  .notebook-tabs { padding-inline: 12px; }
+  .notebook-tabs button { padding-inline: 10px; }
+  .notebook-tools { padding-inline: 20px; grid-template-columns: 1fr 1fr; }
+  .student-welcome { padding: 42px 28px 30px; }
+  .student-entry-paper { padding: 52px 28px 28px; }
+}
+@media (max-width: 760px) {
+  .auth-page { padding: 32px 18px; }
+  .auth-card { padding: 28px 24px; }
+  .auth-card h1 { font-size: 26px; }
+  .classroom-hero { grid-template-columns: 1fr; padding: 36px 22px 60px; gap: 35px; }
+  .classroom-copy h1 { font-size: clamp(30px, 8.7vw, 52px); }
+  .classroom-intro { max-width: 520px; margin-top: 20px; }
+  .classroom-actions { gap: 12px 22px; margin-top: 24px; }
+  .classroom-copy .chalk-lesson { display: none; }
+  .lesson-notebook { transform: none; margin: 0; }
+  .notebook-heading { padding: 13px 20px; font-size: 14px; }
+  .notebook-tabs { padding-top: 16px; }
+  .notebook-tabs button { flex: 1; font-size: 15px; padding-inline: 7px; }
+  .notebook-page .reader-text { min-height: 0; }
+  .notebook-page h2 { font-size: 27px; }
+  .student-entry { padding: 28px 18px 36px; }
+  .student-desk { grid-template-columns: 1fr; }
+  .student-welcome { padding: 28px 26px; }
+  .student-welcome h1 { font-size: 32px; }
+  .student-welcome > p { margin-top: 16px; font-size: 17px; }
+  .student-welcome .chalk-lesson, .student-welcome .student-welcome-foot { display: none; }
+  .student-entry-paper { padding: 44px 24px 26px; }
+  .student-entry-paper h2 { font-size: 27px; }
+  .entry-demo { padding: 17px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .classroom-copy > *, .notebook-heading, .notebook-tabs, .notebook-page, .notebook-tools, .notebook-caption, .student-welcome > *, .student-entry-paper > *, .lesson-text-change { animation: none; }
+  .notebook-tools button { transition: none; }
+}
+
+/* Navbar putih dan kartu tanpa garis dekoratif. */
+.site-navbar { background: white; color: var(--color-tinta); box-shadow: 0 2px 14px rgb(28 40 52 / .06); }
+.site-navbar-menu { background: white; color: var(--color-tinta); box-shadow: 0 10px 20px rgb(28 40 52 / .09); }
+.nav-link { color: var(--color-tinta); border-radius: 8px; }
+.nav-link:hover { background: var(--color-papan-50); }
+.nav-link[aria-current="page"] { color: var(--color-papan-600); background: var(--color-papan-50); }
+.surface-card { border: 0; background: white; box-shadow: var(--shadow-kartu); }
+.reader-surface { border: 0; box-shadow: var(--shadow-kartu); }
+.reader[data-kontras="true"] .reader-surface { outline: 2px solid var(--reader-line); box-shadow: none; }
+.classroom-plane { position: absolute; top: 16px; right: 28px; width: clamp(100px, 12vw, 160px); height: auto; color: var(--color-kapur); pointer-events: none; }
+/* Tatakan dan alat tulis merupakan bagian dari ilustrasi papan, bukan kontrol. */
+.board-tray { position: relative; height: 18px; margin: 0 -18px -6px; border-radius: 2px 2px 4px 4px; background: #a37243; border-top: 5px solid #c1986c; box-shadow: 0 5px 0 #77502e, 0 12px 16px -5px rgb(60 43 26 / .24); }
+.board-eraser { position: absolute; left: 40px; bottom: 14px; width: 83px; height: 27px; border-radius: 4px 4px 2px 2px; background: #c09060; border-bottom: 9px solid #454744; box-shadow: inset 0 3px 0 #d4a778, 2px 2px 3px rgb(0 0 0 / .18); transform: rotate(-3deg); }
+.board-chalk { position: absolute; height: 7px; border-radius: 2px; box-shadow: inset 0 -2px 0 rgb(0 0 0 / .1), 1px 2px 2px rgb(0 0 0 / .16); }
+.board-chalk-white { right: 57px; bottom: 15px; width: 46px; background: #f7f3e8; transform: rotate(-5deg); }
+.board-chalk-yellow { right: 28px; bottom: 15px; width: 29px; background: #eacb7e; transform: rotate(7deg); }
+.board-dust { position: absolute; right: 22px; bottom: 11px; width: 98px; height: 3px; background: rgb(247 243 232 / .25); filter: blur(2px); }
+@media (max-width: 760px) {
+  .classroom-plane { top: 15px; right: 16px; width: 100px; }
+  .notebook-heading > :last-child { top: 37px; left: 16px; font-size: 11px; }
+  .lesson-board-frame { padding: 7px 7px 0; }
+  .lesson-notebook { padding: 4px 0 22px; }
+  .notebook-heading { padding-inline: 16px; font-size: 12px; }
+  .notebook-tabs { gap: 2px; padding-inline: 9px; }
+  .notebook-tabs button { font-size: 13px; }
+  .notebook-page.reader { padding: 24px 18px 20px; }
+  .notebook-page h2 { font-size: 25px; }
+  .notebook-tools, .notebook-caption { padding-inline: 16px; }
+  .board-tray { margin-inline: -12px; }
+}
+.reader.surface-card { background: var(--reader-page); }
+.reader.surface-card[data-kontras="true"] { outline: 2px solid var(--reader-line); box-shadow: none; }

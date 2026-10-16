@@ -23,13 +23,13 @@ export function SiteMenu({
   }, [open]);
 
   return (
-    <div className="md:hidden">
+    <div className="lg:hidden">
       <button
         type="button"
         aria-expanded={open}
         aria-controls="menu-utama"
         onClick={() => setOpen((o) => !o)}
-        className="inline-flex size-11 items-center justify-center rounded-xl border border-kapur/45 text-kapur hover:bg-white/10"
+        className="inline-flex size-11 items-center justify-center rounded-xl text-tinta hover:bg-papan-50"
       >
         {open ? <X className="size-5" aria-hidden /> : <Menu className="size-5" aria-hidden />}
         <span className="sr-only">Menu</span>
@@ -38,7 +38,7 @@ export function SiteMenu({
         id="menu-utama"
         aria-label="Utama"
         hidden={!open}
-        className="papan-tulis krayon absolute inset-x-0 top-full border-t border-white/10 px-4 pb-4 pt-2"
+        className="site-navbar-menu absolute inset-x-0 top-full px-4 pb-4 pt-2"
       >
         <ul className="space-y-1">
           {links.map((l) => (
@@ -47,7 +47,7 @@ export function SiteMenu({
                 href={l.href}
                 onClick={() => setOpen(false)}
                 aria-current={current === l.key ? "page" : undefined}
-                className={cx("tautan-kapur flex min-h-12 items-center px-3 text-[17px] font-bold")}
+                className={cx("nav-link flex min-h-12 items-center px-3 text-[17px] font-bold")}
               >
                 {l.label}
               </Link>

@@ -188,8 +188,7 @@ export function StudentQuiz({
         : [];
     return (
       <main id="isi" className="mx-auto max-w-3xl px-4 py-8 sm:py-12">
-        <div className="muncul overflow-hidden rounded-[1.75rem] border border-[var(--reader-line)] bg-[var(--reader-bg)] shadow-kartu">
-          <div className="pita-warna" aria-hidden />
+        <div className="muncul overflow-hidden rounded-[1.75rem] reader-surface bg-[var(--reader-bg)] shadow-kartu">
           <div className="flex flex-col items-center gap-5 p-6 text-center sm:flex-row sm:text-left">
             <ScoreRing pct={pct} />
             <div>
@@ -222,7 +221,7 @@ export function StudentQuiz({
         {task && (task.judul.trim() || task.tugas.trim()) && (
           <section
             aria-labelledby="tugas-jenjang"
-            className="muncul mt-6 rounded-[1.5rem] border-2 border-papan bg-white p-5 text-tinta shadow-kartu"
+            className="muncul mt-6 rounded-[1.5rem] surface-card p-5 text-tinta shadow-kartu"
           >
             <p className="inline-flex items-center gap-1.5 rounded-full bg-papan-50 px-3 py-1 text-[14px] font-bold text-papan">
               <ListChecks className="size-4" aria-hidden />
@@ -400,7 +399,7 @@ export function StudentQuiz({
         ))}
       </ol>
 
-      <section className="mt-6 rounded-[1.75rem] border border-[var(--reader-line)] bg-[var(--reader-bg)] p-5 shadow-kartu sm:p-7">
+      <section className="mt-6 rounded-[1.75rem] reader-surface bg-[var(--reader-bg)] p-5 shadow-kartu sm:p-7">
         <p className="text-[13px] font-bold uppercase tracking-wide text-[var(--reader-soft)]">{title}</p>
         <span className={cx("mt-2 inline-flex rounded-full px-3 py-1 text-[14px] font-bold", tone.chip)}>
           {INSTRUCTION[type]}

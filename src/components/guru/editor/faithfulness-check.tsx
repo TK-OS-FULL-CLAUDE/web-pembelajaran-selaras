@@ -79,7 +79,7 @@ export function FaithfulnessCheck({
         </Button>
       )}
       {result && (
-        <div role="status" className="rounded-xl border border-garis bg-kertas px-3 py-2 text-[14px]">
+        <div role="status" className="rounded-xl surface-card bg-kertas px-3 py-2 text-[14px]">
           {stale && <p className="mb-1 font-bold text-aksen">Teks berubah sejak diperiksa. Periksa ulang bila perlu.</p>}
           {result.findings.length === 0 ? (
             <p className="flex gap-2 text-berhasil">

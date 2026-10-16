@@ -14,7 +14,7 @@ type Size = "sm" | "md" | "lg";
 
 const VARIANT: Record<Variant, string> = {
   primary:
-    "bg-papan text-white shadow-[0_1px_2px_rgb(15_23_42/0.12),inset_0_1px_0_rgb(255_255_255/0.12)] hover:bg-papan-600 disabled:bg-batas disabled:shadow-none",
+    "bg-papan text-white hover:bg-papan-600 disabled:bg-batas disabled:shadow-none",
   secondary:
     "border border-garis bg-white text-tinta shadow-kartu hover:border-papan/50 hover:bg-papan-50 disabled:text-tinta-2 disabled:hover:bg-white",
   soft: "bg-papan-50 text-papan hover:bg-papan-100 disabled:text-tinta-2",
@@ -22,14 +22,14 @@ const VARIANT: Record<Variant, string> = {
   danger: "border border-galat/30 bg-white text-galat hover:bg-red-50",
   ai: "border border-aksen/35 bg-aksen-50 text-aksen hover:bg-aksen-100 disabled:opacity-60",
   /** Di atas papan tulis: tombol kuning krayon dengan teks gelap (9,3:1). */
-  emas: "bg-emas text-tinta shadow-[0_2px_0_rgb(0_0_0/0.18)] hover:bg-[#f6d25c] disabled:opacity-60",
+  emas: "bg-emas text-tinta hover:bg-tan disabled:opacity-60",
   /** Di atas papan tulis: garis kapur. */
   kapur: "border border-kapur/45 text-kapur hover:border-kapur hover:bg-white/10 disabled:opacity-60",
 };
 const SIZE: Record<Size, string> = {
   sm: "h-9 px-3 text-[14px] gap-1.5 rounded-lg",
-  md: "h-11 px-4 text-[15px] gap-2 rounded-xl",
-  lg: "h-13 px-6 text-[17px] gap-2.5 rounded-xl",
+  md: "h-11 px-4 text-[15px] gap-2 rounded-sm",
+  lg: "h-13 px-6 text-[17px] gap-2.5 rounded-sm",
 };
 
 export function buttonClass(variant: Variant = "primary", size: Size = "md", extra?: string) {
@@ -130,7 +130,7 @@ export function Notice({
   }[tone];
   return (
     <div
-      className={cx("rounded-2xl border border-l-[5px] border-l-[var(--n)] px-4 py-3 text-[15px]", styles, className)}
+      className={cx("rounded-2xl shadow-kartu px-4 py-3 text-[15px]", styles, className)}
       role={tone === "error" ? "alert" : undefined}
     >
       {title && <p className="font-bold text-tinta">{title}</p>}
@@ -180,7 +180,7 @@ export function Select(props: ComponentProps<"select">) {
 
 export function Card({ className, children }: { className?: string; children: ReactNode }) {
   return (
-    <section className={cx("rounded-2xl border border-garis bg-white shadow-kartu", className)}>{children}</section>
+    <section className={cx("paper-panel", className)}>{children}</section>
   );
 }
 
@@ -199,7 +199,7 @@ export function StatCard({
   hint?: ReactNode;
 }) {
   return (
-    <div className="flex flex-col items-start gap-3 rounded-2xl border border-garis bg-white p-4 shadow-kartu sm:flex-row sm:items-center sm:gap-4">
+    <div className="flex flex-col items-start gap-3 surface-card rounded-xl p-4 sm:flex-row sm:items-center sm:gap-4">
       <IconChip icon={icon} tone={tone} size="lg" />
       <div className="min-w-0">
         <p className="text-[14px] font-bold text-tinta-2">{label}</p>
@@ -242,13 +242,21 @@ export function Logo({
 }) {
   return (
     <span className={cx("inline-flex items-center gap-2.5", className)}>
-      <svg viewBox="0 0 36 36" className="size-9 shrink-0" aria-hidden>
-        <rect width="36" height="36" rx="10" fill={light ? "#F7F3E8" : "#2D6A4F"} />
-        <g strokeLinecap="round" strokeWidth="3.4">
-          <path d="M10 12.5h16" stroke={light ? "#1B4332" : "#ffffff"} />
-          <path d="M10 18h10" stroke={light ? "#B02A31" : "#F4A6A9"} />
-          <path d="M10 23.5h13" stroke={light ? "#2453A6" : "#F2C230"} />
-        </g>
+      {/* Simbol "Tiga Baris" dari brand/logo/simbol (varian warna / gelap). */}
+      <svg viewBox="28 28 200 200" className="size-9 shrink-0" aria-hidden>
+        {light ? (
+          <>
+            <path fill="#F2C230" d="M91.5 34H201A21 21 0 0 1 201 76H91.5A15.5 15.5 0 0 0 76.53 87.5H31.15A60.5 57.5 0 0 1 91.5 34Z" />
+            <path fill="#F7F3E8" d="M31.15 95.5A60.5 57.5 0 0 0 91.5 149H164.5A15.5 15.5 0 0 1 179.47 160.5H224.85A60.5 57.5 0 0 0 164.5 107H91.5A15.5 15.5 0 0 1 76.53 95.5Z" />
+            <path fill="#D8BF94" d="M179.47 168.5H224.85A60.5 57.5 0 0 1 164.5 222H55A21 21 0 0 1 55 180H164.5A15.5 15.5 0 0 0 179.47 168.5Z" />
+          </>
+        ) : (
+          <>
+            <path fill="#2453A6" d="M92 34H200A22 22 0 0 1 200 78H92A14 14 0 0 0 78.58 88H31.15A61 58 0 0 1 92 34Z" />
+            <path fill="#1F6E35" d="M31.15 96A61 58 0 0 0 92 150H164A14 14 0 0 1 177.42 160H224.85A61 58 0 0 0 164 106H92A14 14 0 0 1 78.58 96Z" />
+            <path fill="#875225" d="M177.42 168H224.85A61 58 0 0 1 164 222H56A22 22 0 0 1 56 178H164A14 14 0 0 0 177.42 168Z" />
+          </>
+        )}
       </svg>
       <span
         className={cx(
@@ -277,7 +285,7 @@ export function EmptyState({
   tone?: ToneKey;
 }) {
   return (
-    <div className="rounded-2xl border border-dashed border-batas/50 bg-white px-6 py-10 text-center">
+    <div className="rounded-2xl surface-card px-6 py-10 text-center">
       {Icon && <IconChip icon={Icon} tone={tone} size="lg" className="mx-auto mb-3" />}
       <p className="font-display text-lg font-bold">{title}</p>
       {children && <div className="mx-auto mt-1 max-w-md text-tinta-2">{children}</div>}

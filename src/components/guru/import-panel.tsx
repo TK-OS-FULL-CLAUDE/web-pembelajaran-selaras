@@ -154,7 +154,7 @@ export function ImportPanel({
 
       {pdf && (
         <div
-          className="muncul rounded-2xl border border-garis bg-white p-4 shadow-kartu"
+          className="muncul rounded-2xl surface-card p-4 shadow-kartu"
           role="group"
           aria-label="Pilih halaman PDF"
         >

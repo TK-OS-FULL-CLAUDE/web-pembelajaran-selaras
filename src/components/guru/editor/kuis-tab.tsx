@@ -233,7 +233,7 @@ export function KuisTab({
         <div
           role="menu"
           aria-label="Jenis soal"
-          className="muncul absolute left-0 z-30 mt-2 w-72 rounded-2xl border border-garis bg-white p-1.5 shadow-angkat"
+          className="muncul absolute left-0 z-30 mt-2 w-72 rounded-2xl surface-card p-1.5 shadow-angkat"
         >
           {QUIZ_TYPES.map((t) => (
             <button
@@ -449,8 +449,8 @@ function QuestionCard({
   return (
     <li
       className={cx(
-        "overflow-hidden rounded-2xl border bg-white shadow-kartu",
-        problem ? "border-aksen/50 border-l-[5px] border-l-aksen" : "border-garis",
+        "overflow-hidden rounded-2xl surface-card",
+        problem ? "bg-aksen-50" : "border-garis",
       )}
     >
       <div className="p-4 sm:p-5">
@@ -741,7 +741,7 @@ function MathPreview({ q }: { q: QuizQuestion }) {
   const parts = [q.q, ...options, q.explain, ...(q.hints ?? [])];
   if (!parts.some((t) => t && hasMath(t))) return null;
   return (
-    <div className="mt-4 rounded-xl border border-garis bg-kertas p-4" role="group" aria-label="Pratinjau rumus untuk siswa">
+    <div className="mt-4 rounded-xl surface-card bg-kertas p-4" role="group" aria-label="Pratinjau rumus untuk siswa">
       <p className="text-[13px] font-bold uppercase tracking-wide text-tinta-2">Pratinjau rumus (tampilan siswa)</p>
       <p className="mt-1.5 font-bold leading-relaxed">
         <InlineText text={q.q} />
@@ -975,7 +975,7 @@ function PracticeBank({
   }
 
   return (
-    <section aria-labelledby="bank-latihan" className="rounded-2xl border border-garis bg-white p-5 shadow-kartu">
+    <section aria-labelledby="bank-latihan" className="rounded-2xl surface-card p-5 shadow-kartu">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="max-w-2xl">
           <h2 id="bank-latihan" className="flex items-center gap-2 font-display text-lg font-extrabold">

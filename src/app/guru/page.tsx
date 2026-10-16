@@ -8,7 +8,7 @@ import { ButtonLink, EmptyState, IconChip, Notice, SectionTitle, StatCard } from
 import { requireTeacher } from "@/lib/auth";
 import { getTeacherOverview, listClasses, listLessons } from "@/lib/data";
 import { aiEnabled } from "@/lib/claude";
-import { TONES, classTone } from "@/lib/modes";
+import { classTone } from "@/lib/modes";
 
 export const metadata: Metadata = { title: "Beranda guru" };
 
@@ -23,8 +23,7 @@ export default async function GuruHome() {
 
   return (
     <div className="space-y-10">
-      <section className="relative overflow-hidden rounded-[1.75rem] border border-garis bg-white shadow-kartu">
-        <div className="pita-warna" aria-hidden />
+      <section className="relative overflow-hidden rounded-xl surface-card">
         <div className="p-6 sm:p-8">
         <div className="flex flex-wrap items-end justify-between gap-5">
           <div>
@@ -97,9 +96,9 @@ export default async function GuruHome() {
               <li key={c.id}>
                 <Link
                   href={`/guru/kelas/${c.id}`}
-                  className="group relative flex h-full flex-col overflow-hidden rounded-2xl border border-garis bg-white p-5 pt-6 shadow-kartu transition-[box-shadow,border-color,transform] hover:-translate-y-0.5 hover:border-batas/60 hover:shadow-angkat"
+                  className="class-folder group relative flex h-full flex-col p-5 pt-6 transition-transform hover:-translate-y-0.5"
                 >
-                  <span className={`absolute inset-x-0 top-0 h-1.5 ${TONES[classTone(i)].bar}`} aria-hidden />
+
                   <div className="flex items-start gap-4">
                     <IconChip icon={Users} tone={classTone(i)} size="lg" />
                     <div className="min-w-0 flex-1">

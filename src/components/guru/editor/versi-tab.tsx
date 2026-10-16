@@ -289,7 +289,7 @@ export function VersiTab({
                   </div>
                   {preview[key] ? (
                     <div
-                      className="reader mt-2 max-h-[26rem] overflow-y-auto rounded-xl border border-garis px-4 py-4"
+                      className="reader mt-2 max-h-[26rem] overflow-y-auto rounded-xl surface-card px-4 py-4"
                       style={{ background: "#fff" }}
                       lang={VERSION_HTML_LANG[key]}
                     >
