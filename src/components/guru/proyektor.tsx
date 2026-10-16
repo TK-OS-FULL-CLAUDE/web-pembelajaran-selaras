@@ -210,7 +210,7 @@ export function ProjectorView({ lesson, backHref }: { lesson: ProjectorLesson; b
             <g strokeLinecap="round" strokeWidth="3.4">
               <path d="M10 12.5h16" stroke="#ffffff" />
               <path d="M10 18h10" stroke="#B9D6BF" />
-              <path d="M10 23.5h13" stroke="#E3B448" />
+              <path d="M10 23.5h13" stroke="#F2C230" />
             </g>
           </svg>
           <div className="min-w-0">
@@ -332,7 +332,7 @@ export function ProjectorView({ lesson, backHref }: { lesson: ProjectorLesson; b
           {speech.supported && slide && (
             <button
               type="button"
-              className={cx(control, "bg-jingga text-white hover:brightness-110")}
+              className={cx(control, "bg-coklat text-white hover:brightness-110")}
               onClick={toggleSpeech}
               aria-pressed={speaking}
             >

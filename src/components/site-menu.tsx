@@ -38,7 +38,7 @@ export function SiteMenu({
         id="menu-utama"
         aria-label="Utama"
         hidden={!open}
-        className="papan-tulis ambalan absolute inset-x-0 top-full border-t border-white/10 px-4 pb-4 pt-2"
+        className="papan-tulis krayon absolute inset-x-0 top-full border-t border-white/10 px-4 pb-4 pt-2"
       >
         <ul className="space-y-1">
           {links.map((l) => (
