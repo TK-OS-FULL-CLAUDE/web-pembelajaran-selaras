@@ -44,7 +44,7 @@ import {
 } from "@/lib/types";
 import type { QuestionResultPayload } from "./student-quiz";
 import { StudentQuiz } from "./student-quiz";
-import { ReaderText, useReaderStructure } from "../reader-text";
+import { InlineText, ReaderText, useReaderStructure } from "../reader-text";
 import { AskTutor } from "./ask-tutor";
 import { ReadingRuler } from "./reading-ruler";
 import { useSpeech, type SpeechRate } from "../use-speech";
@@ -894,7 +894,9 @@ function Reader({
                 <X className="size-6" aria-hidden />
               </button>
             </div>
-            <p className="mt-1 text-[19px] leading-relaxed">{term.arti}</p>
+            <p className="mt-1 text-[19px] leading-relaxed">
+              <InlineText text={term.arti} />
+            </p>
             {speech.supported && (
               <button
                 type="button"
@@ -939,7 +941,9 @@ function GlossaryList({ items }: { items: GlossaryItem[] }) {
           {unique.map((g) => (
             <div key={g.kata} className="rounded-xl bg-[color-mix(in_srgb,var(--reader-line)_30%,transparent)] p-3">
               <dt className="font-bold">{g.kata}</dt>
-              <dd className="text-[0.95em]">{g.arti}</dd>
+              <dd className="text-[0.95em]">
+                <InlineText text={g.arti} />
+              </dd>
             </div>
           ))}
         </dl>

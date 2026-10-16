@@ -7,6 +7,7 @@ import { Loader2, MessageCircle, Send, Square, Volume2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { api } from "@/lib/client";
 import type { StudentPrefs } from "@/lib/types";
+import { InlineText } from "../reader-text";
 import { cx } from "../ui";
 
 type Turn = { id: number; question: string; answer?: string; found?: boolean; error?: string };
@@ -102,7 +103,7 @@ export function AskTutor({
                       t.found ? "bg-black/5 text-tinta" : "border-2 border-dashed border-[var(--reader-line)] text-tinta",
                     )}
                   >
-                    {t.answer}
+                    <InlineText text={t.answer} />
                   </p>
                   {canSpeak && t.answer && (
                     <button

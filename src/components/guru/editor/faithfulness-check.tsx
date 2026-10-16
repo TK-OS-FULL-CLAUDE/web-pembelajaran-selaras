@@ -10,6 +10,7 @@ import type { Finding, FindingKind } from "@/lib/ai-kelas";
 import { api } from "@/lib/client";
 import { newNumbers } from "@/lib/matematika";
 import { fingerprint } from "@/lib/text";
+import { InlineText } from "../../reader-text";
 import { Badge, Button, Spinner } from "../../ui";
 import { useToast } from "../../toast";
 
@@ -96,8 +97,12 @@ export function FaithfulnessCheck({
                 {result.findings.map((f, i) => (
                   <li key={i} className="rounded-lg bg-white px-3 py-2">
                     <Badge tone={f.jenis === "hilang" ? "info" : "aksen"}>{KIND_LABEL[f.jenis]}</Badge>{" "}
-                    <q className="font-bold">{f.kutipan}</q>
-                    <span className="block text-tinta-2">{f.penjelasan}</span>
+                    <q className="font-bold">
+                      <InlineText text={f.kutipan} />
+                    </q>
+                    <span className="block text-tinta-2">
+                      <InlineText text={f.penjelasan} />
+                    </span>
                   </li>
                 ))}
               </ul>

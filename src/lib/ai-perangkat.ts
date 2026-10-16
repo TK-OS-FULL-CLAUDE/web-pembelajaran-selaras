@@ -1,6 +1,7 @@
 import "server-only";
 import { z } from "zod";
 import { NEEDS } from "./accommodations";
+import { LATEX_RULE } from "./ai-common";
 import { generateJson } from "./claude";
 import { mathMode } from "./matematika";
 import { cleanLines } from "./perangkat";
@@ -26,7 +27,7 @@ const SYSTEM =
   "Kamu adalah guru berpengalaman di Indonesia yang menyusun perangkat ajar Kurikulum Merdeka secara ringkas dan praktis. Kamu menulis dalam Bahasa Indonesia yang baku dan mudah dipahami, dan hanya memakai isi materi dari guru.";
 
 const PLAIN_RULE =
-  "Tulis setiap butir sebagai kalimat utuh tanpa nomor, tanpa tanda butir, dan tanpa format tebal/miring atau emoji.";
+  "Tulis setiap butir sebagai kalimat utuh tanpa nomor, tanpa tanda butir, dan tanpa format tebal/miring atau emoji. Rumus dan hitungan ditulis dengan LaTeX di antara $...$ (misalnya $\\frac{3}{4}$, $x^2$).";
 
 export type KitInput = {
   body: string;
@@ -47,7 +48,7 @@ const MATH_LKPD_RULE = `Ini materi Matematika:
 - Aktivitas boleh berisi soal latihan dengan angka baru selama cara hitungnya sama dengan materi, disusun dari yang mudah ke yang lebih sulit.
 - Minta siswa menuliskan langkah atau cara hitungnya, tidak hanya jawaban.
 - Satu aktivitas memakai benda nyata atau gambar (misalnya melipat kertas, menggambar garis bilangan).
-- Pecahan ditulis 3/4, pangkat ditulis s^2, perkalian ×, pembagian :.`;
+${LATEX_RULE}`;
 
 const MATH_LKPD_MUDAH_RULE = `Ini materi Matematika, untuk siswa yang juga bisa kesulitan berhitung:
 - Angka kecil dan satu langkah per soal. Sertakan satu contoh yang sudah dikerjakan sebelum soal pertama.

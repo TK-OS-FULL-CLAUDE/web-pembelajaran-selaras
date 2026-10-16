@@ -19,21 +19,28 @@ import {
   ListOrdered,
   Minus,
   PenLine,
+  Sigma,
   Smartphone,
+  Sparkles,
   SquarePen,
   Table2,
   TextQuote,
   TriangleAlert,
+  Undo2,
   type LucideIcon,
 } from "lucide-react";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { NEED_BY_KEY } from "@/lib/accommodations";
 import type { ImportResult } from "@/lib/impor/types";
+import { api } from "@/lib/client";
+import { findMath, latexBatches, latexParagraphs, plainMathSpots } from "@/lib/latex";
+import { isMathSubject } from "@/lib/matematika";
 import { analyze, containsTerm, LONG_SENTENCE_WORDS, TARGET_AVG_WORDS } from "@/lib/readability";
 import { figureIds } from "@/lib/text";
 import type { ClassNeeds } from "@/lib/types";
 import { ReaderText } from "../../reader-text";
-import { Card, Field, Input, Textarea, cx } from "../../ui";
+import { Tex } from "../../tex";
+import { Button, Card, Field, Input, Spinner, Textarea, cx } from "../../ui";
 import { useToast } from "../../toast";
 import { ImportPanel } from "../import-panel";
 import { FiguresPanel } from "./figures-panel";
@@ -55,6 +62,27 @@ function lineRange(text: string, start: number, end: number): [number, number] {
 }
 
 const PREFIX = /^(#{1,4}|[-•*]|\d{1,3}[.)]|>)\s+/;
+
+/** Palet rumus: `make` menerima teks yang diblok guru dan memberi [LaTeX, bagian yang dipilih sesudahnya]. */
+const MATH_SNIPPETS: { label: string; preview: string; make: (sel: string) => [string, string?] }[] = [
+  {
+    label: "Pecahan",
+    preview: "\\frac{a}{b}",
+    make: (sel) => {
+      const m = sel.match(/^\s*([^/]+?)\s*\/\s*([^/]+?)\s*$/);
+      return m ? [`\\frac{${m[1]}}{${m[2]}}`] : [`\\frac{${sel || "a"}}{b}`, sel ? "b" : "a"];
+    },
+  },
+  { label: "Akar", preview: "\\sqrt{x}", make: (sel) => [`\\sqrt{${sel || "x"}}`, sel ? undefined : "x"] },
+  { label: "Pangkat", preview: "x^{n}", make: (sel) => [`${sel || "x"}^{2}`, "2"] },
+  { label: "Kali", preview: "\\times", make: () => [" \\times "] },
+  { label: "Bagi", preview: "\\div", make: () => [" \\div "] },
+  { label: "Kurang dari atau sama dengan", preview: "\\le", make: () => [" \\le "] },
+  { label: "Lebih dari atau sama dengan", preview: "\\ge", make: () => [" \\ge "] },
+  { label: "Tidak sama dengan", preview: "\\ne", make: () => [" \\ne "] },
+  { label: "Derajat", preview: "90^\\circ", make: (sel) => [`${sel || "90"}^\\circ`] },
+  { label: "Pi", preview: "\\pi", make: () => ["\\pi"] },
+];
 
 const CALLOUTS = [
   { label: "Ingat", hint: "biru" },
@@ -81,6 +109,16 @@ export function MateriTab({
   const [panel, setPanel] = useState<Panel>("kata");
   const [view, setView] = useState<"tulis" | "lihat">("tulis");
   const [calloutOpen, setCalloutOpen] = useState(false);
+  const [mathOpen, setMathOpen] = useState(false);
+  const [latexBusy, setLatexBusy] = useState(false);
+  const [latexUndo, setLatexUndo] = useState<{ before: string; after: string; rejected: number } | null>(null);
+  const spots = useMemo(() => plainMathSpots(lesson.body), [lesson.body]);
+  const offerLatex = spots > 0 && (isMathSubject(lesson.subject) || spots >= 3);
+  // Isi materi terbaru, untuk memeriksa apakah guru mengetik selama AI bekerja.
+  const bodyRef = useRef(lesson.body);
+  useEffect(() => {
+    bodyRef.current = lesson.body;
+  }, [lesson.body]);
   const stats = useMemo(() => analyze(lesson.body), [lesson.body]);
   const glossaryWarnings = useMemo(
     () =>
@@ -182,6 +220,89 @@ export function MateriTab({
     );
   }
 
+  /** Sisipkan rumus dari palet. Di luar $...$ rumusnya diberi tanda dolar; di dalamnya disisipkan apa adanya. */
+  function insertMath(make: (sel: string) => [string, string?]) {
+    setMathOpen(false);
+    const el = ensureWriteView();
+    if (!el) return;
+    const body = lesson.body;
+    const a = el.selectionStart;
+    const b = el.selectionEnd;
+    const sel = body.slice(a, b);
+    const inside = findMath(body).some((m) => m.start < a && a < m.end);
+    const plainSel = !inside && /^\$[^$]+\$$/.test(sel.trim()) ? sel.trim().slice(1, -1) : sel;
+    const [tex, pick] = make(plainSel.includes("\n") ? "" : plainSel.trim());
+    const core = inside ? tex : tex.trim();
+    // Rumus baru yang menempel pada rumus lain diberi spasi, supaya "$a$$b$" tidak terbaca sebagai "$$".
+    const lead = !inside && body[a - 1] === "$" ? " " : "";
+    const trail = !inside && body[b] === "$" ? " " : "";
+    const text = inside ? core : `${lead}$${core}$${trail}`;
+    const start = a + (inside ? 0 : lead.length + 1);
+    const sub = pick ? core.indexOf(pick) : -1;
+    // Kursor tetap di dalam rumus (sebelum "$" penutup) supaya tombol palet berikutnya menambah rumus yang sama.
+    replaceRange(a, b, text, sub >= 0 ? [start + sub, start + sub + pick!.length] : [start + core.length, start + core.length]);
+  }
+
+  /** Ubah rumus tulisan biasa di `text` ke LaTeX lewat AI, per paragraf (hanya paragraf yang berisi rumus). */
+  async function latexForText(text: string) {
+    const { parts, todo } = latexParagraphs(text);
+    const out = [...parts];
+    let changed = 0;
+    let rejected = 0;
+    for (const batch of latexBatches(parts, todo)) {
+      const res = await api<{ texts: string[]; changed: number; rejected: number }>("/api/ai/latex", {
+        method: "POST",
+        body: { lessonId, texts: batch.map((i) => parts[i]) },
+      });
+      batch.forEach((i, k) => (out[i] = res.texts[k] ?? parts[i]));
+      changed += res.changed;
+      rejected += res.rejected;
+    }
+    return { text: out.join(""), changed, rejected };
+  }
+
+  /**
+   * Tanpa argumen: seluruh materi (tombol "Ubah rumus ke LaTeX"). Dengan `only`: hanya teks yang baru diimpor
+   * dari PDF/Word, dijalankan otomatis setelah impor.
+   */
+  async function convertLatex(only?: string) {
+    const start = bodyRef.current;
+    const target = only ?? start;
+    setLatexBusy(true);
+    try {
+      const res = await latexForText(target);
+      if (!res.changed) {
+        if (!only || res.rejected) {
+          toast.error(
+            res.rejected
+              ? "AI ikut mengubah angka atau kata di bagian yang berisi rumus, jadi hasilnya tidak dipakai. Tekan lagi untuk mencoba ulang, atau ubah dengan tombol Rumus."
+              : "Tidak ada rumus yang perlu diubah.",
+          );
+        }
+        return;
+      }
+      const cur = bodyRef.current;
+      const at = cur.lastIndexOf(target);
+      if (at < 0 || (!only && cur !== start)) {
+        toast.error("Materi berubah saat AI bekerja. Tekan Ubah rumus ke LaTeX lagi.");
+        return;
+      }
+      const after = cur.slice(0, at) + res.text + cur.slice(at + target.length);
+      update((l) => (l.body === cur ? { body: after } : {}));
+      setLatexUndo({ before: cur, after, rejected: res.rejected });
+      setView("lihat");
+      toast.ok(
+        `${only ? "Rumus dari file" : "Rumus"} sudah ditulis dengan LaTeX${
+          res.rejected ? `; ${res.rejected} bagian dibiarkan tulisan biasa karena AI ikut mengubah angka/kata di sana` : ""
+        }. Periksa hasilnya di Lihat hasil.`,
+      );
+    } catch (err) {
+      toast.error((err as Error).message);
+    } finally {
+      setLatexBusy(false);
+    }
+  }
+
   function insertCallout(label: string) {
     setCalloutOpen(false);
     const el = ensureWriteView();
@@ -241,6 +362,9 @@ export function MateriTab({
     }));
     if (Object.keys(result.figures).length) setPanel("gambar");
     setView("lihat");
+    // Materi Matematika dari PDF/Word: rumus tulisan biasa langsung diubah ke LaTeX oleh AI (bisa dibatalkan).
+    const found = plainMathSpots(result.text);
+    if (aiOn && found > 0 && (isMathSubject(lesson.subject) || found >= 3)) void convertLatex(result.text);
   }
 
   const onKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -360,7 +484,10 @@ export function MateriTab({
                   type="button"
                   aria-expanded={calloutOpen}
                   aria-haspopup="menu"
-                  onClick={() => setCalloutOpen((o) => !o)}
+                  onClick={() => {
+                    setCalloutOpen((o) => !o);
+                    setMathOpen(false);
+                  }}
                   title="Kotak catatan (> Ingat: …)"
                   className="inline-flex h-9 shrink-0 items-center gap-1 rounded-lg px-2.5 text-[14px] font-bold text-tinta-2 hover:bg-papan-50 hover:text-papan"
                 >
@@ -378,6 +505,22 @@ export function MateriTab({
                 },
               )}
               {tool("Garis pemisah", Minus, () => insertBlock("---"))}
+              <button
+                type="button"
+                aria-expanded={mathOpen}
+                aria-haspopup="menu"
+                onClick={() => {
+                  setMathOpen((o) => !o);
+                  setCalloutOpen(false);
+                }}
+                title="Rumus matematika (LaTeX)"
+                aria-label="Rumus"
+                className="inline-flex h-9 shrink-0 items-center gap-1 rounded-lg px-2.5 text-[14px] font-bold text-tinta-2 hover:bg-papan-50 hover:text-papan"
+              >
+                <Sigma className="size-4" aria-hidden />
+                <span className="hidden xl:inline">Rumus</span>
+                <ChevronDown className="size-3.5" aria-hidden />
+              </button>
               {tool("Gambar", ImageIcon, () => setPanel("gambar"), { title: "Tambah gambar (panel Gambar)" })}
               {sep}
               <button
@@ -413,6 +556,50 @@ export function MateriTab({
                     {c.label}
                   </button>
                 ))}
+              </div>
+            )}
+
+            {mathOpen && (
+              <div className="border-b border-garis bg-white px-2 py-2" role="menu" aria-label="Sisipkan rumus">
+                <div className="flex flex-wrap gap-1.5">
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={() => insertMath((sel) => [sel || "x^2 + 1", sel ? undefined : "x^2 + 1"])}
+                    className="h-10 rounded-lg bg-papan-50 px-3 text-[14px] font-bold text-papan hover:bg-papan-100"
+                  >
+                    Rumus di kalimat <code className="font-normal">$…$</code>
+                  </button>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={() => {
+                      setMathOpen(false);
+                      insertBlock("$$\\frac{a}{b} = c$$", "\\frac{a}{b} = c");
+                    }}
+                    className="h-10 rounded-lg bg-papan-50 px-3 text-[14px] font-bold text-papan hover:bg-papan-100"
+                  >
+                    Rumus di baris sendiri <code className="font-normal">$$…$$</code>
+                  </button>
+                  {MATH_SNIPPETS.map((m) => (
+                    <button
+                      key={m.label}
+                      type="button"
+                      role="menuitem"
+                      title={m.label}
+                      onClick={() => insertMath(m.make)}
+                      className="inline-flex h-10 min-w-10 items-center justify-center rounded-lg border border-garis px-2.5 text-[15px] hover:border-papan hover:bg-papan-50"
+                    >
+                      <span className="sr-only">{m.label}</span>
+                      <span aria-hidden>
+                        <Tex tex={m.preview} />
+                      </span>
+                    </button>
+                  ))}
+                </div>
+                <p className="mt-1.5 px-1 text-[13px] text-tinta-2">
+                  Blok angka atau rumus dulu bila ingin dibungkus, misalnya blok <code>3/4</code> lalu tekan Pecahan.
+                </p>
               </div>
             )}
 
@@ -452,6 +639,49 @@ export function MateriTab({
               </div>
             )}
           </div>
+          {(offerLatex || latexUndo) && (
+            <div
+              className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl border border-aksen/30 bg-aksen-50 px-3 py-2.5 text-[14px]"
+              role="status"
+            >
+              <Sigma className="size-4 shrink-0 text-aksen" aria-hidden />
+              {latexUndo && lesson.body === latexUndo.after ? (
+                <>
+                  <span className="min-w-0 flex-1">
+                    Rumus sudah diubah ke LaTeX oleh AI. Periksa angkanya di Lihat hasil.
+                    {latexUndo.rejected > 0 &&
+                      ` ${latexUndo.rejected} bagian dibiarkan tulisan biasa karena AI ikut mengubah angka/kata di sana.`}
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      update({ body: latexUndo.before });
+                      setLatexUndo(null);
+                    }}
+                  >
+                    <Undo2 className="size-4" aria-hidden />
+                    Batalkan
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <span className="min-w-0 flex-1">
+                    Ada {spots} rumus yang masih ditulis biasa (mis. 3/4, x^2, √x). Tulis dengan LaTeX supaya tampil rapi
+                    dan dibacakan dengan benar.
+                  </span>
+                  {aiOn ? (
+                    <Button variant="secondary" size="sm" disabled={latexBusy} onClick={() => convertLatex()}>
+                      {latexBusy ? <Spinner /> : <Sparkles className="size-4" aria-hidden />}
+                      Ubah rumus ke LaTeX
+                    </Button>
+                  ) : (
+                    <span className="text-tinta-2">Pakai tombol Rumus di toolbar.</span>
+                  )}
+                </>
+              )}
+            </div>
+          )}
           <FormatGuide stats={stats} />
         </div>
       </div>
@@ -625,6 +855,8 @@ function FormatGuide({ stats }: { stats: { words: number; sentences: number } })
             ["| a | b |", "tabel; baris kedua |---|---|"],
             ["![keterangan](gambar:…)", "gambar (lewat panel Gambar)"],
             ["---", "garis pemisah"],
+            ["$x^2$, $\\frac{3}{4}$, $\\sqrt{x}$", "rumus (LaTeX) di dalam kalimat; tombol Rumus"],
+            ["$$x^2 - 1 = 0$$", "rumus di baris sendiri"],
           ].map(([code, desc]) => (
             <div key={code} className="flex items-baseline gap-2">
               <dt>

@@ -3,6 +3,7 @@ import "@fontsource/atkinson-hyperlegible/400.css";
 import "@fontsource/atkinson-hyperlegible/700.css";
 import "@fontsource/atkinson-hyperlegible/400-italic.css";
 import "@fontsource-variable/plus-jakarta-sans";
+import "katex/dist/katex.min.css";
 import "./globals.css";
 import { ToastProvider } from "@/components/toast";
 

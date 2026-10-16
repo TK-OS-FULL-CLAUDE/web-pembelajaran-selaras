@@ -256,6 +256,33 @@
 .reader-text h3 + * {
   margin-top: 0.55em;
 }
+/* Rumus LaTeX (KaTeX). Rumus panjang di HP bisa digeser ke samping tanpa menggeser halaman. */
+.rumus .katex {
+  font-size: 1.08em;
+}
+.rumus-blok {
+  margin: 0.9em 0;
+  padding: 0.15em 0.1em;
+  overflow-x: auto;
+  overflow-y: hidden;
+  text-align: center;
+  border-radius: 8px;
+}
+.rumus-blok .katex-display {
+  margin: 0.2em 0;
+}
+.rumus-blok.sentence-active {
+  background: var(--reader-mark);
+}
+.reader[data-kontras="true"] .katex {
+  color: #000;
+}
+@media print {
+  .rumus-blok {
+    overflow: visible;
+  }
+}
+
 /* Notasi matematika: pecahan bersusun dan pangkat (lihat parseInline di src/lib/text.ts) */
 .pecahan-susun {
   display: inline-flex;

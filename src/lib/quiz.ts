@@ -1,6 +1,6 @@
 // Logika kuis bersama (server & browser): merapikan soal, memeriksa jawaban siswa.
 
-import { sameNumber } from "./matematika";
+import { equivalent, looksLikeExpression, mathCanon, plainMath, sameNumber } from "./matematika";
 import { fingerprint } from "./text";
 import type { MatchPair, QuizQuestion, QuizType } from "./types";
 
@@ -68,12 +68,30 @@ export function normalizeAnswer(s: string): string {
     .trim();
 }
 
-/** Satu jawaban isian cocok dengan salah satu jawaban yang diterima (angka dibandingkan nilainya). */
-export function answerMatches(accepted: string, given: string): boolean {
-  const num = sameNumber(accepted, given);
+const ASSIGN = /^\s*[A-Za-z]\s*=\s*(?=\S)/;
+
+/**
+ * Satu jawaban isian cocok dengan salah satu jawaban yang diterima.
+ * - Angka dibandingkan nilainya ("0,5" = "0.5"), pecahan bentuknya ("2/6" ≠ "1/3").
+ * - Rumus dibandingkan bentuk bakunya: "$\sqrt{x+2}$" = "√(x+2)" = "sqrt(x + 2)", tetapi "x-2" ≠ "x+2".
+ * - `setara`: bentuk aljabar lain yang nilainya sama juga diterima ("2(x+1)" untuk "2x+2").
+ * - "x = 2" diterima untuk kunci "2" (dan sebaliknya).
+ */
+export function answerMatches(accepted: string, given: string, setara = false): boolean {
+  let a = plainMath(accepted).trim();
+  let g = plainMath(given).trim();
+  if (ASSIGN.test(g) !== ASSIGN.test(a)) {
+    a = a.replace(ASSIGN, "");
+    g = g.replace(ASSIGN, "");
+  }
+  const num = sameNumber(a, g);
   if (num !== null) return num;
-  const got = normalizeAnswer(given);
-  return !!got && normalizeAnswer(accepted) === got;
+  if (looksLikeExpression(a) || looksLikeExpression(g)) {
+    if (mathCanon(a) === mathCanon(g)) return true;
+    return setara && equivalent(a, g) === true;
+  }
+  const got = normalizeAnswer(g);
+  return !!got && normalizeAnswer(a) === got;
 }
 
 export function isCorrect(q: QuizQuestion, r: QuizResponse): boolean {
@@ -89,7 +107,7 @@ export function isCorrect(q: QuizQuestion, r: QuizResponse): boolean {
       return want.length === got.length && want.every((v, i) => v === got[i]);
     }
     case "isian":
-      return !!r.text.trim() && (q.accepted ?? []).some((a) => a.trim() && answerMatches(a, r.text));
+      return !!r.text.trim() && (q.accepted ?? []).some((a) => a.trim() && answerMatches(a, r.text, !!q.setara));
     case "jodoh": {
       const pairs = q.pairs ?? [];
       return (
@@ -140,7 +158,7 @@ export function playableQuestion(q: QuizQuestion): QuizQuestion | null {
   if (type === "isian") {
     const accepted = [...new Set((q.accepted ?? []).map((a) => a.trim()).filter(Boolean))];
     if (!accepted.length) return null;
-    return { ...extra, type, q: text, options: [], answer: 0, accepted, explain };
+    return { ...extra, type, q: text, options: [], answer: 0, accepted, ...(q.setara ? { setara: true } : {}), explain };
   }
   const pairs: MatchPair[] = (q.pairs ?? [])
     .map((p) => ({ kiri: p.kiri.trim(), kanan: p.kanan.trim() }))

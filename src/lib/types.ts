@@ -109,8 +109,10 @@ export type QuizQuestion = {
   answer: number;
   /** pgk: semua indeks jawaban benar. */
   answers?: number[];
-  /** isian: jawaban yang diterima (tidak peka huruf besar/kecil dan tanda baca). */
+  /** isian: jawaban yang diterima (tidak peka huruf besar/kecil dan tanda baca; rumus dibandingkan bentuk bakunya). */
   accepted?: string[];
+  /** isian Matematika: bentuk aljabar lain yang setara juga diterima (2(x+1) = 2x+2). Jangan dipakai untuk soal "sederhanakan". */
+  setara?: boolean;
   /** jodoh: pasangan yang benar. Urutan kanan diacak di layar siswa. */
   pairs?: MatchPair[];
   explain: string;
