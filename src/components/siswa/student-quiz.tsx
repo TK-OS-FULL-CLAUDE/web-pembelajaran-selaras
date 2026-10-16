@@ -562,11 +562,11 @@ export function StudentQuiz({
 function ScoreRing({ pct }: { pct: number }) {
   const r = 42;
   const c = 2 * Math.PI * r;
-  const color = pct >= 80 ? "var(--color-berhasil)" : pct >= 60 ? "var(--color-papan)" : "var(--color-jingga)";
+  const color = pct >= 80 ? "var(--color-berhasil)" : pct >= 60 ? "var(--color-papan)" : "var(--color-coklat)";
   return (
     <div className="relative size-32 shrink-0" aria-hidden>
       <svg viewBox="0 0 100 100" className="size-32 -rotate-90">
-        <circle cx="50" cy="50" r={r} fill="none" stroke="#e6decf" strokeWidth="10" />
+        <circle cx="50" cy="50" r={r} fill="none" stroke="var(--color-garis)" strokeWidth="10" />
         <circle
           cx="50"
           cy="50"
@@ -774,12 +774,12 @@ function ShortAnswer({
         autoCapitalize="none"
         spellCheck={false}
         className={cx(
-          "h-16 w-full rounded-2xl border-2 bg-white px-4 text-tinta focus:outline-none focus:ring-4 focus:ring-ungu/15",
+          "h-16 w-full rounded-2xl border-2 bg-white px-4 text-tinta focus:outline-none focus:ring-4 focus:ring-biru/15",
           revealed
             ? right
               ? "border-berhasil bg-hijau-50"
               : "border-galat bg-red-50"
-            : "border-batas focus:border-ungu",
+            : "border-batas focus:border-biru",
         )}
         style={{ fontSize: "calc(var(--reader-size) * 1.05)" }}
       />
@@ -849,7 +849,7 @@ function Matching({
                 onChange={(e) =>
                   onChange(match.map((m, j) => (j === i ? (e.target.value === "" ? null : Number(e.target.value)) : m)))
                 }
-                className="h-14 w-full rounded-xl border-2 border-batas bg-white px-3 text-tinta focus:border-mawar focus:outline-none focus:ring-4 focus:ring-mawar/15"
+                className="h-14 w-full rounded-xl border-2 border-batas bg-white px-3 text-tinta focus:border-merah focus:outline-none focus:ring-4 focus:ring-merah/15"
                 style={{ fontSize: "var(--reader-size)" }}
               >
                 <option value="">Pilih pasangan…</option>

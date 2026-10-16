@@ -1,4 +1,4 @@
-// Footer: papan tulis dengan ambalan kayu di atasnya. Versi ringkas dipakai di ruang guru dan halaman masuk.
+// Footer: papan tulis dengan pita krayon di atasnya. Versi ringkas dipakai di ruang guru dan halaman masuk.
 import Link from "next/link";
 import { Logo } from "./ui";
 
@@ -26,7 +26,7 @@ const COLUMNS = [
 export function SiteFooter({ compact = false }: { compact?: boolean }) {
   if (compact) {
     return (
-      <footer className="papan-tulis ambalan-atas no-print">
+      <footer className="papan-tulis krayon-atas no-print">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-x-6 gap-y-2 px-4 py-4 text-[14px] sm:px-6">
           <p className="text-kapur/85">{NOTE}</p>
           <Link href="/cara-kerja" className="tautan-kapur px-2 py-2 font-bold">
@@ -37,7 +37,7 @@ export function SiteFooter({ compact = false }: { compact?: boolean }) {
     );
   }
   return (
-    <footer className="papan-tulis ambalan-atas no-print">
+    <footer className="papan-tulis krayon-atas no-print">
       <div className="mx-auto grid max-w-6xl gap-10 px-4 py-12 sm:px-6 md:grid-cols-[1.5fr_1fr_1fr]">
         <div>
           <Logo light />

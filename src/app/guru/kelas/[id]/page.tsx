@@ -61,7 +61,7 @@ export default async function ClassPage({ params }: { params: Promise<{ id: stri
       </div>
 
       <section aria-labelledby="judul-akomodasi">
-        <SectionTitle id="judul-akomodasi">Panduan akomodasi untuk kelas ini</SectionTitle>
+        <SectionTitle id="judul-akomodasi" tone="kuning">Panduan akomodasi untuk kelas ini</SectionTitle>
         <p className="-mt-2 mb-4 max-w-3xl text-tinta-2">
           Langkah praktis di kelas, sesuai profil di atas. Disusun dari praktik umum pendidikan inklusif dan, untuk low
           vision dan tuli, sejalan dengan bentuk akomodasi di{" "}
@@ -75,7 +75,7 @@ export default async function ClassPage({ params }: { params: Promise<{ id: stri
       </section>
 
       <section aria-labelledby="judul-materi-kelas">
-        <SectionTitle id="judul-materi-kelas">Materi {cls.name}</SectionTitle>
+        <SectionTitle id="judul-materi-kelas" tone="merah">Materi {cls.name}</SectionTitle>
         {lessons.length === 0 ? (
           <EmptyState
             title="Belum ada materi"

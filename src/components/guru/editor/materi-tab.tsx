@@ -86,9 +86,9 @@ const MATH_SNIPPETS: { label: string; preview: string; make: (sel: string) => [s
 
 const CALLOUTS = [
   { label: "Ingat", hint: "biru" },
-  { label: "Penting", hint: "jingga" },
+  { label: "Penting", hint: "merah" },
   { label: "Contoh", hint: "hijau" },
-  { label: "Tahukah kamu?", hint: "ungu" },
+  { label: "Tahukah kamu?", hint: "kuning" },
 ];
 
 export function MateriTab({
@@ -548,9 +548,9 @@ export function MateriTab({
                     className={cx(
                       "h-9 rounded-lg px-3 text-[14px] font-bold",
                       c.hint === "biru" && "bg-biru-50 text-biru",
-                      c.hint === "jingga" && "bg-aksen-50 text-aksen",
+                      c.hint === "merah" && "bg-merah-50 text-merah",
                       c.hint === "hijau" && "bg-hijau-50 text-hijau",
-                      c.hint === "ungu" && "bg-ungu-50 text-ungu",
+                      c.hint === "kuning" && "bg-kuning-50 text-kuning-700",
                     )}
                   >
                     {c.label}

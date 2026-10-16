@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { ChevronRight, FileText } from "lucide-react";
 import type { LessonSummary } from "@/lib/data";
-import { MODE_TONE, TONES, type ToneKey } from "@/lib/modes";
+import { MODE_TONE, TONES, subjectTone } from "@/lib/modes";
 import { VERSION_KEYS, VERSION_LABEL } from "@/lib/types";
 import { Badge, IconChip, cx } from "../ui";
 
@@ -13,15 +13,6 @@ function formatDate(value: string) {
     minute: "2-digit",
     timeZone: "Asia/Jakarta",
   }).format(new Date(value));
-}
-
-const SUBJECT_TONES: ToneKey[] = ["papan"];
-
-/** Satu warna untuk semua mata pelajaran (desain ruang kelas: warna tidak dipakai sebagai hiasan). */
-function subjectTone(subject: string): ToneKey {
-  let h = 0;
-  for (const c of subject.toLowerCase()) h = (h * 31 + c.charCodeAt(0)) >>> 0;
-  return SUBJECT_TONES[h % SUBJECT_TONES.length];
 }
 
 export function LessonList({ lessons, showClass = true }: { lessons: LessonSummary[]; showClass?: boolean }) {

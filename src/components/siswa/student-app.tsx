@@ -23,11 +23,12 @@ import {
   Volume2,
   X,
   type LucideIcon,
+  User,
   Users,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { clearLearnerPreferences, enqueueEvent, flushEvents, outboxState, OUTBOX_CHANGED } from "@/lib/student-outbox";
-import { MODE_TONE, TONES, type ModeKey } from "@/lib/modes";
+import { MODE_TONE, TONES, subjectTone, type ModeKey } from "@/lib/modes";
 import {
   DEFAULT_PREFS,
   VERSION_HTML_LANG,
@@ -235,7 +236,7 @@ export function StudentApp({ lesson }: { lesson: StudentLesson }) {
   const shell = (children: React.ReactNode) => (
     <div className="reader min-h-dvh" data-besar={prefs.besar} data-kontras={prefs.kontras} data-spasi={prefs.spasi}>
       {ready && (
-        <header className="papan-tulis ambalan no-print">
+        <header className="papan-tulis krayon no-print">
           <div className="mx-auto flex max-w-4xl items-center justify-between gap-3 px-4 py-2.5">
             <div className="flex min-w-0 items-center gap-3">
               <Logo light compact />
@@ -293,19 +294,12 @@ export function StudentApp({ lesson }: { lesson: StudentLesson }) {
 
   if (step === "mulai") {
     return shell(
-      <><fieldset className="mx-auto mt-5 max-w-3xl px-5 text-tinta">
-        <legend className="font-bold">Perangkat ini dipakai siapa?</legend>
-        <div className="mt-2 flex flex-wrap gap-3">
-          {(["shared", "personal"] as const).map((mode) => <label key={mode} className="flex min-h-12 items-center gap-2 rounded-xl border border-batas bg-white px-4">
-            <input type="radio" name="perangkat" checked={device === mode} onChange={() => changeDevice(mode)} />
-            {mode === "shared" ? "Bersama / bergantian" : "Pribadi"}
-          </label>)}
-        </div>
-        <p className="mt-2 text-sm">{device === "shared" ? "Setiap siswa memulai sesi baru. Pilihan siswa sebelumnya tidak dipakai kembali." : "Pilihanmu diingat pada perangkat ini. Gunakan Ganti siswa jika orang lain akan belajar."}</p>
-      </fieldset><Welcome
+      <Welcome
         lesson={lesson}
         alias={alias}
         setAlias={setAlias}
+        device={device}
+        onDevice={changeDevice}
         onStart={() => {
           const sid = device === "personal" ? readStorage<string>(sessionKey) || newSessionId() : newSessionId();
           setSessionId(sid);
@@ -313,7 +307,7 @@ export function StudentApp({ lesson }: { lesson: StudentLesson }) {
           else { try { clearLearnerPreferences(localStorage); } catch {} }
           go("pilih");
         }}
-      /></>,
+      />,
     );
   }
 
@@ -380,26 +374,51 @@ function sanitize(p: StudentPrefs, lesson: StudentLesson): StudentPrefs {
 
 // ---------------------------------------------------------------------------
 
+const DEVICE_OPTIONS = [
+  {
+    key: "shared",
+    title: "Bersama / bergantian",
+    text: "Dipakai bergantian. Setiap siswa mulai dari awal.",
+    icon: Users,
+  },
+  {
+    key: "personal",
+    title: "Pribadi",
+    text: "HP atau laptop sendiri. Pilihanmu diingat.",
+    icon: User,
+  },
+] as const;
+
 function Welcome({
   lesson,
   alias,
   setAlias,
+  device,
+  onDevice,
   onStart,
 }: {
   lesson: StudentLesson;
   alias: string;
   setAlias: (v: string) => void;
+  device: "personal" | "shared";
+  onDevice: (mode: "personal" | "shared") => void;
   onStart: () => void;
 }) {
   const modes: ModeKey[] = [...VERSION_KEYS.filter((k) => lesson.versions[k]), "dengar", "besar", "kontras", "spasi"];
+  const info = [lesson.className, lesson.teacherName].filter(Boolean);
   return (
-    <main id="isi" className="latar-titik flex min-h-dvh items-center justify-center px-4 py-10">
+    <main id="isi" className="flex justify-center px-4 py-8 sm:py-12">
       <div className="muncul w-full max-w-xl overflow-hidden rounded-[1.75rem] border border-[var(--reader-line)] bg-[var(--reader-bg)] shadow-angkat">
         <div className="pita-warna" aria-hidden />
         <div className="p-6 sm:p-8">
           <p className="flex flex-wrap gap-2 text-[15px]">
-            {[lesson.subject, lesson.className, lesson.teacherName].filter(Boolean).map((t) => (
-              <span key={t} className="rounded-full bg-papan-50 px-3 py-1 font-bold text-papan">
+            {lesson.subject && (
+              <span className={cx("rounded-full px-3 py-1 font-bold", TONES[subjectTone(lesson.subject)].chip)}>
+                {lesson.subject}
+              </span>
+            )}
+            {info.map((t) => (
+              <span key={t} className="rounded-full bg-krem px-3 py-1 font-bold text-tinta">
                 {t}
               </span>
             ))}
@@ -407,10 +426,10 @@ function Welcome({
           <h1 className="mt-4 font-display text-[2.1rem] font-extrabold leading-tight sm:text-[2.5rem]">
             {lesson.title}
           </h1>
-          <p className="mt-3 text-[17px] text-[var(--reader-soft)]">
-            Kamu bisa membaca materi ini dengan cara yang paling nyaman untukmu.
+          <p className="mt-2 text-[17px] text-[var(--reader-soft)]">
+            Kamu bisa membaca materi ini dengan cara yang paling nyaman untukmu:
           </p>
-          <ul className="mt-4 flex flex-wrap gap-2" aria-label="Cara belajar yang tersedia">
+          <ul className="mt-3 flex flex-wrap gap-2" aria-label="Cara belajar yang tersedia">
             {modes.map((m) => {
               const Icon = m in VERSION_ICON ? VERSION_ICON[m as VersionKey] : MODE_ICON[m as keyof typeof MODE_ICON];
               return (
@@ -428,26 +447,67 @@ function Welcome({
             })}
           </ul>
           <form
-            className="mt-8 space-y-3"
+            className="mt-7 space-y-6 border-t border-[var(--reader-line)] pt-6"
             onSubmit={(e) => {
               e.preventDefault();
               onStart();
             }}
           >
-            <label htmlFor="nama" className="block text-[18px] font-bold">
-              Nama panggilanmu
-            </label>
-            <input
-              id="nama"
-              value={alias}
-              onChange={(e) => setAlias(e.target.value.slice(0, 40))}
-              autoComplete="nickname"
-              placeholder="Contoh: Dimas"
-              className="h-14 w-full rounded-2xl border-2 border-batas bg-white px-4 text-[19px] text-tinta focus:border-papan focus:outline-none focus:ring-4 focus:ring-papan/15"
-            />
-            <p className="pb-3 text-[15px] text-[var(--reader-soft)]">
-              Boleh dikosongkan. Cukup nama panggilan, bukan nama lengkap.
-            </p>
+            <fieldset>
+              <legend className="text-[18px] font-bold">Perangkat ini dipakai siapa?</legend>
+              <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                {DEVICE_OPTIONS.map((o) => {
+                  const on = device === o.key;
+                  return (
+                    <label
+                      key={o.key}
+                      className={cx(
+                        "flex min-h-12 cursor-pointer items-start gap-3 rounded-2xl border-2 p-3.5 transition-colors",
+                        on ? "border-papan bg-papan-50" : "border-[var(--reader-line)] bg-white hover:border-batas",
+                      )}
+                    >
+                      <input
+                        type="radio"
+                        name="perangkat"
+                        value={o.key}
+                        checked={on}
+                        onChange={() => onDevice(o.key)}
+                        className="mt-1 size-5 shrink-0 accent-[var(--color-papan)]"
+                      />
+                      <span className="min-w-0">
+                        <span className="flex items-center gap-1.5 font-bold text-tinta">
+                          <o.icon className="size-4 text-papan" aria-hidden />
+                          {o.title}
+                        </span>
+                        <span className="mt-0.5 block text-[15px] leading-snug text-[var(--reader-soft)]">{o.text}</span>
+                      </span>
+                    </label>
+                  );
+                })}
+              </div>
+              {device === "personal" && (
+                <p className="mt-2 text-[15px] text-[var(--reader-soft)]">
+                  Jika orang lain akan belajar di perangkat ini, tekan <strong>Ganti siswa</strong> di bagian atas.
+                </p>
+              )}
+            </fieldset>
+            <div className="space-y-2">
+              <label htmlFor="nama" className="block text-[18px] font-bold">
+                Nama panggilanmu
+              </label>
+              <input
+                id="nama"
+                value={alias}
+                onChange={(e) => setAlias(e.target.value.slice(0, 40))}
+                autoComplete="nickname"
+                placeholder="Contoh: Dimas"
+                aria-describedby="nama-bantuan"
+                className="h-14 w-full rounded-2xl border-2 border-batas bg-white px-4 text-[19px] text-tinta focus:border-papan focus:outline-none focus:ring-4 focus:ring-papan/15"
+              />
+              <p id="nama-bantuan" className="text-[15px] text-[var(--reader-soft)]">
+                Boleh dikosongkan. Cukup nama panggilan, bukan nama lengkap.
+              </p>
+            </div>
             <button
               type="submit"
               className="flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-papan text-[19px] font-bold text-white shadow-kartu hover:bg-papan-600"

@@ -1,16 +1,8 @@
 import { NEEDS } from "@/lib/accommodations";
-import { TONES, type ToneKey } from "@/lib/modes";
-import { LANG_LABEL, type ClassNeeds, type NeedKey } from "@/lib/types";
+import { NEED_TONE, TONES } from "@/lib/modes";
+import { LANG_LABEL, type ClassNeeds } from "@/lib/types";
 
-// Satu warna untuk semua kebutuhan; angka dan nama sudah membedakan.
-const NEED_TONE: Record<NeedKey, ToneKey> = {
-  lowVision: "papan",
-  tuli: "papan",
-  disleksia: "papan",
-  sulitFokus: "papan",
-  diskalkulia: "papan",
-  bahasaDaerah: "papan",
-};
+// Setiap kebutuhan punya warna krayon tetap (lihat NEED_TONE); angka dan nama tetap tertulis.
 
 /** Ringkasan profil kebutuhan kelas dalam satu baris chip. */
 export function NeedsSummary({ needs, compact = false }: { needs: ClassNeeds; compact?: boolean }) {

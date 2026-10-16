@@ -1,9 +1,11 @@
 @import "tailwindcss";
 
 /*
- * Design system Selaras (versi 3, "ruang kelas"): papan tulis hijau, kapur krem, pensil emas, kertas buku.
- * - Satu warna utama (hijau papan tulis) + satu aksen (emas). Warna lain hanya untuk arti (berhasil, galat, info)
- *   dan kotak catatan di bacaan. Chip cara belajar dan jenis soal tidak lagi berwarna-warni.
+ * Design system Selaras (versi 4, "ruang kelas berwarna"): latar putih seperti dinding kelas, papan tulis hijau,
+ * dan lima warna krayon dari perabot kelas (hijau, merah, kuning, biru, coklat muda).
+ * - Hijau papan tulis = warna utama (tombol, tautan). Lima warna krayon dipakai dengan aturan tetap:
+ *   setiap cara belajar, jenis soal, kebutuhan kelas, mata pelajaran, dan kelas punya warnanya sendiri
+ *   (lihat src/lib/modes.ts), selalu bersama ikon dan nama sehingga warna bukan satu-satunya pembeda.
  * - Semua pasangan teks/latar dihitung dan lolos WCAG AA (>= 4,5:1 teks, >= 3:1 garis kontrol).
  * - Huruf isi Atkinson Hyperlegible (dirancang untuk pembaca low vision), judul Plus Jakarta Sans.
  */
@@ -16,45 +18,45 @@
   --color-papan-100: #dcebdf;
   --color-papan-200: #b9d6bf; /* sage */
   --color-kapur: #f7f3e8; /* teks di atas papan tulis · 9,99:1 */
-  --color-kayu: #8b5e34; /* bingkai/ambalan papan tulis (hiasan) */
-  --color-emas: #e3b448; /* emas pensil: tombol di atas papan tulis, garis aktif */
-  --color-tinta: #1e2a23; /* 13,9:1 di kertas */
-  --color-tinta-2: #4a5850; /* 7:1 */
-  --color-batas: #7f8a80; /* garis input · 3,4:1 */
-  --color-garis: #e6decf; /* garis dekoratif */
-  --color-krem: #efe9dc; /* latar netral hangat (pengganti abu-abu dingin) */
-  --color-krem-2: #e4dccb;
-  --color-kertas: #fbf7ef; /* kertas buku */
+  --color-emas: #f2c230; /* kuning krayon: tombol di atas papan tulis, garis aktif · teks tinta 9,3:1 */
+  --color-tinta: #1e2a23; /* 14,6:1 di putih */
+  --color-tinta-2: #4a5850; /* 7,4:1 di putih */
+  --color-batas: #7a857c; /* garis input · 3,8:1 di putih */
+  --color-garis: #e3e8e3; /* garis dekoratif */
+  --color-krem: #eef2ee; /* latar netral muda (chip, hover) */
+  --color-krem-2: #e1e7e1;
+  --color-kertas: #f6f8f6; /* latar lembut di dalam kartu putih */
   --color-aksen: #7a5b0f; /* emas tua: draf AI & cincin fokus · 6,3:1 */
   --color-aksen-50: #fbf5e4;
   --color-aksen-100: #f6e7bd;
   --color-stabilo: #f6dd8e;
-  --color-berhasil: #2e7d32;
-  --color-galat: #b3261e;
-  --color-info: #2b5797;
+  --color-berhasil: #1f6e35;
+  --color-galat: #b02a31;
+  --color-info: #2453a6;
 
-  /* Warna arti (kotak catatan, status). Teks di atas -50/-100 >= 4,5:1. */
-  --color-biru: #2b5797;
-  --color-biru-50: #eef3fa;
-  --color-biru-100: #dce6f4;
-  --color-ungu: #65467f;
-  --color-ungu-50: #f5f1f8;
-  --color-ungu-100: #e9e0f0;
-  --color-mawar: #b3261e;
-  --color-mawar-50: #fcefee;
-  --color-mawar-100: #f8ddda;
-  --color-jingga: #a4471b;
-  --color-jingga-50: #fcf1ea;
-  --color-jingga-100: #f7e0d2;
-  --color-nila: #3a4d8f;
-  --color-nila-50: #eff1fa;
-  --color-nila-100: #dfe3f4;
-  --color-sian: #1d6b73;
-  --color-sian-50: #ebf6f6;
-  --color-sian-100: #d3ecec;
-  --color-hijau: #27702b;
-  --color-hijau-50: #eff7ef;
-  --color-hijau-100: #dcefdc;
+  /* Lima warna krayon. Teks berwarna lolos >= 4,5:1 di putih dan di latar -50/-100. */
+  --color-hijau: #1f6e35; /* 6,3:1 */
+  --color-hijau-50: #eef8f0;
+  --color-hijau-100: #dcf1e1;
+  --color-biru: #2453a6; /* 7,3:1 */
+  --color-biru-50: #eef3fc;
+  --color-biru-100: #dde7f8;
+  --color-merah: #b02a31; /* 6,5:1 */
+  --color-merah-500: #c9363c; /* latar tombol merah, teks putih 5,2:1 */
+  --color-merah-50: #fdf1f1;
+  --color-merah-100: #fbdfe0;
+  --color-kuning: #f2c230; /* hanya latar (teks tinta 9,3:1) */
+  --color-kuning-700: #7f5a00; /* teks kuning tua · 6,2:1 */
+  --color-kuning-50: #fff9e6;
+  --color-kuning-100: #fdf0c2;
+  --color-coklat: #875225; /* 6,4:1 */
+  --color-coklat-50: #fbf6ee;
+  --color-coklat-100: #f3e7d3;
+  --color-tan: #d8bf94; /* coklat muda meja (hiasan) */
+  /* Warna krayon cerah, khusus hiasan (garis pita, bukan teks) */
+  --color-krayon-hijau: #3fae5a;
+  --color-krayon-merah: #d64045;
+  --color-krayon-biru: #2f62c4;
 
   --shadow-kartu: 0 1px 2px rgb(30 42 35 / 0.05), 0 2px 10px -2px rgb(30 42 35 / 0.07);
   --shadow-angkat: 0 2px 4px rgb(30 42 35 / 0.05), 0 14px 32px -10px rgb(30 42 35 / 0.18);
@@ -70,7 +72,7 @@
     -webkit-text-size-adjust: 100%;
   }
   body {
-    background: var(--color-kertas);
+    background: #ffffff;
     color: var(--color-tinta);
     font-family: var(--font-sans);
     font-size: 16px;
@@ -95,16 +97,26 @@
   }
   code {
     font-size: 0.92em;
-    background: #efe9dc;
+    background: var(--color-krem);
     border-radius: 6px;
     padding: 0.05em 0.35em;
   }
 }
 
-/* Garis khas Selaras: hijau papan tulis + emas pensil (dipakai di atas kartu sambutan) */
+/* Pita krayon: lima warna perabot kelas (hijau, merah, kuning, biru, coklat muda). Ciri khas Selaras. */
 .pita-warna {
-  height: 5px;
-  background: linear-gradient(90deg, var(--color-papan) 0 72%, var(--color-emas) 72% 100%);
+  height: 6px;
+  background: var(--krayon-pita);
+}
+:root {
+  --krayon-pita: linear-gradient(
+    90deg,
+    var(--color-krayon-hijau) 0 20%,
+    var(--color-krayon-merah) 20% 40%,
+    var(--color-kuning) 40% 60%,
+    var(--color-krayon-biru) 60% 80%,
+    var(--color-tan) 80% 100%
+  );
 }
 
 /* Latar halus bertitik untuk area kosong */
@@ -113,36 +125,34 @@
   background-size: 18px 18px;
 }
 
-/* Kertas buku tulis: garis halus seperti buku sekolah (hero halaman depan) */
+/* Kertas buku tulis: putih dengan garis biru tipis seperti buku sekolah (hero halaman depan) */
 .latar-buku {
-  background-color: var(--color-kertas);
+  background-color: #ffffff;
   background-image: repeating-linear-gradient(
     to bottom,
     transparent 0 35px,
-    rgb(43 87 151 / 0.085) 35px 36px
+    rgb(36 83 166 / 0.07) 35px 36px
   );
 }
 
-/* Papan tulis: navbar, footer, dan kepala halaman siswa */
+/* Papan tulis: navbar, footer, dan kepala halaman siswa (hijau polos dengan sedikit kilau, tanpa tekstur) */
 .papan-tulis {
   background-color: var(--color-papan-700);
-  background-image:
-    radial-gradient(120% 160% at 0% 0%, rgb(255 255 255 / 0.07), transparent 55%),
-    radial-gradient(90% 120% at 100% 100%, rgb(0 0 0 / 0.14), transparent 60%),
-    radial-gradient(rgb(255 255 255 / 0.035) 1px, transparent 1.3px);
-  background-size: auto, auto, 5px 5px;
+  background-image: linear-gradient(180deg, rgb(255 255 255 / 0.05), transparent 70%);
   color: var(--color-kapur);
 }
 .papan-tulis :focus-visible {
   outline-color: var(--color-emas);
 }
-/* Ambalan kayu di bawah papan tulis */
-.ambalan {
-  border-bottom: 6px solid var(--color-kayu);
-  box-shadow: 0 1px 0 #6b4627, 0 6px 14px -8px rgb(30 42 35 / 0.45);
+/* Pita krayon di bawah navbar dan di atas footer */
+.krayon {
+  border-bottom: 5px solid transparent;
+  border-image: var(--krayon-pita) 1;
+  box-shadow: 0 6px 14px -10px rgb(30 42 35 / 0.35);
 }
-.ambalan-atas {
-  border-top: 6px solid var(--color-kayu);
+.krayon-atas {
+  border-top: 5px solid transparent;
+  border-image: var(--krayon-pita) 1;
 }
 /* Tautan di papan tulis: garis kapur emas di bawah yang aktif */
 .tautan-kapur {
@@ -187,7 +197,7 @@
   --reader-tracking: 0;
   --reader-word: 0;
   --reader-bg: #ffffff;
-  --reader-page: #f6f1e6;
+  --reader-page: #ffffff;
   --reader-ink: var(--color-tinta);
   --reader-soft: var(--color-tinta-2);
   --reader-line: var(--color-garis);
@@ -195,10 +205,6 @@
   --reader-term: var(--color-aksen);
   --reader-mark: var(--color-stabilo);
   background-color: var(--reader-page);
-  background-image:
-    radial-gradient(34rem 18rem at 4% 0, #f8e9c2, transparent),
-    radial-gradient(40rem 20rem at 92% 0, #dfeee2, transparent);
-  background-repeat: no-repeat;
   color: var(--reader-ink);
 }
 .reader[data-besar="true"] {
@@ -378,8 +384,8 @@ sup {
   padding: 0.8em 1em;
 }
 .callout[data-kind="penting"] {
-  --c: var(--color-aksen);
-  --c-bg: var(--color-aksen-50);
+  --c: var(--color-merah);
+  --c-bg: var(--color-merah-50);
 }
 .callout[data-kind="ingat"] {
   --c: var(--color-biru);
@@ -390,8 +396,8 @@ sup {
   --c-bg: var(--color-hijau-50);
 }
 .callout[data-kind="tahukah"] {
-  --c: var(--color-ungu);
-  --c-bg: var(--color-ungu-50);
+  --c: var(--color-kuning-700);
+  --c-bg: var(--color-kuning-50);
 }
 .callout-title {
   display: flex;

@@ -856,7 +856,7 @@ function PairsEditor({
             placeholder="Contoh: Akar"
             onChange={(e) => set(k, "kiri", e.target.value)}
           />
-          <ArrowRight className="size-4 text-mawar" aria-hidden />
+          <ArrowRight className="size-4 text-merah" aria-hidden />
           <input
             aria-label={`Kanan pasangan ${k + 1} ${noun.toLowerCase()} ${i + 1}`}
             className={cx(inputClass, "h-11")}

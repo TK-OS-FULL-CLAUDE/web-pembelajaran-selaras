@@ -6,6 +6,7 @@
 // konflik dan guru memilih: muat versi terbaru, atau simpan versi miliknya.
 
 import Link from "next/link";
+import { TONES, subjectTone, type ToneKey } from "@/lib/modes";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
@@ -79,13 +80,19 @@ export type EditorProps = {
   initialTab: TabKey;
 };
 
-const TABS: { key: "materi" | "versi" | "perangkat" | "kuis" | "bagikan" | "rekap"; label: string; icon: LucideIcon }[] = [
-  { key: "materi", label: "Materi", icon: FileText },
-  { key: "versi", label: "Versi", icon: Layers },
-  { key: "perangkat", label: "Perangkat Ajar", icon: ClipboardList },
-  { key: "kuis", label: "Kuis", icon: ListChecks },
-  { key: "bagikan", label: "Bagikan", icon: Send },
-  { key: "rekap", label: "Rekap", icon: BarChart3 },
+// Setiap tab punya ikon berwarna krayon supaya mudah dikenali; tab aktif tetap hijau papan tulis.
+const TABS: {
+  key: "materi" | "versi" | "perangkat" | "kuis" | "bagikan" | "rekap";
+  label: string;
+  icon: LucideIcon;
+  tone: ToneKey;
+}[] = [
+  { key: "materi", label: "Materi", icon: FileText, tone: "biru" },
+  { key: "versi", label: "Versi", icon: Layers, tone: "hijau" },
+  { key: "perangkat", label: "Perangkat Ajar", icon: ClipboardList, tone: "coklat" },
+  { key: "kuis", label: "Kuis", icon: ListChecks, tone: "merah" },
+  { key: "bagikan", label: "Bagikan", icon: Send, tone: "kuning" },
+  { key: "rekap", label: "Rekap", icon: BarChart3, tone: "biru" },
 ];
 export type TabKey = (typeof TABS)[number]["key"];
 
@@ -266,7 +273,7 @@ export function LessonEditor(props: EditorProps) {
           </h1>
           <div className="mt-2 flex flex-wrap items-center gap-2 text-[14px]">
             {status === "published" ? <Badge tone="ok">Terbit</Badge> : <Badge>Draf</Badge>}
-            {lesson.subject && <Badge tone="papan">{lesson.subject}</Badge>}
+            {lesson.subject && <Badge tone={subjectTone(lesson.subject)}>{lesson.subject}</Badge>}
             {props.cls && <span className="text-tinta-2">{props.cls.name}</span>}
             <SaveIndicator state={saveState} error={saveError} onRetry={() => save()} />
           </div>
@@ -338,7 +345,7 @@ export function LessonEditor(props: EditorProps) {
         </Notice>
       )}
 
-      <div className="no-print sticky top-0 z-20 -mx-4 mt-6 bg-kertas/95 px-4 py-2 backdrop-blur sm:mx-0 sm:px-0">
+      <div className="no-print sticky top-0 z-20 -mx-4 mt-6 bg-white/95 px-4 py-2 backdrop-blur sm:mx-0 sm:px-0">
         <div
           role="tablist"
           aria-label="Bagian materi"
@@ -359,10 +366,10 @@ export function LessonEditor(props: EditorProps) {
                 onKeyDown={(e) => onTabKey(e, i)}
                 className={cx(
                   "relative flex h-11 shrink-0 items-center gap-2 rounded-xl px-4 font-bold transition-colors sm:flex-1 sm:justify-center",
-                  active ? "bg-papan text-white shadow-kartu" : "text-tinta-2 hover:bg-papan-50 hover:text-papan",
+                  active ? "bg-papan text-white shadow-kartu" : "text-tinta hover:bg-kertas",
                 )}
               >
-                <t.icon className="size-4" aria-hidden />
+                <t.icon className={cx("size-4", !active && TONES[t.tone].text)} aria-hidden />
                 {t.label}
                 {badge && (
                   <span

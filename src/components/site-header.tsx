@@ -1,4 +1,4 @@
-// Navbar halaman publik (depan, cara kerja, masuk/daftar, buka materi siswa): papan tulis dengan ambalan kayu.
+// Navbar halaman publik (depan, cara kerja, masuk/daftar, buka materi siswa): papan tulis dengan pita krayon.
 import Link from "next/link";
 import { LogIn } from "lucide-react";
 import { Logo, buttonClass } from "./ui";
@@ -14,7 +14,7 @@ export const SITE_LINKS: { key: SiteLinkKey; href: string; label: string }[] = [
 
 export function SiteHeader({ current, showLogin = true }: { current?: SiteLinkKey; showLogin?: boolean }) {
   return (
-    <header className="papan-tulis ambalan no-print relative z-30">
+    <header className="papan-tulis krayon no-print relative z-30">
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
         <Link href="/" aria-label="Selaras, ke halaman depan" className="rounded-xl">
           <Logo light />

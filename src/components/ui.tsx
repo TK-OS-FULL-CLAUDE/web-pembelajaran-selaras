@@ -21,8 +21,8 @@ const VARIANT: Record<Variant, string> = {
   ghost: "text-papan-600 hover:bg-papan-50 disabled:text-tinta-2",
   danger: "border border-galat/30 bg-white text-galat hover:bg-red-50",
   ai: "border border-aksen/35 bg-aksen-50 text-aksen hover:bg-aksen-100 disabled:opacity-60",
-  /** Di atas papan tulis: tombol emas pensil dengan teks gelap (7,7:1). */
-  emas: "bg-emas text-tinta shadow-[0_2px_0_rgb(0_0_0/0.18)] hover:bg-[#ecc461] disabled:opacity-60",
+  /** Di atas papan tulis: tombol kuning krayon dengan teks gelap (9,3:1). */
+  emas: "bg-emas text-tinta shadow-[0_2px_0_rgb(0_0_0/0.18)] hover:bg-[#f6d25c] disabled:opacity-60",
   /** Di atas papan tulis: garis kapur. */
   kapur: "border border-kapur/45 text-kapur hover:border-kapur hover:bg-white/10 disabled:opacity-60",
 };
@@ -61,7 +61,7 @@ export function ButtonLink({
 
 type BadgeTone = "neutral" | "ai" | "ok" | "info" | ToneKey;
 const BADGE: Record<"neutral" | "ai" | "ok" | "info", string> = {
-  neutral: "bg-[#ece5d6] text-tinta",
+  neutral: "bg-krem text-tinta",
   ai: "bg-aksen-50 text-aksen ring-1 ring-aksen/30",
   ok: "bg-hijau-50 text-berhasil ring-1 ring-berhasil/25",
   info: "bg-biru-50 text-info ring-1 ring-info/20",
@@ -199,7 +199,7 @@ export function StatCard({
   hint?: ReactNode;
 }) {
   return (
-    <div className="flex items-center gap-4 rounded-2xl border border-garis bg-white p-4 shadow-kartu">
+    <div className="flex flex-col items-start gap-3 rounded-2xl border border-garis bg-white p-4 shadow-kartu sm:flex-row sm:items-center sm:gap-4">
       <IconChip icon={icon} tone={tone} size="lg" />
       <div className="min-w-0">
         <p className="text-[14px] font-bold text-tinta-2">{label}</p>
@@ -246,8 +246,8 @@ export function Logo({
         <rect width="36" height="36" rx="10" fill={light ? "#F7F3E8" : "#2D6A4F"} />
         <g strokeLinecap="round" strokeWidth="3.4">
           <path d="M10 12.5h16" stroke={light ? "#1B4332" : "#ffffff"} />
-          <path d="M10 18h10" stroke={light ? "#2D6A4F" : "#B9D6BF"} />
-          <path d="M10 23.5h13" stroke={light ? "#B98A1E" : "#E3B448"} />
+          <path d="M10 18h10" stroke={light ? "#B02A31" : "#F4A6A9"} />
+          <path d="M10 23.5h13" stroke={light ? "#2453A6" : "#F2C230"} />
         </g>
       </svg>
       <span
@@ -277,7 +277,7 @@ export function EmptyState({
   tone?: ToneKey;
 }) {
   return (
-    <div className="latar-titik rounded-2xl border border-dashed border-batas/50 bg-white px-6 py-10 text-center">
+    <div className="rounded-2xl border border-dashed border-batas/50 bg-white px-6 py-10 text-center">
       {Icon && <IconChip icon={Icon} tone={tone} size="lg" className="mx-auto mb-3" />}
       <p className="font-display text-lg font-bold">{title}</p>
       {children && <div className="mx-auto mt-1 max-w-md text-tinta-2">{children}</div>}
@@ -286,12 +286,22 @@ export function EmptyState({
   );
 }
 
-/** Judul bagian dengan garis aksen kecil. */
-export function SectionTitle({ id, children, action }: { id?: string; children: ReactNode; action?: ReactNode }) {
+/** Judul bagian dengan garis krayon kecil di depannya. */
+export function SectionTitle({
+  id,
+  children,
+  action,
+  tone = "papan",
+}: {
+  id?: string;
+  children: ReactNode;
+  action?: ReactNode;
+  tone?: ToneKey;
+}) {
   return (
     <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
       <h2 id={id} className="flex items-center gap-2.5 font-display text-xl font-extrabold">
-        <span className="h-6 w-1.5 rounded-full bg-papan" aria-hidden />
+        <span className={cx("h-6 w-1.5 rounded-full", TONES[tone].bar)} aria-hidden />
         {children}
       </h2>
       {action}
