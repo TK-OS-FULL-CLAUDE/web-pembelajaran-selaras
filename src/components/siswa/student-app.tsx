@@ -23,6 +23,7 @@ import {
   Volume2,
   X,
   type LucideIcon,
+  Users,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { clearLearnerPreferences, enqueueEvent, flushEvents, outboxState, OUTBOX_CHANGED } from "@/lib/student-outbox";
@@ -47,7 +48,7 @@ import { ReaderText, useReaderStructure } from "../reader-text";
 import { AskTutor } from "./ask-tutor";
 import { ReadingRuler } from "./reading-ruler";
 import { useSpeech, type SpeechRate } from "../use-speech";
-import { cx } from "../ui";
+import { Logo, buttonClass, cx } from "../ui";
 import { ReaderToolbar } from "./reader-toolbar";
 import { ConfusionFeedback } from "./confusion-feedback";
 
@@ -233,21 +234,57 @@ export function StudentApp({ lesson }: { lesson: StudentLesson }) {
 
   const shell = (children: React.ReactNode) => (
     <div className="reader min-h-dvh" data-besar={prefs.besar} data-kontras={prefs.kontras} data-spasi={prefs.spasi}>
-      {ready && <div className="no-print border-b border-garis bg-white px-4 py-3 text-tinta">
-        <div className="mx-auto flex max-w-4xl flex-wrap items-center justify-between gap-3">
-          <div><p className="font-bold">{lesson.className || "Materi umum"} · {lesson.teacherName}</p>
-            {lesson.schoolName && <p className="text-sm">Sekolah guru: {lesson.schoolName}</p>}
-            <p className="text-sm">{device === "shared" ? "Perangkat bersama" : "Perangkat pribadi"}{sessionId && alias ? ` · ${alias}` : ""}</p>
+      {ready && (
+        <header className="papan-tulis ambalan no-print">
+          <div className="mx-auto flex max-w-4xl items-center justify-between gap-3 px-4 py-2.5">
+            <div className="flex min-w-0 items-center gap-3">
+              <Logo light compact />
+              <div className="min-w-0 leading-snug">
+                <p className="truncate font-bold">
+                  {lesson.className || "Materi umum"} · {lesson.teacherName}
+                </p>
+                <p className="truncate text-[14px] text-papan-200">
+                  {[lesson.schoolName, device === "shared" ? "Perangkat bersama" : "Perangkat pribadi", sessionId && alias ? alias : null]
+                    .filter(Boolean)
+                    .join(" · ")}
+                </p>
+              </div>
+            </div>
+            {sessionId && (
+              <button type="button" onClick={() => resetLearner()} className={buttonClass("kapur", "md", "shrink-0")}>
+                <Users className="size-4" aria-hidden />
+                Ganti siswa
+              </button>
+            )}
           </div>
-          {sessionId && <button type="button" onClick={() => resetLearner()} className="min-h-12 rounded-xl border-2 border-papan px-4 font-bold text-papan">Ganti siswa</button>}
+        </header>
+      )}
+      {ready && (
+        <div
+          className={cx(
+            "no-print text-[15px] text-[var(--reader-ink)]",
+            (delivery.pending > 0 || !!switchError) && "border-b border-[var(--reader-line)] bg-[var(--reader-bg)] px-4 py-2",
+          )}
+        >
+          <div className="mx-auto max-w-4xl" role="status" aria-live="polite">
+            {delivery.pending ? (
+              <>
+                <span>
+                  {delivery.volatile
+                    ? "Hasil belum tersimpan aman. Jangan tutup halaman."
+                    : `${delivery.pending} catatan tersimpan di perangkat, menunggu dikirim. Jangan hapus data browser.`}
+                </span>{" "}
+                <button type="button" className="min-h-11 px-2 font-bold underline" onClick={() => void flushEvents()}>
+                  Kirim ulang
+                </button>
+              </>
+            ) : sessionId ? (
+              <span className="sr-only">Semua catatan belajar yang selesai dikirim sudah tersimpan.</span>
+            ) : null}
+          </div>
+          {switchError && <p role="alert" className="mx-auto max-w-4xl text-galat">{switchError}</p>}
         </div>
-        <div className="mx-auto mt-2 max-w-4xl text-sm" role="status" aria-live="polite">
-          {delivery.pending ? <><span>{delivery.volatile ? "Hasil belum tersimpan aman. Jangan tutup halaman." : `${delivery.pending} catatan tersimpan di perangkat, menunggu dikirim. Jangan hapus data browser.`}</span>{" "}
-            <button type="button" className="min-h-12 px-2 font-bold underline" onClick={() => void flushEvents()}>Kirim ulang</button></>
-            : sessionId ? "Semua catatan belajar yang selesai dikirim sudah tersimpan." : null}
-        </div>
-        {switchError && <p role="alert" className="mx-auto max-w-4xl text-galat">{switchError}</p>}
-      </div>}
+      )}
       {children}
     </div>
   );
@@ -851,7 +888,7 @@ function Reader({
                 type="button"
                 onClick={() => setTerm(null)}
                 autoFocus
-                className="-mr-2 -mt-2 flex size-11 items-center justify-center rounded-full hover:bg-slate-100"
+                className="-mr-2 -mt-2 flex size-11 items-center justify-center rounded-full hover:bg-krem"
                 aria-label="Tutup arti kata"
               >
                 <X className="size-6" aria-hidden />

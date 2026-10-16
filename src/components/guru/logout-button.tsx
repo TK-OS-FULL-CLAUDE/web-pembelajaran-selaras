@@ -14,10 +14,10 @@ export function LogoutButton() {
         router.push("/");
         router.refresh();
       }}
-      className="inline-flex h-10 items-center gap-2 rounded-xl border border-garis px-3 font-bold text-tinta-2 hover:border-papan/40 hover:bg-papan-50 hover:text-papan"
+      className="inline-flex h-11 min-w-11 items-center justify-center gap-2 rounded-xl border border-kapur/45 px-3 font-bold text-kapur hover:border-kapur hover:bg-white/10"
     >
       <LogOut className="size-4" aria-hidden />
-      Keluar
+      <span className="sr-only sm:not-sr-only">Keluar</span>
     </button>
   );
 }
