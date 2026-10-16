@@ -11,7 +11,7 @@ export const metadata = { title: "Buka materi siswa" };
 export default function StudentEntry() {
   return (
     <div className="flex min-h-dvh flex-col">
-      <SiteHeader current="siswa" />
+      <SiteHeader />
       <main id="isi" className="student-entry flex-1">
         <div className="student-desk">
           <section className="student-welcome papan-tulis">

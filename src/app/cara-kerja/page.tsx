@@ -103,7 +103,7 @@ const JUMP = [
 export default function CaraKerjaPage() {
   return (
     <div className="flex min-h-dvh flex-col">
-      <SiteHeader current="cara-kerja" />
+      <SiteHeader />
       <main id="isi" className="flex-1">
         <section className="latar-buku border-b border-garis">
           <div className="mx-auto max-w-6xl px-4 pb-10 pt-10 sm:px-6 sm:pt-14">

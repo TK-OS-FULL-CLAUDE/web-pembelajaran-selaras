@@ -102,7 +102,7 @@ flowchart LR
 
 ## Desain
 
-Nuansa ruang kelas yang berwarna: latar **putih** seperti dinding kelas, **navbar putih** dengan logo "Tiga Baris", footer berupa **papan tulis hijau** dengan **pita krayon** lima warna dari perabot kelas: hijau, merah, kuning, biru, dan coklat muda. Kartu memakai bayangan halus tanpa garis tepi. Halaman depan dan halaman **Buka materi siswa** bergaya papan tulis dengan ilustrasi kapur. Hijau papan tulis adalah warna utama (tombol dan tautan). Lima warna krayon dipakai dengan aturan tetap, selalu bersama ikon dan nama: setiap cara belajar (misalnya Teks mudah hijau, Ringkasan kuning, Basa Jawa merah, Basa Sunda biru), jenis soal, kebutuhan kelas, mata pelajaran (IPAS hijau, Matematika biru, Bahasa Indonesia merah), kelas, dan tab editor punya warnanya sendiri. Aturannya ada di `src/lib/modes.ts`, token warnanya di `src/app/globals.css`, dan semua pasangan teks/latar lolos WCAG AA.
+Nuansa ruang kelas yang berwarna: latar **putih** seperti dinding kelas, **navbar putih** yang ringkas (logo "Tiga Baris" dan tombol Masuk guru; tautan lain ada di footer), footer berupa **papan tulis hijau** dengan **pita krayon** lima warna dari perabot kelas: hijau, merah, kuning, biru, dan coklat muda. Kartu memakai bayangan halus tanpa garis tepi. Halaman depan dan halaman **Buka materi siswa** bergaya papan tulis dengan ilustrasi kapur. Hijau papan tulis adalah warna utama (tombol dan tautan). Lima warna krayon dipakai dengan aturan tetap, selalu bersama ikon dan nama: setiap cara belajar (misalnya Teks mudah hijau, Ringkasan kuning, Basa Jawa merah, Basa Sunda biru), jenis soal, kebutuhan kelas, mata pelajaran (IPAS hijau, Matematika biru, Bahasa Indonesia merah), kelas, dan tab editor punya warnanya sendiri. Aturannya ada di `src/lib/modes.ts`, token warnanya di `src/app/globals.css`, dan semua pasangan teks/latar lolos WCAG AA.
 
 Logo Selaras "Tiga Baris" (huruf S dari tiga goresan kapur) beserta simbol, lockup, wordmark, ikon web, gambar Open Graph, dan pelat presentasi ada di [`brand/logo/`](brand/logo/README.md). Favicon, ikon aplikasi, manifest, dan gambar pratinjau link sudah dipasang di `src/app/` dan `public/`.
 
@@ -114,7 +114,7 @@ Kartu panjang (versi teks, soal kuis dan latihan, perangkat ajar, kartu rekap, p
 src/
 ├── app/
 │   ├── page.tsx                     # halaman depan ringkas + contoh interaktif
-│   ├── cara-kerja/                  # cara kerja, cara belajar siswa, fitur (dibuka dari navbar)
+│   ├── cara-kerja/                  # cara kerja, cara belajar siswa, fitur (dibuka dari footer)
 │   ├── masuk/, daftar/              # login dan daftar guru
 │   ├── guru/
 │   │   ├── page.tsx                 # beranda guru: kelas dan materi
