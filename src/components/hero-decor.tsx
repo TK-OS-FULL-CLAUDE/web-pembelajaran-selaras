@@ -29,7 +29,7 @@ export function Boy({ className }: P) {
   return (
     <svg viewBox="0 0 80 112" className={className} aria-hidden>
       {/* badan & kemeja */}
-      <path d="M4 112C4 86 22 76 42 76s38 10 38 36z" fill="#4a8fd6" />
+      <path d="M4 112C4 86 22 76 42 76s38 10 38 36z" fill="#2b5797" />
       <path d="M30 76l12 15 12-15z" fill="#fff" />
       <rect x="36" y="64" width="12" height="14" rx="5" fill="#d9a077" />
       {/* kepala */}
@@ -90,10 +90,10 @@ export function Sparkle({ className }: P) {
 export function Book({ className }: P) {
   return (
     <svg viewBox="0 0 120 84" className={className} aria-hidden>
-      <path d="M2 26v50c22-6 42-4 58 6 16-10 36-12 58-6V26z" fill="#2f8f83" />
+      <path d="M2 26v50c22-6 42-4 58 6 16-10 36-12 58-6V26z" fill="#2d6a4f" />
       <path d="M8 14c20-4 38-2 52 8v52C46 64 28 62 8 66z" fill="#fffdf5" />
       <path d="M112 14c-20-4-38-2-52 8v52c14-10 32-12 52-8z" fill="#f1eedd" />
-      <g stroke="#9bc5bd" strokeWidth="2.5" strokeLinecap="round">
+      <g stroke="#b9d6bf" strokeWidth="2.5" strokeLinecap="round">
         <path d="M18 28c10-2 20-1 30 3M18 38c10-2 20-1 30 3M18 48c10-2 20-1 30 3" />
         <path d="M102 28c-10-2-20-1-30 3M102 38c-10-2-20-1-30 3" />
       </g>
@@ -115,9 +115,9 @@ export function Magnifier({ className }: P) {
         cx="37"
         cy="37"
         r="26"
-        fill="#bfe8f2"
+        fill="#dce6f4"
         fillOpacity=".6"
-        stroke="#2f8f83"
+        stroke="#2d6a4f"
         strokeWidth="7"
       />
       <path

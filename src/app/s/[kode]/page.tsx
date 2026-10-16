@@ -43,6 +43,7 @@ export default async function StudentPage({ params }: Props) {
 
   const data: StudentLesson = {
     code: lesson.share_code,
+    revision: lesson.published_revision,
     title: lesson.title,
     subject: lesson.subject,
     className: lesson.class_name,

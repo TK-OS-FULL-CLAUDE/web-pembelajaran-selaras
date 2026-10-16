@@ -2,7 +2,7 @@
 
 // Peran 2: review → terbit → link + QR.
 
-import { Check, Copy, Download, ExternalLink, Maximize2, Send, Undo2, X } from "lucide-react";
+import { Check, Copy, Download, ExternalLink, Maximize2, Presentation, Send, Undo2, X } from "lucide-react";
 import QRCode from "qrcode";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/client";
@@ -12,6 +12,8 @@ import { Button, Card, Notice, Spinner, buttonClass } from "../../ui";
 import { useToast } from "../../toast";
 import type { EditableLesson, TabKey } from "./lesson-editor";
 import { AccessibilityCheck } from "./accessibility-check";
+import { ClassSharing } from "./class-sharing";
+import type { LessonAudience } from "@/lib/data";
 
 export function BagikanTab({
   lessonId,
@@ -22,15 +24,24 @@ export function BagikanTab({
   onPublished,
   onUnpublished,
   goTo,
+  onProjector,
+  projectorBusy,
+  classes, primaryClassId, hasDraft, onAudiences,
 }: {
   lessonId: string;
   lesson: EditableLesson;
   status: "draft" | "published";
   shareCode: string | null;
-  flush: () => Promise<void>;
-  onPublished: (code: string) => void;
+  flush: () => Promise<number>;
+  onPublished: (code: string, revision: number) => void;
+  classes: { id: string; name: string }[];
+  primaryClassId: string | null;
+  hasDraft: boolean;
+  onAudiences: (audiences: LessonAudience[]) => void;
   onUnpublished: () => void;
   goTo: (tab: TabKey) => void;
+  onProjector: () => void;
+  projectorBusy: boolean;
 }) {
   const toast = useToast();
   const [busy, setBusy] = useState(false);
@@ -38,11 +49,15 @@ export function BagikanTab({
   const [bigQr, setBigQr] = useState(false);
   const [origin, setOrigin] = useState("");
   const [copied, setCopied] = useState(false);
+  const [classCode, setClassCode] = useState(shareCode);
+  const activeCode = classCode ?? shareCode;
 
   useEffect(() => setOrigin(window.location.origin), []);
-  const link = shareCode && origin ? `${origin}/s/${shareCode}` : "";
+  const link = activeCode && origin ? `${origin}/s/${activeCode}` : "";
 
   useEffect(() => {
+    let alive = true;
+    setQr(null);
     if (!link) return;
     QRCode.toDataURL(link, {
       margin: 2,
@@ -50,8 +65,9 @@ export function BagikanTab({
       errorCorrectionLevel: "M",
       color: { dark: "#000000", light: "#ffffff" },
     })
-      .then(setQr)
-      .catch(() => setQr(null));
+      .then((data) => { if (alive) setQr(data); })
+      .catch(() => { if (alive) setQr(null); });
+    return () => { alive = false; };
   }, [link]);
 
   const versions = Object.entries(lesson.versions).filter(([, v]) => v && v.text.trim());
@@ -107,9 +123,9 @@ export function BagikanTab({
   async function publish() {
     setBusy(true);
     try {
-      await flush();
-      const res = await api<{ shareCode: string }>(`/api/materi/${lessonId}/terbit`, { method: "POST" });
-      onPublished(res.shareCode);
+      const baseRevision = await flush();
+      const res = await api<{ shareCode: string; publishedRevision: number }>(`/api/materi/${lessonId}/terbit`, { method: "POST", body: { baseRevision } });
+      onPublished(res.shareCode, res.publishedRevision);
       toast.ok("Materi diterbitkan. Bagikan link atau QR ke siswa.");
     } catch (err) {
       toast.error((err as Error).message);
@@ -140,7 +156,7 @@ export function BagikanTab({
             <li key={c.label} className="flex items-start gap-3">
               <span
                 className={`mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full ${
-                  c.ok ? "bg-berhasil text-white" : c.required ? "bg-aksen text-white" : "bg-slate-200 text-tinta-2"
+                  c.ok ? "bg-berhasil text-white" : c.required ? "bg-aksen text-white" : "bg-krem-2 text-tinta-2"
                 }`}
                 aria-hidden
               >
@@ -158,17 +174,18 @@ export function BagikanTab({
           ))}
         </ul>
         <AccessibilityCheck lesson={lesson} goTo={goTo} />
-        {status === "draft" ? (
+        {status === "draft" || hasDraft ? (
           <div className="mt-6">
+            {status === "published" && <p className="mb-3 text-sm">Perubahan ini masih berupa draf. Siswa tetap melihat versi terbit sebelumnya.</p>}
             <Button size="lg" onClick={publish} disabled={!ready || busy}>
               {busy ? <Spinner /> : <Send className="size-5" aria-hidden />}
-              Terbitkan untuk siswa
+              {status === "published" ? "Terbitkan perubahan ke semua kelas" : "Terbitkan untuk siswa"}
             </Button>
             {!ready && <p className="mt-2 text-[14px] text-tinta-2">Lengkapi tanda seru oranye dulu.</p>}
           </div>
         ) : (
           <Notice tone="ok" className="mt-6" title="Sudah terbit">
-            Perubahan yang tersimpan langsung terlihat oleh siswa. Versi yang belum dicek tidak ditampilkan.
+            Siswa melihat versi terakhir yang diterbitkan. Perubahan berikutnya disimpan sebagai draf sampai Anda menerbitkannya.
           </Notice>
         )}
       </Card>
@@ -177,16 +194,20 @@ export function BagikanTab({
         <h2 className="font-display text-lg font-bold">Bagikan ke siswa</h2>
         {status === "published" && shareCode ? (
           <div className="mt-4 space-y-4">
+            <ClassSharing lessonId={lessonId} classes={classes} primaryClassId={primaryClassId}
+              selectedCode={activeCode} onSelect={setClassCode} onLoaded={onAudiences} />
+            {!activeCode && <p>Pilih kelas tujuan untuk mengaktifkan link siswa.</p>}
+            <div hidden={!activeCode} className="space-y-4">
             <div className="latar-titik flex flex-col items-center gap-4 rounded-2xl border border-garis bg-papan-50/50 p-4 sm:flex-row sm:items-start">
               {qr ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={qr} alt={`Kode QR menuju ${link}`} className="size-44 rounded-xl bg-white shadow-kartu" />
               ) : (
-                <div className="size-44 animate-pulse rounded-lg bg-slate-200" />
+                <div className="size-44 animate-pulse rounded-lg bg-krem-2" />
               )}
               <div className="min-w-0 flex-1 space-y-2 text-center sm:text-left">
                 <p className="text-[14px] text-tinta-2">Kode materi</p>
-                <p className="font-display text-4xl font-extrabold tracking-[0.14em] text-papan">{shareCode}</p>
+                <p className="font-display text-4xl font-extrabold tracking-[0.14em] text-papan">{activeCode}</p>
                 <p className="break-all text-[15px]">{link}</p>
               </div>
             </div>
@@ -211,15 +232,16 @@ export function BagikanTab({
                 Tampilkan QR besar
               </Button>
               {qr && (
-                <a href={qr} download={`selaras-${shareCode}.png`} className={buttonClass("secondary")}>
+                <a href={qr} download={`selaras-${activeCode}.png`} className={buttonClass("secondary")}>
                   <Download className="size-4" aria-hidden />
                   Unduh QR
                 </a>
               )}
-              <a href={`/s/${shareCode}`} target="_blank" rel="noreferrer" className={buttonClass("ghost")}>
+              <a href={`/s/${activeCode}`} target="_blank" rel="noreferrer" className={buttonClass("ghost")}>
                 <ExternalLink className="size-4" aria-hidden />
                 Buka sebagai siswa
               </a>
+            </div>
             </div>
             <div className="border-t border-garis pt-4">
               <Button variant="danger" size="sm" onClick={unpublish} disabled={busy}>
@@ -233,6 +255,29 @@ export function BagikanTab({
         )}
       </Card>
 
+      <section
+        aria-labelledby="judul-proyektor"
+        className="flex flex-col gap-4 rounded-[1.5rem] border-2 border-papan bg-papan-50 p-5 sm:flex-row sm:items-center lg:col-span-2"
+      >
+        <span className="flex size-14 shrink-0 items-center justify-center rounded-2xl bg-papan text-white" aria-hidden>
+          <Presentation className="size-7" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <h2 id="judul-proyektor" className="font-display text-lg font-bold">
+            Mode proyektor
+          </h2>
+          <p className="mt-1 text-tinta-2">
+            Untuk kelas yang siswanya tidak memakai HP: tampilkan materi ke seluruh kelas lewat proyektor atau TV.
+            Huruf sangat besar, satu bagian per layar, bisa dibacakan, lalu kuis bersama dengan jawaban yang Anda buka.
+            Tidak tercatat di rekap. Bisa dipakai walau materi belum terbit.
+          </p>
+        </div>
+        <Button onClick={onProjector} disabled={projectorBusy} className="shrink-0">
+          {projectorBusy ? <Spinner /> : <Presentation className="size-5" aria-hidden />}
+          Buka mode proyektor
+        </Button>
+      </section>
+
       {bigQr && qr && (
         <div
           className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-6 bg-white p-6"
@@ -245,7 +290,7 @@ export function BagikanTab({
             type="button"
             autoFocus
             onClick={() => setBigQr(false)}
-            className="absolute right-4 top-4 flex size-12 items-center justify-center rounded-full hover:bg-slate-100"
+            className="absolute right-4 top-4 flex size-12 items-center justify-center rounded-full hover:bg-krem"
             aria-label="Tutup QR besar"
           >
             <X className="size-6" aria-hidden />
@@ -255,7 +300,7 @@ export function BagikanTab({
           <img src={qr} alt={`Kode QR menuju ${link}`} className="aspect-square w-[min(70vh,80vw)]" />
           <p className="text-center text-2xl">
             Pindai QR, atau buka <strong>{origin.replace(/^https?:\/\//, "")}/s/</strong>
-            <strong className="tracking-[0.12em] text-papan">{shareCode}</strong>
+            <strong className="tracking-[0.12em] text-papan">{activeCode}</strong>
           </p>
         </div>
       )}

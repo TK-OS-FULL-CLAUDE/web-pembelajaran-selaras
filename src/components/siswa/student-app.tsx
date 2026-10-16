@@ -23,6 +23,7 @@ import {
   Volume2,
   X,
   type LucideIcon,
+  Users,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { clearLearnerPreferences, enqueueEvent, flushEvents, outboxState, OUTBOX_CHANGED } from "@/lib/student-outbox";
@@ -47,10 +48,12 @@ import { InlineText, ReaderText, useReaderStructure } from "../reader-text";
 import { AskTutor } from "./ask-tutor";
 import { ReadingRuler } from "./reading-ruler";
 import { useSpeech, type SpeechRate } from "../use-speech";
-import { cx } from "../ui";
+import { Logo, buttonClass, cx } from "../ui";
 import { ReaderToolbar } from "./reader-toolbar";
+import { ConfusionFeedback } from "./confusion-feedback";
 
 export type StudentLesson = {
+  revision?: number;
   code: string;
   title: string;
   subject: string;
@@ -128,6 +131,7 @@ export function StudentApp({ lesson }: { lesson: StudentLesson }) {
   const [device, setDevice] = useState<"personal" | "shared">("shared");
   const [delivery, setDelivery] = useState({ pending: 0, volatile: false });
   const [switchError, setSwitchError] = useState("");
+  const [feedbackSent, setFeedbackSent] = useState<Record<string, string[]>>({});
   const speech = useSpeech();
   const lastLogged = useRef<string>("");
 
@@ -165,8 +169,8 @@ export function StudentApp({ lesson }: { lesson: StudentLesson }) {
 
   const log = useCallback(
     (
-      kind: "open" | "quiz",
-      extra: { score?: number; total?: number; durasi?: number; detail?: QuestionResultPayload[] } = {},
+      kind: "open" | "quiz" | "confused",
+      extra: { score?: number; total?: number; durasi?: number; detail?: QuestionResultPayload[]; feedback?: { section: string; revision: number } } = {},
     ) => {
       if (!sessionId) return;
       enqueueEvent({ eventId: newSessionId(), occurredAt: new Date().toISOString(), code: lesson.code,
@@ -217,6 +221,7 @@ export function StudentApp({ lesson }: { lesson: StudentLesson }) {
     speech.stop();
     try { clearLearnerPreferences(localStorage); } catch { /* Preferensi di memori tetap direset. */ }
     setAlias(""); setPrefs(DEFAULT_PREFS); setRate(1); setSessionId("");
+    setFeedbackSent({});
     lastLogged.current = ""; setSwitchError(""); setStep("mulai");
     window.scrollTo({ top: 0 });
   };
@@ -229,21 +234,57 @@ export function StudentApp({ lesson }: { lesson: StudentLesson }) {
 
   const shell = (children: React.ReactNode) => (
     <div className="reader min-h-dvh" data-besar={prefs.besar} data-kontras={prefs.kontras} data-spasi={prefs.spasi}>
-      {ready && <div className="no-print border-b border-garis bg-white px-4 py-3 text-tinta">
-        <div className="mx-auto flex max-w-4xl flex-wrap items-center justify-between gap-3">
-          <div><p className="font-bold">{lesson.className || "Materi umum"} · {lesson.teacherName}</p>
-            {lesson.schoolName && <p className="text-sm">Sekolah guru: {lesson.schoolName}</p>}
-            <p className="text-sm">{device === "shared" ? "Perangkat bersama" : "Perangkat pribadi"}{sessionId && alias ? ` · ${alias}` : ""}</p>
+      {ready && (
+        <header className="papan-tulis ambalan no-print">
+          <div className="mx-auto flex max-w-4xl items-center justify-between gap-3 px-4 py-2.5">
+            <div className="flex min-w-0 items-center gap-3">
+              <Logo light compact />
+              <div className="min-w-0 leading-snug">
+                <p className="truncate font-bold">
+                  {lesson.className || "Materi umum"} · {lesson.teacherName}
+                </p>
+                <p className="truncate text-[14px] text-papan-200">
+                  {[lesson.schoolName, device === "shared" ? "Perangkat bersama" : "Perangkat pribadi", sessionId && alias ? alias : null]
+                    .filter(Boolean)
+                    .join(" · ")}
+                </p>
+              </div>
+            </div>
+            {sessionId && (
+              <button type="button" onClick={() => resetLearner()} className={buttonClass("kapur", "md", "shrink-0")}>
+                <Users className="size-4" aria-hidden />
+                Ganti siswa
+              </button>
+            )}
           </div>
-          {sessionId && <button type="button" onClick={() => resetLearner()} className="min-h-12 rounded-xl border-2 border-papan px-4 font-bold text-papan">Ganti siswa</button>}
+        </header>
+      )}
+      {ready && (
+        <div
+          className={cx(
+            "no-print text-[15px] text-[var(--reader-ink)]",
+            (delivery.pending > 0 || !!switchError) && "border-b border-[var(--reader-line)] bg-[var(--reader-bg)] px-4 py-2",
+          )}
+        >
+          <div className="mx-auto max-w-4xl" role="status" aria-live="polite">
+            {delivery.pending ? (
+              <>
+                <span>
+                  {delivery.volatile
+                    ? "Hasil belum tersimpan aman. Jangan tutup halaman."
+                    : `${delivery.pending} catatan tersimpan di perangkat, menunggu dikirim. Jangan hapus data browser.`}
+                </span>{" "}
+                <button type="button" className="min-h-11 px-2 font-bold underline" onClick={() => void flushEvents()}>
+                  Kirim ulang
+                </button>
+              </>
+            ) : sessionId ? (
+              <span className="sr-only">Semua catatan belajar yang selesai dikirim sudah tersimpan.</span>
+            ) : null}
+          </div>
+          {switchError && <p role="alert" className="mx-auto max-w-4xl text-galat">{switchError}</p>}
         </div>
-        <div className="mx-auto mt-2 max-w-4xl text-sm" role="status" aria-live="polite">
-          {delivery.pending ? <><span>{delivery.volatile ? "Hasil belum tersimpan aman. Jangan tutup halaman." : `${delivery.pending} catatan tersimpan di perangkat, menunggu dikirim. Jangan hapus data browser.`}</span>{" "}
-            <button type="button" className="min-h-12 px-2 font-bold underline" onClick={() => void flushEvents()}>Kirim ulang</button></>
-            : sessionId ? "Semua catatan belajar yang selesai dikirim sudah tersimpan." : null}
-        </div>
-        {switchError && <p role="alert" className="mx-auto max-w-4xl text-galat">{switchError}</p>}
-      </div>}
+      )}
       {children}
     </div>
   );
@@ -313,6 +354,11 @@ export function StudentApp({ lesson }: { lesson: StudentLesson }) {
 
   return shell(
     <Reader
+      feedbackSent={feedbackSent[prefs.versi] ?? []}
+      onConfused={(section) => {
+        log("confused", { feedback: { section, revision: lesson.revision ?? 1 } });
+        setFeedbackSent((s) => ({ ...s, [prefs.versi]: [...(s[prefs.versi] ?? []), section] }));
+      }}
       lesson={lesson}
       prefs={prefs}
       onChange={updatePrefs}
@@ -597,6 +643,7 @@ function ChooseMode({
 // ---------------------------------------------------------------------------
 
 function Reader({
+  feedbackSent, onConfused,
   lesson,
   prefs,
   onChange,
@@ -606,6 +653,8 @@ function Reader({
   onChangeMode,
   onQuiz,
 }: {
+  feedbackSent: string[];
+  onConfused: (section: string) => void;
   lesson: StudentLesson;
   prefs: StudentPrefs;
   onChange: (p: Partial<StudentPrefs>) => void;
@@ -751,6 +800,7 @@ function Reader({
             </p>
           )}
           {glossary.length > 0 && <GlossaryList items={glossary} />}
+          <ConfusionFeedback text={text} sent={feedbackSent} onSend={onConfused} />
         </article>
 
         <div className="mx-5 sm:mx-0">
@@ -838,7 +888,7 @@ function Reader({
                 type="button"
                 onClick={() => setTerm(null)}
                 autoFocus
-                className="-mr-2 -mt-2 flex size-11 items-center justify-center rounded-full hover:bg-slate-100"
+                className="-mr-2 -mt-2 flex size-11 items-center justify-center rounded-full hover:bg-krem"
                 aria-label="Tutup arti kata"
               >
                 <X className="size-6" aria-hidden />

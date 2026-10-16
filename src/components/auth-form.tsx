@@ -5,12 +5,21 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { api } from "@/lib/client";
 import { DemoLoginButton } from "./demo-login-button";
-import { Button, Field, Input, Notice, Spinner } from "./ui";
+import { Button, Field, Input, Notice, Spinner, buttonClass } from "./ui";
 
-export function AuthForm({ mode }: { mode: "masuk" | "daftar" }) {
+export function AuthForm({
+  mode,
+  google = false,
+  initialError = null,
+}: {
+  mode: "masuk" | "daftar";
+  /** Tampilkan tombol "Masuk dengan Google" (bila GOOGLE_CLIENT_ID dan GOOGLE_CLIENT_SECRET diisi). */
+  google?: boolean;
+  initialError?: string | null;
+}) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(initialError);
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -38,6 +47,20 @@ export function AuthForm({ mode }: { mode: "masuk" | "daftar" }) {
           <p className="mt-1 text-tinta-2">Akun demo sudah berisi kelas 4B dan materi Fotosintesis.</p>
           <div className="mt-4">
             <DemoLoginButton size="md" />
+          </div>
+        </div>
+      )}
+
+      {google && (
+        <div className="space-y-4">
+          {/* Link biasa (bukan fetch): browser perlu berpindah ke halaman Google lalu kembali. */}
+          <a href="/api/auth/google" className={buttonClass("secondary", "lg", "w-full")}>
+            {mode === "masuk" ? "Masuk dengan Google" : "Daftar dengan Google"}
+          </a>
+          <div className="flex items-center gap-3 text-[14px] text-tinta-2" aria-hidden>
+            <span className="h-px flex-1 bg-garis" />
+            atau pakai email
+            <span className="h-px flex-1 bg-garis" />
           </div>
         </div>
       )}

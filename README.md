@@ -33,7 +33,7 @@ Bedanya dengan alat yang sudah ada: Microsoft Immersive Reader hanya melayani si
 ## Fitur
 
 **Ruang guru** (`/guru`, perlu masuk)
-- Daftar dan masuk dengan email dan kata sandi. Percobaan masuk yang gagal dibatasi.
+- Daftar dan masuk dengan email dan kata sandi, atau dengan **akun Google** (bila `GOOGLE_CLIENT_ID` dan `GOOGLE_CLIENT_SECRET` diisi). Akun yang dibuat dengan Google bisa membuat kata sandi di **Profil** supaya bisa masuk juga dengan email dan kata sandi seperti biasa. Percobaan masuk yang gagal dibatasi. Di **Profil** (klik nama di kanan atas) guru juga bisa mengubah nama, sekolah, dan kata sandi; profil akun demo bersama dikunci.
 - Kelas dengan profil kebutuhan: low vision, tuli, disleksia, sulit fokus, **diskalkulia (kesulitan berhitung)**, dan bahasa ibu daerah (Jawa atau Sunda).
 - Panduan akomodasi per kebutuhan, lengkap dengan dasar rujukannya (lihat [Rujukan](#rujukan)). Centang tersimpan di browser guru.
 - Editor materi dengan enam tab dan simpan otomatis. Kalau materi diubah dari dua tab sekaligus, simpanan yang bertabrakan terdeteksi.
@@ -43,6 +43,7 @@ Bedanya dengan alat yang sudah ada: Microsoft Immersive Reader hanya melayani si
   - **Perangkat Ajar:** dari materi yang sama, AI menyiapkan draf **modul ajar ringkas** (identitas, tujuan pembelajaran, kegiatan pendahuluan–inti–penutup, asesmen, dan akomodasi sesuai profil kelas), **LKPD** (aktivitas + pertanyaan dengan ruang jawab), **LKPD versi sederhana** (disusun dari versi teks mudah, huruf lebih besar), **rubrik** (kriteria × 4 tingkat), dan **tugas berjenjang (TaRL)**: tugas penguatan, inti, dan tantangan untuk pembelajaran berdiferensiasi. Identitas modul (penyusun, sekolah, kelas, fase, alokasi waktu) diisi otomatis dari data guru dan kelas. Pola review sama dengan tab Versi: berlabel **Draf AI — wajib dicek guru**, bisa diedit, dibuat ulang, atau diisi sendiri tanpa AI. Cetak atau simpan PDF satu per satu atau sekaligus lewat dialog cetak browser. Perangkat ajar hanya untuk guru, kecuali tugas berjenjang yang sudah dicek: siswa melihatnya di layar hasil kuis sesuai skornya.
   - **Kuis:** lima jenis soal — pilihan ganda, pilihan ganda kompleks, benar/salah, isian singkat, dan menjodohkan — ditulis manual atau didraf AI (guru memilih jenis dan jumlahnya). Soal yang belum lengkap ditandai dan tidak ditampilkan ke siswa. Setiap soal punya **konsep yang dinilai** dan **petunjuk bertahap** (sampai 3, dibuka siswa satu per satu). **Latihan adaptif:** bank soal latihan per konsep (draf AI, dipakai setelah guru menandai sudah dicek) untuk siswa yang salah pada konsep itu.
   - **Bagikan:** daftar cek sebelum terbit, kode 6 karakter, link, QR (bisa diunduh), dan tombol tarik dari siswa. Server menolak terbit selama masih ada versi atau deskripsi gambar yang belum dicek.
+  - **Mode proyektor** (tombol di kepala editor dan di tab Bagikan): untuk kelas yang siswanya tidak memakai HP. Materi tampil ke seluruh kelas lewat proyektor/TV, satu bagian per layar (dipotong otomatis di setiap judul, gambar mendapat layar sendiri), huruf sangat besar, bisa dibacakan dengan sorotan kalimat, kata sulit bisa diketuk, pilih versi teks yang sudah dicek, kontras, dan layar penuh. Setelah materi, kuis tampil satu soal per layar dan guru membuka jawabannya. Bisa dipakai dengan clicker presentasi (panah / PageUp / PageDown). Tidak tercatat di rekap siswa dan bisa dipakai walau materi belum terbit.
   - **Rekap:** cara belajar yang dipilih siswa, skor dan lama pengerjaan kuis per versi teks, **persentase benar per soal** beserta jawaban salah yang paling sering dipilih dan berapa sesi membuka petunjuk, **kelompok kesiapan (TaRL)** dari skor kuis, dan pengerjaan terbaru. **Analisis kelas dengan AI** menduga miskonsepsi dari data itu, memberi saran tindak lanjut, menyiapkan penjelasan ulang untuk siswa, dan membuat draf latihan untuk konsep yang lemah. Angka buktinya dihitung aplikasi, bukan AI.
   - **Matematika:** rumus ditulis dengan **LaTeX** (`$\frac{3}{4}$`, `$x^2 - x - 2 = 0$`, `$$...$$` untuk baris sendiri) dan tampil rapi dengan KaTeX di layar guru dan siswa. Tombol **Rumus** di editor menyisipkan pecahan, akar, pangkat, ×, ÷, ≤, ≥, ≠, derajat, dan π tanpa perlu hafal LaTeX; materi/soal lama yang masih menulis `3/4` atau `sqrt(x+2)` bisa diubah dengan tombol **Ubah rumus ke LaTeX**, dan materi Matematika dari PDF/Word langsung diubah otomatis setelah impor (AI per paragraf, lalu diperiksa aplikasi: angka dan kata di luar rumus tidak boleh berubah; bagian yang gagal dibiarkan tulisan biasa). Semua hasil AI (versi, foto buku, kuis, latihan, perangkat ajar, tutor) menulis rumus dengan LaTeX. Pecahan biasa (`3/4`) dan pangkat (`s^2`) tanpa LaTeX tetap tampil bersusun/superskrip; jawaban angka diperiksa nilainya (minus, koma/titik desimal, satuan opsional); AI memakai aturan khusus Matematika (angka, lambang, dan langkah hitung disalin persis; soal latihan boleh memakai angka baru) dan mengirim ekspresi hitungan yang **dihitung ulang aplikasi** — kunci yang tidak cocok ditandai **Periksa hitungan**.
 - Salin materi ke kelas lain.
@@ -92,35 +93,45 @@ flowchart LR
 |---|---|
 | Frontend & backend | Next.js 16 (App Router), React 19, TypeScript, Tailwind CSS 4 |
 | Database | PostgreSQL lewat `postgres` (postgres.js); bisa Supabase, Neon, atau Postgres lokal |
-| Login guru | Email + kata sandi (scrypt bawaan Node.js), cookie sesi bertanda tangan HMAC |
+| Login guru | Email + kata sandi (scrypt bawaan Node.js) atau Google (OAuth 2.0 + OpenID Connect dengan PKCE, tanpa library), cookie sesi bertanda tangan HMAC |
 | AI | Claude API (Anthropic) dan Gemini API (Google), lewat REST tanpa SDK |
 | Text-to-speech | Web Speech API (bawaan browser) |
 | Impor dokumen | `pdfjs-dist` (PDF: teks + letak gambar, di browser) dan `mammoth` (Word .docx → HTML), keduanya dimuat hanya saat dipakai |
 | Lainnya | `qrcode`, `lucide-react`, `zod`, huruf Atkinson Hyperlegible dan Plus Jakarta Sans |
 | Deployment | Vercel |
 
+## Desain
+
+Nuansa ruang kelas: navbar dan footer berupa **papan tulis hijau** dengan ambalan kayu, halaman depan memakai **kertas buku bergaris**, aksen **emas pensil**. Satu warna utama (hijau `papan`) dan satu aksen (emas); warna lain hanya untuk arti (berhasil, galat, info) dan kotak catatan di bacaan. Chip cara belajar, jenis soal, dan kebutuhan kelas sengaja satu warna supaya layar tidak ramai. Token warna ada di `src/app/globals.css` dan semua pasangan teks/latar lolos WCAG AA.
+
+Kartu panjang (versi teks, soal kuis dan latihan, perangkat ajar, kartu rekap, pembanding versi) bisa diciutkan; yang sudah dicek otomatis tertutup, yang perlu tindakan terbuka, dan ada tombol **Buka semua / Ciutkan semua**. Toolbar bacaan siswa satu baris dan menempel di atas: pilihan versi teks plus alat tampilan (di HP dibuka lewat tombol **Tampilan**).
+
 ## Struktur Proyek
 
 ```
 src/
 ├── app/
-│   ├── page.tsx                     # halaman depan + contoh interaktif
+│   ├── page.tsx                     # halaman depan ringkas + contoh interaktif
+│   ├── cara-kerja/                  # cara kerja, cara belajar siswa, fitur (dibuka dari navbar)
 │   ├── masuk/, daftar/              # login dan daftar guru
 │   ├── guru/
 │   │   ├── page.tsx                 # beranda guru: kelas dan materi
 │   │   ├── kelas/baru/, kelas/[id]/ # kelas, profil kebutuhan, panduan akomodasi
-│   │   └── materi/baru/, materi/[id]/  # editor materi (6 tab)
+│   │   ├── materi/baru/, materi/[id]/  # editor materi (6 tab)
+│   │   └── profil/                  # nama dan sekolah guru
+│   ├── proyektor/[id]/              # mode proyektor (khusus guru, tidak tercatat di rekap)
 │   ├── s/[kode]/                    # ruang siswa
 │   └── api/
 │       ├── ai/foto|versi|kuis|alt|perangkat/  # foto → teks, draf versi, draf kuis, deskripsi gambar, draf perangkat ajar
 │       ├── ai/latihan|analisis|periksa/       # bank latihan adaptif, analisis kelas, pemeriksa kesetiaan
 │       ├── gambar/, gambar/[id]/    # unggah & tampilkan gambar materi
-│       ├── auth/masuk|daftar|keluar|demo/
+│       ├── auth/masuk|daftar|keluar|demo|profil|kata-sandi/
+│       ├── auth/google/, auth/google/callback/  # masuk dengan Google
 │       ├── kelas/, materi/          # termasuk materi/[id]/terbit dan /salin
 │       ├── s/[kode]/catat/          # catat sesi & skor siswa (anonim)
 │       ├── demo/reset/
 │       └── status/                  # cek database & AI setelah deploy
-├── components/                      # ui.tsx (UI kit), guru/, siswa/, editor/
+├── components/                      # ui.tsx (UI kit), site-header/footer (navbar papan tulis), lipat.tsx (kartu bisa diciutkan), guru/, siswa/, editor/
 └── lib/
     ├── ai-tasks.ts                  # prompt AI: foto, versi teks, kuis, deskripsi gambar
     ├── ai-perangkat.ts              # prompt AI: modul ajar, LKPD, rubrik, tugas berjenjang
@@ -130,7 +141,7 @@ src/
     ├── text.ts                      # format materi (judul, daftar, kotak, tabel, gambar) + pemecah kalimat
     ├── quiz.ts                      # lima jenis soal: merapikan & memeriksa jawaban
     ├── impor/                       # foto, PDF, Word → format Selaras (di browser)
-    ├── modes.ts                     # warna kategori tiap cara belajar & jenis soal
+    ├── modes.ts                     # warna cara belajar & jenis soal (satu warna, dibedakan ikon)
     ├── claude.ts, gemini.ts         # klien AI + cadangan lintas penyedia
     ├── ai-quota.ts                  # batas pemakaian AI per akun
     ├── accommodations.ts            # panduan akomodasi + rujukan
@@ -155,7 +166,7 @@ Tabel dibuat otomatis saat app pertama kali terhubung ke database. Salinannya ad
 
 | Tabel | Isi |
 |---|---|
-| `teachers` | id, email, name, school, password_hash, is_demo |
+| `teachers` | id, email, name, school, password_hash (kosong untuk akun Google), google_sub, is_demo |
 | `classes` | id, teacher_id, name, grade, needs (JSON: jumlah siswa per kebutuhan + bahasa daerah) |
 | `lessons` | id, teacher_id, class_id, title, subject, body, glossary, versions, quiz, practice (bank latihan adaptif), figures (deskripsi gambar), teaching_kit, status (`draft`/`published`), share_code, revision |
 | `lesson_images` | gambar materi (dikecilkan di browser, disimpan sebagai bytea): id, teacher_id, mime, data, width, height |
@@ -191,6 +202,8 @@ Isi `.env.local` (penjelasan lengkap ada di [`.env.example`](.env.example)):
 | `GEMINI_API_KEY` | Opsional | Kunci Gemini. Isi salah satu atau keduanya untuk fitur AI. |
 | `ANTHROPIC_MODEL`, `GEMINI_MODEL` | Opsional | Memaksa satu model dicoba lebih dulu. |
 | `AI_LIMIT_PER_HOUR` | Opsional | Batas permintaan AI per akun per jam (default 100). |
+| `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | Opsional | Mengaktifkan **Masuk dengan Google**. Buat di Google Cloud Console → Credentials → OAuth client ID (Web application), dengan redirect URI `<alamat-app>/api/auth/google/callback`. Langkah lengkap di `.env.example`. |
+| `APP_URL` | Opsional | Alamat app tanpa `/` di akhir, supaya redirect URI Google selalu sama walau app dibuka dari domain preview. |
 
 Saat pertama kali terhubung, app membuat tabel dan mengisi data demo sendiri: 1 guru demo, 2 kelas (4B berbahasa ibu Jawa, 6A berbahasa ibu Sunda) dengan profil kebutuhan, 3 materi terbit (`DEMO01` Fotosintesis, `DEMO02` Bagian Tumbuhan, `DEMO03` Teks Prosedur), masing-masing dengan 4 versi yang sudah dicek dan kuis 5 soal (dua materi IPAS memakai diagram, tabel, kotak catatan, dan lima jenis soal), materi Matematika `DEMO04` "Pecahan Senilai" (teks mudah, ringkasan, kuis dengan hitungan pemeriksa), materi "Daur Air" yang masih draf untuk mendemokan AI, dan hasil kuis siswa contoh untuk rekap. Soal demo sudah punya konsep dan petunjuk bertahap; jawaban salah contoh memakai pengecoh yang khas supaya analisis AI punya bahan; Fotosintesis dan Pecahan Senilai punya bank latihan adaptif yang sudah dicek, dan Fotosintesis punya tugas berjenjang. Database yang sudah berisi data demo lama perlu menekan **Reset data demo** di halaman guru. Tidak perlu menjalankan SQL manual. Tanpa kunci AI, semua fitur tetap jalan kecuali tombol AI.
 
@@ -203,12 +216,13 @@ npm run typecheck                        # pemeriksaan TypeScript
 npm run test:format                      # uji format materi, pemecah kalimat, dan pemeriksaan lima jenis soal
 npm run test:mtk                         # uji Matematika & LaTeX: angka, hitungan ulang, notasi, pembaca simbol, jawaban rumus
 npm run test:ai                          # 39 uji mesin AI, perangkat ajar, dan fitur adaptif dengan server palsu (tanpa kunci, tanpa biaya)
-npm test                                 # format + Matematika + AI + fitur (lihat juga "Pengujian tambahan" di bawah)
+npm run test:google                      # uji masuk dengan Google: PKCE, URL Google, dan pemeriksaan ID token
+npm test                                 # format + Matematika + AI + fitur + Google (lihat juga "Pengujian tambahan" di bawah)
 npm run cek -- https://alamat-app        # uji cepat versi ter-deploy: database, login demo, kelas, materi, simpan, gambar, perangkat ajar, salin, siswa
 npm run cek -- https://alamat-app --ai   # ditambah uji draf kuis, ringkasan, rubrik, dan pemeriksa kesetiaan dengan kunci AI asli
 ```
 
-Setelah deploy, buka `/api/status` untuk melihat apakah database dan AI sudah aktif.
+Setelah deploy, buka `/api/status` untuk melihat apakah database, AI, dan masuk dengan Google sudah aktif.
 
 ## Penggunaan AI (Transparansi)
 
@@ -279,7 +293,7 @@ Panduan di Selaras adalah bantuan praktis untuk guru, bukan pengganti asesmen te
 - **Pengiriman hasil:** catatan disimpan per kejadian di perangkat dan dikirim ulang saat online atau setiap 15 detik selama halaman terbuka. ID catatan mencegah duplikasi saat pengiriman diulang. Urutan hasil mengikuti waktu kejadian sehingga antrean lama tidak menggantikan percobaan terbaru. Jika penyimpanan perangkat tidak tersedia dan hasil belum terkirim, pergantian siswa ditahan. Jangan menghapus data browser sebelum kiriman selesai. Ini belum merupakan mode materi luring/PWA.
 - **Rekap:** label memakai sesi belajar, bukan jumlah siswa terverifikasi. Sesi yang menyelesaikan kuis dan seluruh percobaan kuis ditampilkan terpisah. Isi **Konsep yang dinilai** pada setiap soal untuk rekap konsep, jumlah sesi/jawaban, dan saran pembahasan ulang. Tombol CSV mengekspor ringkasan, konsep, soal, versi, dan semua hasil terakhir per sesi (tabel layar hanya menampilkan 12 terbaru).
 - **Review:** tab Versi menyediakan sumber dan adaptasi berdampingan, dengan sorotan baris yang berubah. Menyunting isi/glosarium versi membatalkan tanda sudah dicek. Sorotan bukan pemeriksaan kebenaran fakta/terjemahan.
-- **Riwayat:** buka **Kelola materi → Riwayat revisi**. Sistem menyimpan 50 revisi sebelumnya sejak migrasi aktif. Pemulihan memeriksa konflik revisi, menyimpan kondisi sebelumnya, mengembalikan materi sebagai draf, dan membatalkan persetujuan versi/deskripsi gambar. Rekap tidak dihapus; hasil soal yang teksnya sudah berubah tidak dicampurkan ke soal baru.
+- **Riwayat:** buka **Kelola materi → Riwayat revisi**. Sistem menyimpan 50 revisi sebelumnya sejak migrasi aktif. Pemulihan memeriksa konflik revisi, menyimpan kondisi sebelumnya, mengembalikan isi sebagai draf perubahan, dan membatalkan persetujuan versi/deskripsi gambar. Jika materi sudah terbit, siswa tetap melihat terbitan sebelumnya sampai guru menerbitkan perubahan. Rekap tidak dihapus; hasil soal yang teksnya sudah berubah tidak dicampurkan ke soal baru.
 - **Aksesibilitas:** tab Bagikan memeriksa judul melompat, bacaan panjang, gambar tanpa deskripsi diperiksa, istilah yang mungkin perlu glosarium, dan kelengkapan instruksi/pembahasan soal. Ini pemeriksaan awal berbasis aturan, bukan sertifikasi atau pengganti review guru.
 - **Perpustakaan:** `/guru/pustaka` mencari materi milik guru berdasarkan judul, mapel, jenjang, dan topik, dengan filter templat. Atur topik, jenjang sasaran, dan tanda templat di **Kelola materi**. Gunakan materi/templat sebagai draf baru untuk kelas tujuan; rekap dan kode berbagi tidak disalin.
 
@@ -291,6 +305,15 @@ npm run test:data   # integrasi Postgres: skema sementara dalam transaksi yang s
 ```
 
 `test:data` memakai koneksi database dari environment dan memerlukan izin membuat skema sementara. Pengujian tidak memakai atau mereset data demo; semua objek/data uji dibatalkan bersama transaksi. Migrasi aplikasi berjalan otomatis melalui `src/lib/schema.ts` saat koneksi aplikasi pertama kali dipakai.
+
+### Draf terbit, banyak kelas, dan laporan pemahaman
+
+- **Draf perubahan:** simpan otomatis hanya mengubah ruang kerja guru. Bacaan, versi adaptasi, kuis, latihan, tugas siswa, dan konteks tutor membaca salinan terakhir yang diterbitkan. Setelah review, tekan **Bagikan → Terbitkan perubahan ke semua kelas**. Link tetap sama. Penerbitan memeriksa revisi agar perubahan dari tab lain tidak ikut terbit tanpa review. Mode proyektor/pratinjau guru tetap membaca draf.
+- **Banyak kelas:** terbitkan materi, lalu centang kelas tambahan di **Bagikan → Satu materi untuk beberapa kelas**. Pilih kelas pada **Tampilkan link dan QR untuk** sebelum membagikan. Setiap kelas punya kode stabil tersendiri, dengan isi yang sama. Kelas asal tetap terhubung; materi umum tetap memiliki link umum. Melepas centang menonaktifkan link tambahan tanpa menghapus hasil. Menghapus kelas menonaktifkan link kelas tersebut, tetapi materi dan hasilnya dipertahankan untuk kelas lain/perpustakaan.
+- **Rekap kelas:** filter **Rekap kelas** berlaku untuk seluruh angka, laporan belum paham, analisis AI, dan CSV. Data lama tetap dikaitkan dengan kelas asal. Kode adalah tujuan pencatatan, bukan verifikasi keanggotaan/identitas siswa; guru harus membagikan kode kelas yang sesuai. Preferensi belajar tetap dipilih masing-masing siswa.
+- **Aku belum paham:** di bawah bacaan, siswa memilih judul bagian atau materi keseluruhan, lalu menekan tombol. Laporan masuk antrean pengiriman yang sama dengan hasil kuis, menyimpan kode kelas, sesi, versi bacaan, dan revisi terbit. Rekap menghitung satu laporan per sesi/bagian/versi/revisi meskipun tombol diketuk ulang. Laporan ini tidak mengurangi nilai dan tidak mengklaim mengukur diagnosis/kemampuan siswa.
+
+Migrasi mempertahankan isi terbit dan kode lama. Materi yang belum pernah terbit tidak dapat diakses siswa. Penerbitan berikutnya mengganti salinan terbit untuk semua kelas; halaman siswa yang sudah terbuka perlu dimuat ulang untuk melihat pembaruan.
 
 ## Lisensi
 

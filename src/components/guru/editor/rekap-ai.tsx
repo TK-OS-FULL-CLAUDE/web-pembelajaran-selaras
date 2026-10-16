@@ -17,6 +17,7 @@ import { useToast } from "../../toast";
 import type { EditableLesson, TabKey, UpdateLesson } from "./lesson-editor";
 
 export function AnalysisCard({
+  audienceId,
   lessonId,
   stats,
   lesson,
@@ -24,6 +25,7 @@ export function AnalysisCard({
   aiOn,
   goTo,
 }: {
+  audienceId?: string;
   lessonId: string;
   stats: LessonStats;
   lesson: EditableLesson;
@@ -41,7 +43,7 @@ export function AnalysisCard({
   async function analyze() {
     setBusy(true);
     try {
-      setResult(await api<{ analysis: ClassAnalysis; basedOn: number }>("/api/ai/analisis", { method: "POST", body: { lessonId } }));
+      setResult(await api<{ analysis: ClassAnalysis; basedOn: number }>("/api/ai/analisis", { method: "POST", body: { lessonId, audienceId } }));
     } catch (err) {
       toast.error((err as Error).message);
     } finally {
@@ -95,7 +97,7 @@ export function AnalysisCard({
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="max-w-2xl">
           <h2 className="flex items-center gap-2 font-display text-lg font-bold">
-            <BrainCircuit className="size-5 text-ungu" aria-hidden />
+            <BrainCircuit className="size-5 text-papan" aria-hidden />
             Analisis kelas dengan AI
           </h2>
           <p className="mt-1 text-[14px] text-tinta-2">

@@ -434,7 +434,7 @@ export function MateriTab({
             <label htmlFor="isi-materi" className="font-display text-[17px] font-extrabold">
               Materi asli
             </label>
-            <div className="flex rounded-xl bg-slate-100 p-1" role="group" aria-label="Tampilan editor">
+            <div className="flex rounded-xl bg-krem p-1" role="group" aria-label="Tampilan editor">
               {(
                 [
                   ["tulis", "Tulis", SquarePen],
@@ -687,7 +687,7 @@ export function MateriTab({
       </div>
 
       <Card className="h-fit p-3 sm:p-4 lg:sticky lg:top-20">
-        <div className="grid grid-cols-4 gap-1 rounded-xl bg-slate-100 p-1" role="group" aria-label="Panel samping">
+        <div className="grid grid-cols-4 gap-1 rounded-xl bg-krem p-1" role="group" aria-label="Panel samping">
           {panels.map((p) => (
             <button
               key={p.key}

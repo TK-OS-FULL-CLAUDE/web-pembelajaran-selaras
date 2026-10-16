@@ -8,7 +8,11 @@ export type Sql = postgres.Sql;
 declare global {
   var __selarasSql: Sql | undefined;
   var __selarasReady: Promise<void> | undefined;
+  var __selarasSchemaVersion: string | undefined;
 }
+
+// Hot reload menyimpan global di server dev. Skema baru tetap harus dimigrasikan.
+export const SCHEMA_VERSION = "2026-10-15-publication-audiences-feedback";
 
 export class MissingDatabaseError extends Error {
   constructor() {
@@ -67,6 +71,10 @@ async function migrateAndSeed(sql: Sql) {
 /** Mengembalikan klien database yang tabel dan data demonya sudah siap. */
 export async function getDb(): Promise<Sql> {
   const sql = (globalThis.__selarasSql ??= createClient());
+  if (globalThis.__selarasSchemaVersion !== SCHEMA_VERSION) {
+    globalThis.__selarasReady = undefined;
+    globalThis.__selarasSchemaVersion = SCHEMA_VERSION;
+  }
   if (!globalThis.__selarasReady) {
     globalThis.__selarasReady = migrateAndSeed(sql).catch((err) => {
       globalThis.__selarasReady = undefined;

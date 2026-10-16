@@ -5,7 +5,8 @@ export type StudentEvent = {
   occurredAt: string;
   code: string;
   sessionId: string;
-  kind: "open" | "quiz";
+  kind: "open" | "quiz" | "confused";
+  feedback?: { section: string; revision: number };
   alias: string | null;
   prefs: StudentPrefs;
   score?: number;

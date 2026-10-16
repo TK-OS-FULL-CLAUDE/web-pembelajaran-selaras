@@ -174,3 +174,43 @@ drop trigger if exists selaras_revision_history on lessons;
 create trigger selaras_revision_history before update on lessons for each row execute function selaras_keep_revision();
 
 alter table lesson_revisions enable row level security;
+
+-- Masuk dengan Google: akun guru dari Google tidak punya kata sandi Selaras.
+alter table teachers add column if not exists google_sub text;
+
+create unique index if not exists teachers_google_sub_idx on teachers(google_sub);
+
+alter table teachers alter column password_hash drop not null;
+
+-- Draf perubahan, satu materi banyak kelas, dan laporan pemahaman.
+alter table lessons add column if not exists published_content jsonb;
+
+alter table lessons add column if not exists published_revision integer;
+
+update lessons l set published_content = to_jsonb(l) - 'published_content', published_revision = revision
+    where status = 'published' and published_content is null;
+
+create table if not exists lesson_audiences (
+    id uuid primary key default gen_random_uuid(),
+    lesson_id uuid not null references lessons(id) on delete cascade,
+    class_id uuid references classes(id) on delete set null,
+    class_name text,
+    share_code text not null unique,
+    active boolean not null default true,
+    unique (lesson_id, class_id)
+  );
+
+insert into lesson_audiences(lesson_id, class_id, class_name, share_code)
+    select l.id, l.class_id, c.name, l.share_code from lessons l left join classes c on c.id = l.class_id
+    where l.share_code is not null on conflict do nothing;
+
+alter table student_events add column if not exists audience_id uuid references lesson_audiences(id) on delete set null;
+
+alter table student_events add column if not exists feedback jsonb;
+
+update student_events e set audience_id = a.id from lesson_audiences a join lessons l on l.id = a.lesson_id
+    where e.lesson_id = l.id and a.share_code = l.share_code and e.audience_id is null;
+
+create index if not exists student_events_audience_idx on student_events(lesson_id, audience_id);
+
+alter table lesson_audiences enable row level security;

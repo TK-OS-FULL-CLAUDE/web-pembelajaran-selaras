@@ -24,7 +24,7 @@ export function HistoryPanel({ lessonId, prepare, restored }: {
     catch (e) { setError((e as Error).message); } finally { setBusy(false); }
   }
   async function restore() {
-    if (!selected || !window.confirm(`Pulihkan revisi ${selected.revision}? Materi akan menjadi draf dan perlu diperiksa sebelum diterbitkan lagi.`)) return;
+    if (!selected || !window.confirm(`Pulihkan revisi ${selected.revision} sebagai draf perubahan? Siswa tetap melihat versi terbit sebelumnya sampai Anda menerbitkan perubahan.`)) return;
     setBusy(true); setError("");
     try {
       const baseRevision = await prepare();

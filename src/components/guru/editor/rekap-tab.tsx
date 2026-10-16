@@ -5,13 +5,14 @@
 
 import { Clock, ListChecks, RefreshCw, Sparkles, Target, Users } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useTransition } from "react";
+import { useState, useTransition } from "react";
 import type { LessonStats } from "@/lib/data";
 import { MODE_TONE, QUIZ_TONE, TONES, type ModeKey } from "@/lib/modes";
+import { KartuLipatMandiri, LipatSemuaBar, type LipatSemua } from "../../lipat";
 import { questionKey, quizType } from "@/lib/quiz";
 import { QUIZ_TYPE_LABEL, VERSION_LABEL, isRegionalVersion, type QuizQuestion, type VersionKey } from "@/lib/types";
 import { InlineText } from "../../reader-text";
-import { Badge, Button, Card, EmptyState, Spinner, StatCard, cx } from "../../ui";
+import { Badge, Button, EmptyState, Spinner, StatCard, cx } from "../../ui";
 import type { EditableLesson, TabKey, UpdateLesson } from "./lesson-editor";
 import { AnalysisCard, GroupsCard } from "./rekap-ai";
 
@@ -71,7 +72,7 @@ function BarRow({
         <span className={cx("size-2.5 shrink-0 rounded-full", TONES[MODE_TONE[tone]].bar)} aria-hidden />
         {label}
       </span>
-      <span className="h-3 rounded-full bg-slate-100" aria-hidden>
+      <span className="h-3 rounded-full bg-krem" aria-hidden>
         <span className={cx("block h-3 rounded-full", TONES[MODE_TONE[tone]].bar)} style={{ width: `${pct}%` }} />
       </span>
       <span className="text-right text-[15px] font-bold tabular-nums">{display}</span>
@@ -80,6 +81,7 @@ function BarRow({
 }
 
 export function RekapTab({
+  audienceId,
   lessonId,
   stats,
   published,
@@ -89,6 +91,7 @@ export function RekapTab({
   aiOn,
   goTo,
 }: {
+  audienceId?: string;
   lessonId: string;
   stats: LessonStats;
   published: boolean;
@@ -98,6 +101,7 @@ export function RekapTab({
   aiOn: boolean;
   goTo: (tab: TabKey) => void;
 }) {
+  const [semua, setSemua] = useState<LipatSemua>(null);
   const router = useRouter();
   const [pending, startTransition] = useTransition();
 
@@ -148,53 +152,74 @@ export function RekapTab({
         <p className="max-w-2xl text-[16px] text-tinta-2">
           Rekap berdasarkan sesi belajar, bukan jumlah siswa terverifikasi. Percobaan ulang dalam sesi yang sama memakai hasil terakhir. Gunakan Ganti siswa pada perangkat bersama.
         </p>
-        <div className="flex items-center gap-3">{refresh}<a href={`/api/materi/${lessonId}/laporan`} className="rounded-xl border border-papan px-4 py-3 font-bold text-papan">Unduh laporan CSV</a></div>
+        <div className="flex items-center gap-3">{refresh}<a href={`/api/materi/${lessonId}/laporan${audienceId ? `?kelas=${audienceId}` : ""}`} className="rounded-xl border border-papan px-4 py-3 font-bold text-papan">Unduh laporan CSV</a></div>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard icon={Users} tone="papan" label="Sesi belajar" value={stats.sessions} />
         <StatCard
           icon={Sparkles}
-          tone="ungu"
+          tone="papan"
           label="Memakai cara belajar lain"
           value={`${adaptivePct}%`}
           hint={`${stats.adaptiveSessions} sesi`}
         />
         <StatCard
           icon={Target}
-          tone="hijau"
+          tone="papan"
           label="Rata-rata skor kuis"
           value={stats.avgScorePct ?? "—"}
           hint={stats.quizAttempts ? `dari 100 · ${stats.quizAttempts} sesi kuis` : "belum ada"}
         />
         <StatCard
           icon={Clock}
-          tone="jingga"
+          tone="aksen"
           label="Rata-rata waktu kuis"
           value={formatDuration(stats.avgDurationSec)}
         />
       </div>
 
-      <AnalysisCard lessonId={lessonId} stats={stats} lesson={lesson} update={update} aiOn={aiOn} goTo={goTo} />
+      <div className="flex justify-end">
+        <LipatSemuaBar label="kartu rekap" onSet={(open) => setSemua((s) => ({ open, n: (s?.n ?? 0) + 1 }))} />
+      </div>
+      <KartuLipatMandiri
+        id="rekap-paham"
+        heading="Bagian yang belum dipahami"
+        semua={semua}
+        defaultOpen={stats.confusion.length > 0}
+        summary={stats.confusion.length ? `${stats.confusion.length} bagian dilaporkan siswa.` : "Belum ada laporan dari siswa."}
+      >
+        <p className="text-sm text-tinta-2">Masukan dari tombol “Aku belum paham”. Ketukan berulang pada bagian dan versi yang sama dihitung satu kali per sesi. Bahas ulang bagian dengan laporan terbanyak.</p>
+        {!stats.confusion.length ? <p className="mt-3">Belum ada laporan dari siswa.</p> : <ul className="mt-3 space-y-3">
+          {stats.confusion.map((f, i) => <li key={i} className="rounded-xl border border-garis p-3">
+            <strong>{f.section}</strong><p>{f.sessions} sesi · {VERSION_LABEL[f.versi as keyof typeof VERSION_LABEL] || f.versi} · Revisi terbit {f.revision}</p>
+          </li>)}
+        </ul>}
+      </KartuLipatMandiri>
+      <AnalysisCard audienceId={audienceId} lessonId={lessonId} stats={stats} lesson={{ ...lesson, quiz }} update={update} aiOn={aiOn} goTo={goTo} />
 
       <GroupsCard stats={stats} lesson={lesson} goTo={goTo} />
 
-      <Card className="p-5">
-        <h2 className="text-lg font-bold">Konsep yang perlu dibahas ulang</h2>
-        <p className="mt-1 text-sm text-tinta-2">{stats.quizAttempts} sesi menyelesaikan kuis · {stats.totalQuizAttempts} percobaan seluruhnya. Persentase dihitung dari jawaban pada hasil terakhir setiap sesi, bukan persentase anak yang menguasai konsep.</p>
-        <p className="mt-2 text-sm text-tinta-2">Atur konsep setiap soal di tab Kuis. Setelah perubahan tersimpan, tekan Perbarui untuk memuat pengelompokan terbaru.</p>
+      <KartuLipatMandiri
+        id="rekap-konsep"
+        heading="Konsep yang perlu dibahas ulang"
+        semua={semua}
+        defaultOpen
+        summary={`${stats.byConcept.length} konsep · ${stats.quizAttempts} sesi menyelesaikan kuis.`}
+      >
+        <p className="text-sm text-tinta-2">{stats.quizAttempts} sesi menyelesaikan kuis · {stats.totalQuizAttempts} percobaan seluruhnya. Persentase dihitung dari jawaban pada hasil terakhir setiap sesi, bukan persentase anak yang menguasai konsep.</p>
+        <p className="mt-2 text-sm text-tinta-2">Rekap konsep mengikuti kuis terakhir yang diterbitkan. Atur konsep di tab Kuis, lalu terbitkan perubahan.</p>
         <ul className="mt-4 space-y-3">{stats.byConcept.map((c) => <li key={c.concept} className="rounded-xl border border-garis p-4">
           <div className="flex flex-wrap justify-between gap-2"><strong>{c.concept}</strong><span className="font-bold">{c.pct === null ? "Belum ada hasil" : `${c.pct}% benar`}</span></div>
           <p className="mt-1 text-sm">{c.questions} soal · {c.sessions} sesi menjawab · {c.correct}/{c.answers} jawaban benar</p>
           {c.pct !== null && <p className="mt-2 text-sm font-bold text-papan">{c.pct < 50 ? "Bahas ulang dengan contoh konkret dan cek pemahaman." : c.pct < 75 ? "Berikan latihan penguatan pada konsep ini." : "Lanjutkan materi; tetap cek siswa yang membutuhkan bantuan."}</p>}
         </li>)}</ul>
         {!stats.byConcept.length && <p className="mt-3">Tambahkan soal dan konsep untuk melihat ringkasan.</p>}
-      </Card>
+      </KartuLipatMandiri>
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        <Card className="p-5">
-          <h2 className="font-display text-lg font-bold">Cara belajar yang dipilih</h2>
-          <p className="mt-0.5 text-[14px] text-tinta-2">Jumlah sesi; satu sesi bisa memakai beberapa cara belajar.</p>
+      <div className="grid items-start gap-6 lg:grid-cols-2">
+        <KartuLipatMandiri id="rekap-cara" heading="Cara belajar yang dipilih" semua={semua} defaultOpen>
+          <p className="text-[14px] text-tinta-2">Jumlah sesi; satu sesi bisa memakai beberapa cara belajar.</p>
           <ul className="mt-3">
             {modes.map((m) => (
               <BarRow
@@ -208,11 +233,10 @@ export function RekapTab({
               />
             ))}
           </ul>
-        </Card>
+        </KartuLipatMandiri>
 
-        <Card className="p-5">
-          <h2 className="font-display text-lg font-bold">Skor kuis per versi teks</h2>
-          <p className="mt-0.5 text-[14px] text-tinta-2">
+        <KartuLipatMandiri id="rekap-versi" heading="Skor kuis per versi teks" semua={semua} defaultOpen>
+          <p className="text-[14px] text-tinta-2">
             Rata-rata dari 100. Perhatikan jumlah sesi di setiap versi; perbedaan skor tidak membuktikan satu mode lebih efektif.
           </p>
           <ul className="mt-3">
@@ -238,20 +262,25 @@ export function RekapTab({
               .join("; ")}
             .
           </p>
-        </Card>
+        </KartuLipatMandiri>
       </div>
 
       {questions.length > 0 && (
-        <Card className="p-5">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <h2 className="flex items-center gap-2 font-display text-lg font-bold">
-              <ListChecks className="size-5 text-papan" aria-hidden />
-              Hasil per soal
-            </h2>
-            {withData.length > 0 && (
-              <p className="text-[14px] text-tinta-2">Di bawah 50% benar: pertimbangkan pembahasan ulang.</p>
-            )}
-          </div>
+        <KartuLipatMandiri
+          id="rekap-soal"
+          heading="Hasil per soal"
+          icon={<ListChecks className="size-5 shrink-0 text-papan" aria-hidden />}
+          semua={semua}
+          defaultOpen={false}
+          summary={
+            withData.length
+              ? `${withData.length} soal punya hasil. ${questions.filter((x) => x.pct !== null && x.pct < 50).length} soal di bawah 50% benar.`
+              : "Belum ada jawaban siswa."
+          }
+        >
+          {withData.length > 0 && (
+            <p className="text-[14px] text-tinta-2">Di bawah 50% benar: pertimbangkan pembahasan ulang.</p>
+          )}
           {withData.length === 0 ? (
             <p className="mt-2 text-[14px] text-tinta-2">
               Persentase benar per soal muncul setelah siswa mengerjakan kuis (dicatat sejak pembaruan ini).
@@ -294,7 +323,7 @@ export function RekapTab({
                         </span>
                         <span className="text-tinta-2">{attempts} sesi</span>
                       </div>
-                      <div className="mt-1 h-2.5 rounded-full bg-slate-100" aria-hidden>
+                      <div className="mt-1 h-2.5 rounded-full bg-krem" aria-hidden>
                         <div
                           className={cx(
                             "h-2.5 rounded-full",
@@ -309,14 +338,19 @@ export function RekapTab({
               ))}
             </ol>
           )}
-        </Card>
+        </KartuLipatMandiri>
       )}
 
       {stats.recent.length > 0 && (
-        <Card className="overflow-hidden">
-          <h2 className="px-5 pt-5 font-display text-lg font-bold">Hasil kuis terbaru</h2>
+        <KartuLipatMandiri
+          id="rekap-terbaru"
+          heading="Hasil kuis terbaru"
+          semua={semua}
+          defaultOpen={false}
+          summary={`${stats.recent.length} hasil kuis terakhir, dengan nama panggilan, cara belajar, skor, dan waktu.`}
+        >
           {/* tabIndex: wilayah yang bisa digulir harus bisa dijangkau keyboard (WCAG 2.1.1) */}
-          <div className="mt-3 overflow-x-auto" tabIndex={0} role="region" aria-label="Tabel hasil kuis terbaru">
+          <div className="-mx-5 overflow-x-auto" tabIndex={0} role="region" aria-label="Tabel hasil kuis terbaru">
             <table className="w-full min-w-[32rem] text-left text-[15px]">
               <thead className="border-y border-garis bg-kertas text-[14px] text-tinta-2">
                 <tr>
@@ -362,7 +396,7 @@ export function RekapTab({
               </tbody>
             </table>
           </div>
-        </Card>
+        </KartuLipatMandiri>
       )}
     </div>
   );

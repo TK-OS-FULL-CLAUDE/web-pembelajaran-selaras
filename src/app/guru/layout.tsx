@@ -1,6 +1,5 @@
-import Link from "next/link";
-import { LogoutButton } from "@/components/guru/logout-button";
-import { Logo } from "@/components/ui";
+import { GuruHeader } from "@/components/guru/guru-header";
+import { SiteFooter } from "@/components/site-footer";
 import { requireTeacher } from "@/lib/auth";
 
 export default async function GuruLayout({ children }: { children: React.ReactNode }) {
@@ -13,34 +12,12 @@ export default async function GuruLayout({ children }: { children: React.ReactNo
     .map((w) => w[0]?.toUpperCase())
     .join("");
   return (
-    <div className="min-h-dvh">
-      <header className="no-print border-b border-garis bg-white/95 backdrop-blur">
-        <div className="pita-warna" aria-hidden />
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
-          <Link href="/guru" aria-label="Selaras, ke beranda guru" className="rounded-xl">
-            <Logo />
-          </Link>
-          <div className="flex items-center gap-3">
-            <Link href="/guru/pustaka" className="rounded-xl px-3 py-3 text-sm font-bold text-papan hover:bg-papan-50">Perpustakaan</Link>
-            <div className="hidden items-center gap-3 sm:flex">
-              <span
-                className="flex size-10 items-center justify-center rounded-full bg-papan-100 font-display text-[15px] font-extrabold text-papan"
-                aria-hidden
-              >
-                {initials || "G"}
-              </span>
-              <div className="text-left leading-tight">
-                <p className="font-bold">{name}</p>
-                {teacher.school && <p className="text-[14px] text-tinta-2">{teacher.school}</p>}
-              </div>
-            </div>
-            <LogoutButton />
-          </div>
-        </div>
-      </header>
-      <main id="isi" className="mx-auto max-w-6xl px-4 pb-20 pt-8 sm:px-6">
+    <div className="flex min-h-dvh flex-col">
+      <GuruHeader name={name} school={teacher.school} initials={initials} />
+      <main id="isi" className="mx-auto w-full max-w-6xl flex-1 px-4 pb-20 pt-8 sm:px-6">
         {children}
       </main>
+      <SiteFooter compact />
     </div>
   );
 }

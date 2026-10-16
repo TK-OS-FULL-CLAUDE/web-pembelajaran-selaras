@@ -14,7 +14,8 @@
     "test:fitur": "npx --yes tsx@4.23.15 tests/student-teacher.test.mts",
     "test:mtk": "npx --yes tsx@4.23.15 tests/matematika.test.mts && npx --yes tsx@4.23.15 tests/latex.test.mts",
     "test:data": "npx --yes tsx@4.23.15 --conditions=react-server tests/data-features.test.mts",
-    "test": "npm run test:format && npm run test:mtk && npm run test:ai && npm run test:fitur"
+    "test:google": "npx --yes tsx@4.23.15 tests/google-auth.test.mts",
+    "test": "npm run test:format && npm run test:mtk && npm run test:ai && npm run test:fitur && npm run test:google"
   },
   "engines": {
     "node": ">=20.9.0"

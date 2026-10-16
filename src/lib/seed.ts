@@ -322,10 +322,14 @@ export async function seedDemo(sql: Sql, { reset }: { reset: boolean }) {
       )
       returning id`;
 
+    await sql`update lessons l set published_content = to_jsonb(l) - 'published_content', published_revision = revision where id = ${lesson.id}`;
+    const [audience] = await sql`insert into lesson_audiences(lesson_id, class_id, class_name, share_code)
+      select l.id, l.class_id, c.name, l.share_code from lessons l left join classes c on c.id = l.class_id
+      where l.id = ${lesson.id} returning id`;
     const events: Record<string, unknown>[] = [];
     for (const [i, s] of demoSessions({ ...demo, quiz }, 7 + n * 31).entries()) {
       const openedAt = new Date(Date.now() - s.minutesAgo * 60_000);
-      const base = { lesson_id: lesson.id, session_id: `demo-${n + 1}-${i + 1}`, student_alias: s.alias };
+      const base = { lesson_id: lesson.id, audience_id: audience.id, session_id: `demo-${n + 1}-${i + 1}`, student_alias: s.alias };
       events.push({
         ...base,
         kind: "open",
@@ -357,6 +361,7 @@ export async function seedDemo(sql: Sql, { reset }: { reset: boolean }) {
           detail: e.detail ? sql.json(e.detail as never) : null,
         })) as never,
         "lesson_id",
+        "audience_id",
         "session_id",
         "kind",
         "student_alias",

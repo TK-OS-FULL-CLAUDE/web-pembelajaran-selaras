@@ -3,15 +3,16 @@ import { useState } from "react";
 import { comparisonTokens } from "@/lib/teacher-tools";
 import { VERSION_HTML_LANG, VERSION_LABEL, type LessonVersions, type VersionKey } from "@/lib/types";
 import { Select } from "../../ui";
+import { KartuLipatMandiri } from "../../lipat";
 export function VersionComparison({ body, versions }: { body: string; versions: LessonVersions }) {
   const keys = (Object.keys(versions) as VersionKey[]).filter((k) => versions[k]?.text.trim());
   const [choice, setChoice] = useState<VersionKey>("mudah");
   const key = keys.includes(choice) ? choice : keys[0];
   if (!key) return null;
   const adapted = versions[key]!.text;
-  return <section className="rounded-2xl border border-garis bg-white p-5">
-    <h2 className="text-lg font-bold">Bandingkan sumber dan versi</h2>
-    <label htmlFor="banding-versi" className="mt-3 block text-sm font-bold">Versi yang diperiksa</label>
+  return <KartuLipatMandiri id="banding" heading="Bandingkan sumber dan versi" defaultOpen={false}
+    summary="Lihat baris yang berubah, ditambah, atau dihapus antara materi asli dan satu versi.">
+    <label htmlFor="banding-versi" className="block text-sm font-bold">Versi yang diperiksa</label>
     <Select id="banding-versi" value={key} onChange={(e) => setChoice(e.target.value as VersionKey)}>
       {keys.map((k) => <option key={k} value={k}>{VERSION_LABEL[k]}</option>)}
     </Select>
@@ -24,5 +25,5 @@ export function VersionComparison({ body, versions }: { body: string; versions: 
         </div>
       </div>)}
     </div>
-  </section>;
+  </KartuLipatMandiri>;
 }

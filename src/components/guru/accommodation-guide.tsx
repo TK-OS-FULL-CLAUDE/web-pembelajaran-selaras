@@ -72,7 +72,7 @@ export function AccommodationGuide({ classId, needs }: { classId: string; needs:
                         type="checkbox"
                         checked={!!done[id]}
                         onChange={() => toggle(id)}
-                        className="mt-1 size-5 shrink-0 accent-[#0B5C5C]"
+                        className="mt-1 size-5 shrink-0 accent-[#2D6A4F]"
                       />
                       <span className={done[id] ? "text-tinta-2 line-through decoration-1" : ""}>{tip}</span>
                     </label>

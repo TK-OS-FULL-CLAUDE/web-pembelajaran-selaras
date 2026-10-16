@@ -38,15 +38,25 @@ function readSessionToken(token: string | undefined): string | null {
   return teacherId;
 }
 
+/** Nama, isi, dan pengaturan cookie sesi (dipakai juga untuk respons redirect, mis. setelah masuk dengan Google). */
+export function sessionCookie(teacherId: string) {
+  return {
+    name: COOKIE_NAME,
+    value: createSessionToken(teacherId),
+    options: {
+      httpOnly: true,
+      sameSite: "lax" as const,
+      secure: process.env.NODE_ENV === "production",
+      path: "/",
+      maxAge: SESSION_DAYS * 86400,
+    },
+  };
+}
+
 export async function setSessionCookie(teacherId: string) {
   const jar = await cookies();
-  jar.set(COOKIE_NAME, createSessionToken(teacherId), {
-    httpOnly: true,
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
-    path: "/",
-    maxAge: SESSION_DAYS * 86400,
-  });
+  const c = sessionCookie(teacherId);
+  jar.set(c.name, c.value, c.options);
 }
 
 export async function clearSessionCookie() {
@@ -70,4 +80,13 @@ export async function requireTeacher(): Promise<TeacherRow> {
   const teacher = await getCurrentTeacher();
   if (!teacher) redirect("/masuk");
   return teacher;
+}
+
+/** Cara masuk yang dimiliki akun guru: kata sandi, Google, atau keduanya. */
+export async function getLoginMethods(teacherId: string): Promise<{ hasPassword: boolean; hasGoogle: boolean }> {
+  const sql = await getDb();
+  const [row] = await sql<{ has_password: boolean; has_google: boolean }[]>`
+    select password_hash is not null as has_password, google_sub is not null as has_google
+    from teachers where id = ${teacherId}`;
+  return { hasPassword: row?.has_password ?? false, hasGoogle: row?.has_google ?? false };
 }

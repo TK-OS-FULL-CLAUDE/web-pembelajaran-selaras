@@ -32,5 +32,5 @@ export async function restoreRevision(teacherId: string, lessonId: string, revis
     versions: Object.fromEntries(Object.entries(saved.versions).map(([k, v]) => [k, { ...v, checked: false }])),
     figures: Object.fromEntries(Object.entries(saved.figures ?? {}).map(([k, v]) => [k, { ...v, altChecked: false }])),
   };
-  return updateLesson(teacherId, lessonId, patch, { baseRevision, restoreDraft: true });
+  return updateLesson(teacherId, lessonId, patch, { baseRevision });
 }

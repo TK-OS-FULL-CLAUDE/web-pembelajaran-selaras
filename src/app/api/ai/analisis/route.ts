@@ -3,13 +3,13 @@ import { fail, ok, readJson, withTeacher } from "@/lib/api";
 import { analyzeClass, type ClassData } from "@/lib/ai-kelas";
 import { needsForPrompt } from "@/lib/ai-perangkat";
 import { consumeAiQuota } from "@/lib/ai-quota";
-import { getClass, getLesson, getLessonStats } from "@/lib/data";
+import { getClass, getLesson, getLessonStats, listLessonAudiences } from "@/lib/data";
 import { questionKey, quizType } from "@/lib/quiz";
 import { QUIZ_TYPE_LABEL, VERSION_LABEL, type QuizQuestion } from "@/lib/types";
 
 export const maxDuration = 60;
 
-const schema = z.object({ lessonId: z.string().uuid() });
+const schema = z.object({ lessonId: z.string().uuid(), audienceId: z.uuid().optional() });
 
 /** Kunci jawaban dalam kalimat, untuk konteks AI. */
 function keyText(q: QuizQuestion): string {
@@ -34,16 +34,21 @@ export async function POST(req: Request) {
     const input = await readJson(req, schema);
     const lesson = await getLesson(teacher.id, input.lessonId);
     if (!lesson) return fail("Materi tidak ditemukan.", 404);
-    const stats = await getLessonStats(lesson.id);
+    const audiences = await listLessonAudiences(teacher.id, lesson.id);
+    const audience = audiences.find((a) => a.id === input.audienceId);
+    if (input.audienceId && !audience) return fail("Kelas tidak ditemukan.", 404);
+    const stats = await getLessonStats(lesson.id, { audienceId: input.audienceId });
     if (stats.quizAttempts < 3) {
       return fail("Analisis butuh minimal 3 sesi yang menyelesaikan kuis. Bagikan materi ke siswa dulu.", 422);
     }
-    const cls = lesson.class_id ? await getClass(teacher.id, lesson.class_id) : null;
-    const quiz = lesson.quiz.filter((q) => q.q.trim());
+    const classId = audience?.class_id ?? (audiences.length <= 1 ? lesson.class_id : null);
+    const cls = classId ? await getClass(teacher.id, classId) : null;
+    const content = lesson.published_content ?? lesson;
+    const quiz = (content.quiz ?? []).filter((q) => q.q.trim());
     const data: ClassData = {
       kelas: cls?.grade ?? "",
-      mapel: lesson.subject,
-      judul: lesson.title,
+      mapel: content.subject ?? "",
+      judul: content.title ?? "",
       profilKelas: needsForPrompt(cls?.needs ?? null).replace(/\n/g, " "),
       sesiKuis: stats.quizAttempts,
       rataSkor: stats.avgScorePct,
@@ -64,7 +69,7 @@ export async function POST(req: Request) {
       }),
     };
     await consumeAiQuota(teacher.id, "analisis");
-    const { analysis } = await analyzeClass({ data, body: lesson.body });
+    const { analysis } = await analyzeClass({ data, body: content.body ?? "" });
     return ok({ analysis, basedOn: stats.quizAttempts });
   });
 }

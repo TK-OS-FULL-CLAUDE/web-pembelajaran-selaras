@@ -28,6 +28,7 @@ import {
   type Rubrik,
 } from "@/lib/types";
 import { Badge, Button, Field, Input, Notice, Spinner, Textarea, cx } from "../../ui";
+import { KartuLipat, LipatSemuaBar } from "../../lipat";
 import { useToast } from "../../toast";
 import { FaithfulnessCheck } from "./faithfulness-check";
 import { JenjangDoc, LkpdDoc, ModulDoc, RubrikDoc } from "./perangkat-doc";
@@ -96,6 +97,15 @@ export function PerangkatTab({
   };
 
   const sourcePrint = (key: KitKey) => (key === "lkpdMudah" ? fingerprint(mudahText) : bodyPrint);
+  // Perangkat yang sudah dicek dan masih sesuai sumbernya diciutkan; yang perlu tindakan dibuka.
+  const [open, setOpen] = useState<Record<KitKey, boolean>>(() =>
+    Object.fromEntries(
+      KIT_KEYS.map((k) => {
+        const it = kit[k];
+        return [k, !it || !it.checked || (!!it.basedOn && it.basedOn !== sourcePrint(k))];
+      }),
+    ) as Record<KitKey, boolean>,
+  );
   const canGenerate = (key: KitKey) => !tooShort && (key !== "lkpdMudah" || hasMudah);
 
   function setItem<K extends KitKey>(key: K, item: KitItem<KitData[K]> | undefined) {
@@ -271,26 +281,28 @@ export function PerangkatTab({
         </div>
       )}
 
+      {existing.length > 0 && (
+        <div className="flex justify-end">
+          <LipatSemuaBar
+            label="perangkat"
+            onSet={(o) => setOpen(Object.fromEntries(KIT_KEYS.map((k) => [k, o])) as Record<KitKey, boolean>)}
+          />
+        </div>
+      )}
       {KIT_KEYS.map((key) => {
         const item = kit[key];
         const stale = !!item?.basedOn && item.basedOn !== sourcePrint(key);
         return (
-          <section
+          <KartuLipat
             key={key}
-            aria-labelledby={`perangkat-${key}`}
-            className={cx(
-              "rounded-2xl border bg-white p-5",
-              item && !item.checked ? "border-aksen/60" : "border-garis",
-            )}
-          >
-            <div className="flex flex-wrap items-start justify-between gap-2">
-              <div className="max-w-2xl">
-                <h2 id={`perangkat-${key}`} className="font-display text-lg font-bold">
-                  {KIT_LABEL[key]}
-                </h2>
-                <p className="mt-0.5 text-[14px] text-tinta-2">{INFO[key]}</p>
-              </div>
-              <div className="flex flex-wrap gap-1.5">
+            id={`perangkat-${key}`}
+            heading={KIT_LABEL[key]}
+            highlight={!!item && !item.checked}
+            open={open[key]}
+            onToggle={() => setOpen((o) => ({ ...o, [key]: !o[key] }))}
+            summary={item ? INFO[key] : "Belum ada. Buka untuk membuat draf dengan AI atau mengisinya sendiri."}
+            badges={
+              <>
                 {key === "lkpdMudah" && recommendSimple && <Badge tone="papan">Disarankan untuk kelas ini</Badge>}
                 {item ? (
                   item.checked ? (
@@ -304,8 +316,11 @@ export function PerangkatTab({
                 ) : (
                   <Badge>Belum ada</Badge>
                 )}
-              </div>
-            </div>
+                {stale && <Badge tone="ai">Sumber berubah</Badge>}
+              </>
+            }
+          >
+            <p className="max-w-2xl text-[14px] text-tinta-2">{INFO[key]}</p>
 
             {key === "lkpdMudah" && !hasMudah && !item && (
               <p className="mt-4 rounded-lg bg-papan-50 px-3 py-2 text-[14px]">
@@ -409,7 +424,7 @@ export function PerangkatTab({
                 </Button>
               </div>
             )}
-          </section>
+          </KartuLipat>
         );
       })}
 

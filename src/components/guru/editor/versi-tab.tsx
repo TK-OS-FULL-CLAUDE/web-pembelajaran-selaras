@@ -18,7 +18,7 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { api } from "@/lib/client";
-import { fingerprint, wordCount } from "@/lib/text";
+import { fingerprint, plainText, wordCount } from "@/lib/text";
 import {
   VERSION_HTML_LANG,
   VERSION_KEYS,
@@ -28,7 +28,8 @@ import {
   type LessonVersion,
   type VersionKey,
 } from "@/lib/types";
-import { MODE_TONE, TONES } from "@/lib/modes";
+import { MODE_TONE } from "@/lib/modes";
+import { KartuLipat, LipatSemuaBar } from "../../lipat";
 import { ReaderText } from "../../reader-text";
 import { Badge, Button, IconChip, Notice, Spinner, Textarea, cx } from "../../ui";
 import { useToast } from "../../toast";
@@ -125,6 +126,15 @@ export function VersiTab({
     }
   }
 
+  // Versi yang sudah dicek dan masih sesuai materi asli diciutkan; yang perlu tindakan dibuka.
+  const needsWork = (key: VersionKey) => {
+    const v = lesson.versions[key];
+    return !v?.text.trim() || !v.checked || (!!v.basedOn && v.basedOn !== bodyPrint);
+  };
+  const [open, setOpen] = useState<Record<VersionKey, boolean>>(() =>
+    Object.fromEntries(VERSION_KEYS.map((k) => [k, needsWork(k)])) as Record<VersionKey, boolean>,
+  );
+
   const tooShort = lesson.body.trim().length < 40;
   const anyBusy = VERSION_KEYS.some((k) => busy[k]);
   // Tombol besar hanya mengisi versi yang masih kosong, supaya versi yang sudah diedit atau dicek tidak tertimpa.
@@ -178,49 +188,61 @@ export function VersiTab({
       )}
 
       <VersionComparison body={lesson.body} versions={lesson.versions} />
-      <div className="grid gap-6 xl:grid-cols-2">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-[15px] text-tinta-2">
+          {VERSION_KEYS.filter((k) => lesson.versions[k]?.checked).length} dari {VERSION_KEYS.length} versi sudah dicek.
+        </p>
+        <LipatSemuaBar
+          label="versi"
+          onSet={(o) => setOpen(Object.fromEntries(VERSION_KEYS.map((k) => [k, o])) as Record<VersionKey, boolean>)}
+        />
+      </div>
+      <div className="space-y-4">
         {VERSION_KEYS.map((key) => {
           const v = lesson.versions[key];
           const stale = !!v?.basedOn && v.basedOn !== bodyPrint;
-          return (
-            <section
-              key={key}
-              aria-labelledby={`versi-${key}`}
-              className={cx(
-                "flex flex-col overflow-hidden rounded-2xl border bg-white shadow-kartu",
-                v && !v.checked && v.text.trim() ? "border-aksen/60" : "border-garis",
+          const badges = (
+            <>
+              {recommended[key] && <Badge tone="papan">Disarankan untuk kelas ini</Badge>}
+              {isRegionalVersion(key) && v?.text.trim() && <Badge tone="info">Perlu dicek penutur asli</Badge>}
+              {v?.text.trim() ? (
+                v.checked ? (
+                  <Badge tone="ok">
+                    <Check className="size-3.5" aria-hidden />
+                    Sudah dicek
+                  </Badge>
+                ) : (
+                  <Badge tone="ai">{v.origin === "ai" ? "Draf AI — wajib dicek guru" : "Perlu dicek"}</Badge>
+                )
+              ) : (
+                <Badge>Belum ada</Badge>
               )}
+              {stale && <Badge tone="ai">Materi asli berubah</Badge>}
+            </>
+          );
+          const preview_ = v?.text.trim() ? plainText(v.text).replace(/\s+/g, " ").slice(0, 160) : "";
+          return (
+            <KartuLipat
+              key={key}
+              id={`versi-${key}`}
+              heading={INFO[key].title}
+              icon={<IconChip icon={ICON[key]} tone={MODE_TONE[key]} />}
+              badges={badges}
+              highlight={!!v && !v.checked && !!v.text.trim()}
+              open={open[key]}
+              onToggle={() => setOpen((o) => ({ ...o, [key]: !o[key] }))}
+              summary={
+                v?.text.trim() ? (
+                  <span>
+                    <strong className="text-tinta">{wordCount(v.text)} kata.</strong> {preview_}
+                    {preview_.length >= 160 ? "…" : ""}
+                  </span>
+                ) : (
+                  "Belum ada. Buka untuk membuat draf dengan AI atau menulis sendiri."
+                )
+              }
             >
-              <div className={cx("h-1.5", TONES[MODE_TONE[key]].bar)} aria-hidden />
-              <div className="flex flex-1 flex-col p-5">
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div className="flex min-w-0 items-start gap-3">
-                  <IconChip icon={ICON[key]} tone={MODE_TONE[key]} />
-                  <div className="min-w-0">
-                    <h2 id={`versi-${key}`} className="font-display text-lg font-bold">
-                      {INFO[key].title}
-                    </h2>
-                    <p className="mt-0.5 text-[14px] text-tinta-2">{INFO[key].text}</p>
-                  </div>
-                </div>
-                <div className="flex flex-wrap gap-1.5">
-                  {recommended[key] && <Badge tone="papan">Disarankan untuk kelas ini</Badge>}
-                  {isRegionalVersion(key) && v?.text.trim() && <Badge tone="info">Perlu dicek penutur asli</Badge>}
-                  {v?.text.trim() ? (
-                    v.checked ? (
-                      <Badge tone="ok">
-                        <Check className="size-3.5" aria-hidden />
-                        Sudah dicek
-                      </Badge>
-                    ) : (
-                      <Badge tone="ai">{v.origin === "ai" ? "Draf AI — wajib dicek guru" : "Perlu dicek"}</Badge>
-                    )
-                  ) : (
-                    <Badge>Belum ada</Badge>
-                  )}
-                </div>
-              </div>
-
+              <p className="text-[14px] text-tinta-2">{INFO[key].text}</p>
               {isRegionalVersion(key) && v?.text.trim() && (
                 <p className="mt-4 flex gap-2 rounded-xl bg-biru-50 px-3 py-2 text-[14px] text-info">
                   <Languages className="mt-0.5 size-4 shrink-0" aria-hidden />
@@ -242,7 +264,7 @@ export function VersiTab({
                     <label htmlFor={`teks-${key}`} className="text-[14px] font-bold">
                       Teks versi {INFO[key].title}
                     </label>
-                    <div className="flex rounded-lg bg-slate-100 p-0.5" role="group" aria-label={`Tampilan ${INFO[key].title}`}>
+                    <div className="flex rounded-lg bg-krem p-0.5" role="group" aria-label={`Tampilan ${INFO[key].title}`}>
                       {(
                         [
                           [false, "Ubah", SquarePen],
@@ -372,8 +394,7 @@ export function VersiTab({
                   </Button>
                 </div>
               )}
-              </div>
-            </section>
+            </KartuLipat>
           );
         })}
       </div>

@@ -245,6 +245,8 @@ export type ClassRow = {
 };
 
 export type LessonRow = {
+  published_content?: Partial<LessonRow> | null;
+  published_revision?: number | null;
   topic?: string;
   target_grade?: string;
   is_template?: boolean;
