@@ -8,11 +8,9 @@ import { ButtonLink, EmptyState, IconChip, Notice, SectionTitle, StatCard } from
 import { requireTeacher } from "@/lib/auth";
 import { getTeacherOverview, listClasses, listLessons } from "@/lib/data";
 import { aiEnabled } from "@/lib/claude";
-import type { ToneKey } from "@/lib/modes";
+import { TONES, classTone } from "@/lib/modes";
 
 export const metadata: Metadata = { title: "Beranda guru" };
-
-const CLASS_TONES: ToneKey[] = ["papan"];
 
 export default async function GuruHome() {
   const teacher = await requireTeacher();
@@ -25,7 +23,9 @@ export default async function GuruHome() {
 
   return (
     <div className="space-y-10">
-      <section className="latar-titik relative overflow-hidden rounded-[1.75rem] border border-garis bg-white p-6 shadow-kartu sm:p-8">
+      <section className="relative overflow-hidden rounded-[1.75rem] border border-garis bg-white shadow-kartu">
+        <div className="pita-warna" aria-hidden />
+        <div className="p-6 sm:p-8">
         <div className="flex flex-wrap items-end justify-between gap-5">
           <div>
             <p className="text-[15px] font-bold text-papan">Beranda guru</p>
@@ -40,11 +40,12 @@ export default async function GuruHome() {
             Materi baru
           </ButtonLink>
         </div>
-        <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <StatCard icon={School} tone="papan" label="Kelas" value={classes.length} />
-          <StatCard icon={Send} tone="papan" label="Materi terbit" value={overview.published} />
-          <StatCard icon={PenLine} tone="aksen" label="Draf" value={overview.drafts} />
-          <StatCard icon={Users} tone="papan" label="Sesi siswa" value={overview.sessions} />
+        <div className="mt-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <StatCard icon={School} tone="biru" label="Kelas" value={classes.length} />
+          <StatCard icon={Send} tone="hijau" label="Materi terbit" value={overview.published} />
+          <StatCard icon={PenLine} tone="kuning" label="Draf" value={overview.drafts} />
+          <StatCard icon={Users} tone="merah" label="Sesi siswa" value={overview.sessions} />
+        </div>
         </div>
       </section>
 
@@ -68,6 +69,7 @@ export default async function GuruHome() {
       <section aria-labelledby="judul-kelas">
         <SectionTitle
           id="judul-kelas"
+          tone="biru"
           action={
             <Link
               href="/guru/kelas/baru"
@@ -95,10 +97,11 @@ export default async function GuruHome() {
               <li key={c.id}>
                 <Link
                   href={`/guru/kelas/${c.id}`}
-                  className="group flex h-full flex-col rounded-2xl border border-garis bg-white p-5 shadow-kartu transition-[box-shadow,border-color,transform] hover:-translate-y-0.5 hover:border-papan/40 hover:shadow-angkat"
+                  className="group relative flex h-full flex-col overflow-hidden rounded-2xl border border-garis bg-white p-5 pt-6 shadow-kartu transition-[box-shadow,border-color,transform] hover:-translate-y-0.5 hover:border-batas/60 hover:shadow-angkat"
                 >
+                  <span className={`absolute inset-x-0 top-0 h-1.5 ${TONES[classTone(i)].bar}`} aria-hidden />
                   <div className="flex items-start gap-4">
-                    <IconChip icon={Users} tone={CLASS_TONES[i % CLASS_TONES.length]} size="lg" />
+                    <IconChip icon={Users} tone={classTone(i)} size="lg" />
                     <div className="min-w-0 flex-1">
                       <p className="font-display text-lg font-extrabold">{c.name}</p>
                       <p className="text-[14px] text-tinta-2">
@@ -127,7 +130,9 @@ export default async function GuruHome() {
       </section>
 
       <section aria-labelledby="judul-materi">
-        <SectionTitle id="judul-materi">Materi terbaru</SectionTitle>
+        <SectionTitle id="judul-materi" tone="merah">
+          Materi terbaru
+        </SectionTitle>
         {lessons.length === 0 ? (
           <EmptyState title="Belum ada materi" icon={BookOpen}>
             Buat kelas dulu, lalu tambahkan materi pertama Anda.

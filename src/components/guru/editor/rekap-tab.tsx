@@ -155,25 +155,25 @@ export function RekapTab({
         <div className="flex items-center gap-3">{refresh}<a href={`/api/materi/${lessonId}/laporan${audienceId ? `?kelas=${audienceId}` : ""}`} className="rounded-xl border border-papan px-4 py-3 font-bold text-papan">Unduh laporan CSV</a></div>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard icon={Users} tone="papan" label="Sesi belajar" value={stats.sessions} />
+      <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+        <StatCard icon={Users} tone="biru" label="Sesi belajar" value={stats.sessions} />
         <StatCard
           icon={Sparkles}
-          tone="papan"
+          tone="hijau"
           label="Memakai cara belajar lain"
           value={`${adaptivePct}%`}
           hint={`${stats.adaptiveSessions} sesi`}
         />
         <StatCard
           icon={Target}
-          tone="papan"
+          tone="merah"
           label="Rata-rata skor kuis"
           value={stats.avgScorePct ?? "—"}
           hint={stats.quizAttempts ? `dari 100 · ${stats.quizAttempts} sesi kuis` : "belum ada"}
         />
         <StatCard
           icon={Clock}
-          tone="aksen"
+          tone="kuning"
           label="Rata-rata waktu kuis"
           value={formatDuration(stats.avgDurationSec)}
         />

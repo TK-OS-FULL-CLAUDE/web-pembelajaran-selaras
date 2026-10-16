@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { NEEDS } from "@/lib/accommodations";
+import { NEED_TONE, TONES } from "@/lib/modes";
 import { LANG_LABEL, type ClassNeeds } from "@/lib/types";
-import { Badge } from "../ui";
+import { Badge, cx } from "../ui";
 
 /** Panduan akomodasi sesuai profil kelas. Centang tersimpan di browser guru (bukan di server). */
 export function AccommodationGuide({ classId, needs }: { classId: string; needs: ClassNeeds }) {
@@ -44,11 +45,12 @@ export function AccommodationGuide({ classId, needs }: { classId: string; needs:
         return (
           <section
             key={n.key}
-            className="rounded-2xl border border-garis bg-white p-5"
+            className="relative overflow-hidden rounded-2xl border border-garis bg-white p-5 pl-6"
             aria-labelledby={`akm-${n.key}`}
           >
+            <span className={cx("absolute inset-y-0 left-0 w-1.5", TONES[NEED_TONE[n.key]].bar)} aria-hidden />
             <div className="flex flex-wrap items-baseline justify-between gap-2">
-              <h3 id={`akm-${n.key}`} className="text-lg font-bold">
+              <h3 id={`akm-${n.key}`} className={cx("text-lg font-bold", TONES[NEED_TONE[n.key]].text)}>
                 {title}
               </h3>
               <span className="text-[14px] text-tinta-2">
@@ -57,7 +59,7 @@ export function AccommodationGuide({ classId, needs }: { classId: string; needs:
             </div>
             <div className="mt-2 flex flex-wrap gap-1.5">
               {n.modes.map((m) => (
-                <Badge key={m} tone="papan">
+                <Badge key={m} tone={NEED_TONE[n.key]}>
                   {m}
                 </Badge>
               ))}
