@@ -25,6 +25,7 @@ import { QUIZ_TONE, TONES } from "@/lib/modes";
 import { blankQuestion, convertQuestion, questionProblem, quizType } from "@/lib/quiz";
 import { QUIZ_TYPES, QUIZ_TYPE_LABEL, type QuizQuestion, type QuizType } from "@/lib/types";
 import { Badge, Button, EmptyState, Spinner, cx, inputClass } from "../../ui";
+import { LipatSemuaBar, TombolLipat, useLipat, type LipatSemua } from "../../lipat";
 import { useToast } from "../../toast";
 import type { EditableLesson, UpdateLesson } from "./lesson-editor";
 
@@ -49,6 +50,7 @@ export function KuisTab({
   update: UpdateLesson;
   aiOn: boolean;
 }) {
+  const [semua, setSemua] = useState<LipatSemua>(null);
   const toast = useToast();
   const [busy, setBusy] = useState(false);
   const [aiOpen, setAiOpen] = useState(false);
@@ -218,7 +220,7 @@ export function KuisTab({
         <EmptyState
           title="Belum ada soal"
           icon={Sparkles}
-          tone="jingga"
+          tone="papan"
           action={
             <div className="flex flex-wrap justify-center gap-2">
               {addMenu}
@@ -235,6 +237,7 @@ export function KuisTab({
   }
 
   const counts = QUIZ_TYPES.map((t) => [t, quiz.filter((q) => quizType(q) === t).length] as const).filter(([, n]) => n);
+  const setAll = (open: boolean) => setSemua((s) => ({ open, n: (s?.n ?? 0) + 1 }));
 
   return (
     <div className="space-y-5">
@@ -253,16 +256,20 @@ export function KuisTab({
         </div>
       </div>
       {aiPanel}
-      <p className="text-[14px] text-tinta-2">
-        Soal ditampilkan dalam Bahasa Indonesia untuk semua siswa dan bisa dibacakan suara.
-      </p>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-[14px] text-tinta-2">
+          Soal ditampilkan dalam Bahasa Indonesia untuk semua siswa dan bisa dibacakan suara.
+        </p>
+        <LipatSemuaBar label="soal" onSet={setAll} />
+      </div>
 
-      <ol className="space-y-4">
+      <ol className="space-y-3">
         {quiz.map((q, i) => (
           <QuestionCard
             key={i}
             q={q}
             i={i}
+            semua={semua}
             math={math}
             total={quiz.length}
             edit={(patch) => edit(i, patch)}
@@ -289,6 +296,7 @@ function QuestionCard({
   math = false,
   idPrefix = "",
   noun = "Soal",
+  semua = null,
   edit,
   replace,
   move,
@@ -297,6 +305,8 @@ function QuestionCard({
   q: QuizQuestion;
   i: number;
   total: number;
+  /** Sinyal "Buka semua / Ciutkan semua" dari daftar. */
+  semua?: LipatSemua;
   /** Materi Matematika: tampilkan kolom hitungan pemeriksa kunci. */
   math?: boolean;
   /** Awalan id supaya kartu kuis dan kartu bank latihan bisa tampil di halaman yang sama. */
@@ -313,16 +323,17 @@ function QuestionCard({
   const calc = checkCalc(q);
   const uid = `${idPrefix}${i}`;
   const hints = [0, 1, 2].map((k) => q.hints?.[k] ?? "");
+  // Soal yang sudah lengkap diciutkan; soal baru, draf AI, atau yang bermasalah dibuka.
+  const [open, setOpen] = useLipat(!!problem || q.origin === "ai" || (!!calc && !calc.ok), semua);
 
   return (
     <li
       className={cx(
         "overflow-hidden rounded-2xl border bg-white shadow-kartu",
-        problem ? "border-aksen/50" : "border-garis",
+        problem ? "border-aksen/50 border-l-[5px] border-l-aksen" : "border-garis",
       )}
     >
-      <div className={cx("h-1.5", tone.bar)} aria-hidden />
-      <div className="p-5">
+      <div className="p-4 sm:p-5">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex flex-wrap items-center gap-2">
             <span className="font-display text-lg font-extrabold">
@@ -351,7 +362,8 @@ function QuestionCard({
               </Badge>
             )}
           </div>
-          <div className="flex gap-1">
+          <div className="flex flex-wrap gap-1">
+            <TombolLipat open={open} onToggle={() => setOpen((o) => !o)} controls={`isi-${uid}`} name={`${noun} ${i + 1}`} />
             <IconButton label={`Naikkan ${noun.toLowerCase()} ${i + 1}`} disabled={i === 0} onClick={() => move(-1)}>
               <ArrowUp className="size-4" aria-hidden />
             </IconButton>
@@ -363,6 +375,13 @@ function QuestionCard({
             </IconButton>
           </div>
         </div>
+        {!open && (
+          <p className="mt-2 line-clamp-2 text-[15px] text-tinta">
+            {q.q.trim() || <span className="text-tinta-2">Pertanyaan belum diisi.</span>}
+            {q.concept?.trim() && <span className="text-tinta-2"> · Konsep: {q.concept}</span>}
+          </p>
+        )}
+        <div id={`isi-${uid}`} hidden={!open}>
         <p className="mt-1 text-[13px] text-tinta-2">{TYPE_HINT[type]}</p>
         <label htmlFor={`konsep-${uid}`} className="mt-3 block text-sm font-bold">
           Konsep yang dinilai
@@ -509,6 +528,7 @@ function QuestionCard({
             </Button>
           </div>
         )}
+        </div>
       </div>
     </li>
   );
@@ -559,7 +579,7 @@ function OptionsEditor({
               name={`benar-${uid}`}
               checked={right}
               onChange={() => toggle(oi)}
-              className="size-5 shrink-0 accent-[#15803D]"
+              className="size-5 shrink-0 accent-[#2E7D32]"
               aria-label={`Jawaban ${LETTERS[oi]} benar`}
             />
             <span className="w-5 font-bold text-tinta-2" aria-hidden>
@@ -738,6 +758,7 @@ function PracticeBank({
   aiOn: boolean;
   math: boolean;
 }) {
+  const [semuaBank, setSemuaBank] = useState<LipatSemua>(null);
   const toast = useToast();
   const [busy, setBusy] = useState(false);
   const bank = lesson.practice ?? [];
@@ -843,12 +864,16 @@ function PracticeBank({
       )}
 
       {bank.length > 0 && (
-        <ol className="mt-4 space-y-4">
+        <LipatSemuaBar label="latihan" className="mt-3" onSet={(open) => setSemuaBank((s) => ({ open, n: (s?.n ?? 0) + 1 }))} />
+      )}
+      {bank.length > 0 && (
+        <ol className="mt-2 space-y-3">
           {bank.map((q, i) => (
             <QuestionCard
               key={i}
               q={q}
               i={i}
+              semua={semuaBank}
               total={bank.length}
               math={math}
               idPrefix="latihan-"
