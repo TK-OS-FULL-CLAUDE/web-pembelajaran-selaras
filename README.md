@@ -99,12 +99,19 @@ flowchart LR
 | Lainnya | `qrcode`, `lucide-react`, `zod`, huruf Atkinson Hyperlegible dan Plus Jakarta Sans |
 | Deployment | Vercel |
 
+## Desain
+
+Nuansa ruang kelas: navbar dan footer berupa **papan tulis hijau** dengan ambalan kayu, halaman depan memakai **kertas buku bergaris**, aksen **emas pensil**. Satu warna utama (hijau `papan`) dan satu aksen (emas); warna lain hanya untuk arti (berhasil, galat, info) dan kotak catatan di bacaan. Chip cara belajar, jenis soal, dan kebutuhan kelas sengaja satu warna supaya layar tidak ramai. Token warna ada di `src/app/globals.css` dan semua pasangan teks/latar lolos WCAG AA.
+
+Kartu panjang (versi teks, soal kuis dan latihan, perangkat ajar, kartu rekap, pembanding versi) bisa diciutkan; yang sudah dicek otomatis tertutup, yang perlu tindakan terbuka, dan ada tombol **Buka semua / Ciutkan semua**. Toolbar bacaan siswa satu baris dan menempel di atas: pilihan versi teks plus alat tampilan (di HP dibuka lewat tombol **Tampilan**).
+
 ## Struktur Proyek
 
 ```
 src/
 ├── app/
-│   ├── page.tsx                     # halaman depan + contoh interaktif
+│   ├── page.tsx                     # halaman depan ringkas + contoh interaktif
+│   ├── cara-kerja/                  # cara kerja, cara belajar siswa, fitur (dibuka dari navbar)
 │   ├── masuk/, daftar/              # login dan daftar guru
 │   ├── guru/
 │   │   ├── page.tsx                 # beranda guru: kelas dan materi
@@ -123,7 +130,7 @@ src/
 │       ├── s/[kode]/catat/          # catat sesi & skor siswa (anonim)
 │       ├── demo/reset/
 │       └── status/                  # cek database & AI setelah deploy
-├── components/                      # ui.tsx (UI kit), guru/, siswa/, editor/
+├── components/                      # ui.tsx (UI kit), site-header/footer (navbar papan tulis), lipat.tsx (kartu bisa diciutkan), guru/, siswa/, editor/
 └── lib/
     ├── ai-tasks.ts                  # prompt AI: foto, versi teks, kuis, deskripsi gambar
     ├── ai-perangkat.ts              # prompt AI: modul ajar, LKPD, rubrik, tugas berjenjang
@@ -133,7 +140,7 @@ src/
     ├── text.ts                      # format materi (judul, daftar, kotak, tabel, gambar) + pemecah kalimat
     ├── quiz.ts                      # lima jenis soal: merapikan & memeriksa jawaban
     ├── impor/                       # foto, PDF, Word → format Selaras (di browser)
-    ├── modes.ts                     # warna kategori tiap cara belajar & jenis soal
+    ├── modes.ts                     # warna cara belajar & jenis soal (satu warna, dibedakan ikon)
     ├── claude.ts, gemini.ts         # klien AI + cadangan lintas penyedia
     ├── ai-quota.ts                  # batas pemakaian AI per akun
     ├── accommodations.ts            # panduan akomodasi + rujukan
